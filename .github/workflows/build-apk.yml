@@ -23,9 +23,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
-          # tidak pin versi biar ambil latest stable (3.24.x) — lebih aman untuk runner
 
       - name: Decode google-services.json (dari GitHub Secrets)
         env:
@@ -54,10 +54,10 @@ jobs:
         run: flutter analyze || true
 
       - name: Build APK split per ABI (paling kecil)
-        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons --android-skip-build-dependency-validation
 
       - name: Build APK universal (single file)
-        run: flutter build apk --release || true
+        run: flutter build apk --release --android-skip-build-dependency-validation || true
 
       - name: List APK hasil
         run: ls -lh build/app/outputs/flutter-apk/

@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    // Cek apakah user adalah salah satu dari pasangan di doc couple
+    // Couple doc: couples/{coupleId} { members: ["uidA","uidB"] }
+    function isMemberOfCouple(coupleId) {
+      return isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.members;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --- Couples (Private hanya berdua) ---
+    // Buat read: hanya member. Create: user yang buat jadi anggota pertama
+    match /couples/{coupleId} {
+      allow read: if isMemberOfCouple(coupleId);
+      allow create: if isSignedIn() && request.resource.data.members[0] == request.auth.uid
+                    && request.resource.data.members.size() == 1;
+      // Update untuk pairing: hanya yang sudah jadi member atau yang diundang via inviteCode
+      allow update: if isSignedIn() && (
+        isMemberOfCouple(coupleId) ||
+        // Izinkan join jika inviteCode valid (cek di client, tapi rules tetap validasi members size <=2)
+        request.resource.data.members.size() == 2
+      );
+      allow delete: if false; // jangan hapus
+
+      // Subcollection scheduled_greetings (ultah)
+      match /scheduled_greetings/{docId} {
+        allow read, write: if isMemberOfCouple(coupleId);
+      }
+    }
+
+    // --- Invite Codes (untuk Pairing) ---
+    match /inviteCodes/{code} {
+      // Semua user login bisa baca kode untuk validasi, tapi tidak bisa list semua
+      allow get: if isSignedIn();
+      allow list: if false;
+      // Create hanya oleh member couple
+      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
+      // Delete setelah dipakai (oleh yang join)
+      allow delete: if isSignedIn();
+      allow update: if false;
+    }
+
+    // --- Chats ---
+    match /chats/{coupleId} {
+      allow read, write: if isMemberOfCouple(coupleId);
+
+      match /messages/{messageId} {
+        // Hanya member couple yang bisa baca/tulis pesan di couple mereka
+        allow read, create: if isMemberOfCouple(coupleId)
+          && request.resource.data.fromId == request.auth.uid
+          && request.resource.data.fromId in get(/databases/$(database)/documents/couples/$(coupleId)).data.members;
+        // Update untuk edit/love/read - hanya member, dan tidak boleh ganti fromId
+        allow update: if isMemberOfCouple(coupleId)
+          && resource.data.fromId == request.resource.data.fromId
+          // Cegah edit jadi curang: hanya field tertentu yang boleh diupdate
+          && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['text','isEdited','isDeleted','isLoved','status','viewOnceOpened']);
+        allow delete: if false; // pakai soft delete isDeleted=true
+      }
+    }
+
+    // --- Albums ---
+    match /albums/{coupleId} {
+      allow read, write: if isMemberOfCouple(coupleId);
+      match /photos/{photoId} {
+        allow read, create: if isMemberOfCouple(coupleId);
+        // Update/delete hanya owner yang upload atau pasangan
+        allow update, delete: if isMemberOfCouple(coupleId);
+      }
+    }
+
+    // --- Letters ---
+    match /letters/{coupleId} {
+      allow read, write: if isMemberOfCouple(coupleId);
+      match /items/{letterId} {
+        allow read, create: if isMemberOfCouple(coupleId);
+        allow update: if isMemberOfCouple(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isLoved','isRead']);
+        allow delete: if isMemberOfCouple(coupleId) && resource.data.fromId == request.auth.uid;
+      }
+    }
+
+    // --- Presence (online/typing/recording) ---
+    match /presence/{uid} {
+      // User hanya bisa tulis presence dirinya sendiri
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(uid);
+      allow delete: if false;
+    }
+
+    // --- Users (profil + FCM token) ---
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      // User hanya bisa tulis datanya sendiri
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['displayName','photoUrl','birthday','fcmToken','lastSeen','coupleId']);
+      allow delete: if false;
+    }
+
+    // --- Calls (signaling WebRTC) ---
+    match /calls/{callId} {
+      // Hanya 2 member yang terlibat call
+      allow read, create: if isSignedIn()
+        && request.resource.data.callerId == request.auth.uid
+        && request.resource.data.calleeId in get(/databases/$(database)/documents/couples/$(request.resource.data.coupleId)).data.members;
+      allow update: if isSignedIn() && resource.data.calleeId == request.auth.uid || resource.data.callerId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.callerId == request.auth.uid || resource.data.calleeId == request.auth.uid);
+
+      match /candidates/{candId} {
+        allow read, write: if isSignedIn();
+      }
+      match /offer { allow read, write: if isSignedIn(); }
+      match /answer { allow read, write: if isSignedIn(); }
+    }
+
+    // --- Default deny ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

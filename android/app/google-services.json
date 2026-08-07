@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "495336144977",
+    "project_id": "dykal-5e2b9",
+    "storage_bucket": "dykal-5e2b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:495336144977:android:a2a4b5fc2d7e86f53f7870",
+        "android_client_info": {
+          "package_name": "com.dykal.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARS0mdqdteDP3va6zGAnEfJ3NORV432Lc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

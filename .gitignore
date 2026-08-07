@@ -1,0 +1,10 @@
+.dart_tool/
+.build/
+build/
+.pub-cache/
+.pub/
+.idea/
+*.iml
+.DS_Store
+# tapi jangan ignore google-services.json agar APK bisa build
+!android/app/google-services.json

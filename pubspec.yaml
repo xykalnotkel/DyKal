@@ -30,7 +30,7 @@ dependencies:
   riverpod_annotation: ^2.3.3
 
   # --- Call Audio/Video WebRTC ---
-  flutter_webrtc: ^0.9.48
+  flutter_webrtc: ^1.0.0 # upgrade: 0.9.48 pakai v1 embedding (Registrar) yang dihapus di Flutter 3.29+; 1.x sudah fix
   # Untuk filter/efek video: GPUImage / Banuba bisa ditambah nanti
   # Untuk screen share: flutter_webrtc sudah support getDisplayMedia
 

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_constants.dart';
@@ -18,7 +19,7 @@ class DyKalCallService {
   double volume = 1.0;
 
   /// Inisialisasi PeerConnection dengan TURN Gratis
-  Future<RTCPeerConnection> createPeerConnection() async {
+  Future<RTCPeerConnection> initPeerConnection() async {
     final config = {
       'iceServers': AppConstants.iceServers,
       'sdpSemantics': 'unified-plan',

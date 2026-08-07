@@ -97,7 +97,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-                _filterChip("none", "Normal", PhosphorIcons.sparks()),
+                _filterChip("none", "Normal", PhosphorIcons.sparkle()),
                 _filterChip("warm", "Warm", PhosphorIcons.sun()),
                 _filterChip("cool", "Cool", PhosphorIcons.snowflake()),
                 _filterChip("bw", "B&W", PhosphorIcons.moon()),

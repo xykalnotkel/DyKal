@@ -67,7 +67,6 @@ class BirthdayService {
       tz.TZDateTime.from(nextBirthday, tz.local),
       NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dateAndTime, // Ulang tiap tahun
     );
 

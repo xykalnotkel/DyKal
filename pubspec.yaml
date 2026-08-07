@@ -59,7 +59,7 @@ dependencies:
   flutter_image_compress: ^2.1.0 # Compress ke WebP otomatis
   workmanager: ^0.5.1 # Untuk auto birthday background task
   flutter_local_notifications: ^19.5.0 # Notif ultah (fix #2329 build error, mulai 17.2.1)
-  timezone: ^0.9.2
+  timezone: ^0.10.1 # (dinaikkan: dibutuhkan flutter_local_notifications ^19.5.0)
   swipe_to: ^1.0.2 # Swipe to reply
   scrollable_positioned_list: ^0.3.8
 

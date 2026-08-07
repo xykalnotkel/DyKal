@@ -23,9 +23,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.5'
           channel: 'stable'
           cache: true
+          # tidak pin versi biar ambil latest stable (3.24.x) — lebih aman untuk runner
 
       - name: Decode google-services.json (dari GitHub Secrets)
         env:

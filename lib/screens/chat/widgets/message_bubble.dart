@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
@@ -35,7 +35,7 @@ class MessageBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(PhosphorIcons.prohibit(), size: 14, color: Colors.grey),
+            Icon(Icons.block(), size: 14, color: Colors.grey),
             SizedBox(width: 6),
             Text("Pesan ini telah dihapus", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 13)),
           ]),
@@ -67,7 +67,7 @@ class MessageBubble extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(PhosphorIcons.eye(), color: Colors.white, size: 18),
+              Icon(Icons.visibility(), color: Colors.white, size: 18),
               SizedBox(width: 8),
               Text("Foto sekali lihat", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             ]),
@@ -80,7 +80,7 @@ class MessageBubble extends StatelessWidget {
       key: Key(message.id),
       direction: DismissDirection.startToEnd,
       confirmDismiss: (_) async { onSwipeReply(); return false; },
-      background: Align(alignment: Alignment.centerLeft, child: Padding(padding: EdgeInsets.only(left: 16), child: Icon(PhosphorIcons.arrowBendUpLeft(), color: DyKalTheme.primary))),
+      background: Align(alignment: Alignment.centerLeft, child: Padding(padding: EdgeInsets.only(left: 16), child: Icon(Icons.reply(), color: DyKalTheme.primary))),
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
@@ -132,7 +132,7 @@ class MessageBubble extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.all(4),
                     decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]),
-                    child: Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: DyKalTheme.primary, size: 14),
+                    child: Icon(Icons.favorite, color: DyKalTheme.primary, size: 14),
                   ),
                 ),
             ],
@@ -144,10 +144,10 @@ class MessageBubble extends StatelessWidget {
 
   Widget _statusIcon() {
     switch (message.status) {
-      case MessageStatus.sending: return Icon(PhosphorIcons.clock(), size: 12, color: Colors.white70);
-      case MessageStatus.sent: return Icon(PhosphorIcons.check(), size: 12, color: Colors.white70); // centang 1
-      case MessageStatus.delivered: return Icon(PhosphorIcons.checks(), size: 12, color: Colors.white70); // centang 2 abu
-      case MessageStatus.read: return Icon(PhosphorIcons.checks(), size: 12, color: Color(0xFF00D68F)); // centang 2 biru/hijau
+      case MessageStatus.sending: return Icon(Icons.schedule(), size: 12, color: Colors.white70);
+      case MessageStatus.sent: return Icon(Icons.check(), size: 12, color: Colors.white70); // centang 1
+      case MessageStatus.delivered: return Icon(Icons.done_all(), size: 12, color: Colors.white70); // centang 2 abu
+      case MessageStatus.read: return Icon(Icons.done_all(), size: 12, color: Color(0xFF00D68F)); // centang 2 biru/hijau
     }
   }
 
@@ -158,14 +158,14 @@ class MessageBubble extends StatelessWidget {
   void _showOptions(BuildContext context) {
     showModalBottomSheet(context: context, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))), builder: (_) => SafeArea(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(leading: Icon(PhosphorIcons.heart(), color: DyKalTheme.primary), title: Text(message.isLoved ? "Hapus Love" : "Love Pesan"), onTap: (){ Navigator.pop(context); onLove(); }),
-        ListTile(leading: Icon(PhosphorIcons.arrowBendUpLeft()), title: Text("Balas (Swipe)"), onTap: (){ Navigator.pop(context); onSwipeReply(); }),
-        if (isMe) ListTile(leading: Icon(PhosphorIcons.pencil()), title: Text("Edit Pesan"), onTap: (){
+        ListTile(leading: Icon(Icons.favorite(), color: DyKalTheme.primary), title: Text(message.isLoved ? "Hapus Love" : "Love Pesan"), onTap: (){ Navigator.pop(context); onLove(); }),
+        ListTile(leading: Icon(Icons.reply()), title: Text("Balas (Swipe)"), onTap: (){ Navigator.pop(context); onSwipeReply(); }),
+        if (isMe) ListTile(leading: Icon(Icons.edit()), title: Text("Edit Pesan"), onTap: (){
           Navigator.pop(context);
           final c = TextEditingController(text: message.text);
           showDialog(context: context, builder: (_) => AlertDialog(title: Text("Edit Pesan"), content: TextField(controller: c), actions: [TextButton(onPressed: ()=> Navigator.pop(context), child: Text("Batal")), FilledButton(onPressed: (){ Navigator.pop(context); onEdit(c.text); }, child: Text("Simpan"))]));
         }),
-        if (isMe) ListTile(leading: Icon(PhosphorIcons.trash(), color: Colors.red), title: Text("Hapus Pesan", style: TextStyle(color: Colors.red)), onTap: (){ Navigator.pop(context); onDelete(); }),
+        if (isMe) ListTile(leading: Icon(Icons.delete(), color: Colors.red), title: Text("Hapus Pesan", style: TextStyle(color: Colors.red)), onTap: (){ Navigator.pop(context); onDelete(); }),
       ]),
     ));
   }

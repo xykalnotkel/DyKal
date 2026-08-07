@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import '../../config/theme.dart';
 import '../../services/birthday_service.dart';
 
@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   gradient: DyKalTheme.dykalGradient,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: Colors.white, size: 18),
+                child: Icon(Icons.favorite, color: Colors.white, size: 18),
               ),
               SizedBox(width: 10),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -52,8 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           actions: [
-            IconButton(onPressed: (){}, icon: Icon(PhosphorIcons.bell(PhosphorIconsStyle.regular), color: DyKalTheme.textDark)),
-            IconButton(onPressed: (){}, icon: Icon(PhosphorIcons.gear(PhosphorIconsStyle.regular), color: DyKalTheme.textDark)),
+            IconButton(onPressed: (){}, icon: Icon(Icons.notifications, color: DyKalTheme.textDark)),
+            IconButton(onPressed: (){}, icon: Icon(Icons.settings, color: DyKalTheme.textDark)),
             SizedBox(width: 8),
           ],
         ),
@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Icon(PhosphorIcons.cake(PhosphorIconsStyle.fill), color: Colors.white, size: 18),
+                    Icon(Icons.cake, color: Colors.white, size: 18),
                     SizedBox(width: 6),
                     Text("Selamat Ulang Tahun", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
                   ]),
@@ -100,14 +100,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(children: [
                   Text("Hai, Kalian Berdua", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                   SizedBox(width: 6),
-                  Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: DyKalTheme.primary, size: 18),
+                  Icon(Icons.favorite, color: DyKalTheme.primary, size: 18),
                 ]),
                 SizedBox(height: 6),
                 Text("Semoga harimu indah. Sudah kirim kabar ke dia hari ini?", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 13)),
                 SizedBox(height: 14),
                 FilledButton.icon(
                   onPressed: (){},
-                  icon: Icon(PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill), size: 16),
+                  icon: Icon(Icons.send, size: 16),
                   label: Text("Kirim Surat"),
                 ),
               ])),
@@ -131,14 +131,14 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Icon(PhosphorIcons.calendarCheck(PhosphorIconsStyle.fill), color: DyKalTheme.secondary, size: 16),
+                  Icon(Icons.event_available, color: DyKalTheme.secondary, size: 16),
                   SizedBox(width: 6),
                   Text("365 Hari Bersama", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ]),
                 SizedBox(height: 4),
                 Text("Anniversary kalian 14 Feb • 191 hari lagi", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
               ])),
-              Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.regular), color: DyKalTheme.textGrey, size: 18),
+              Icon(Icons.chevron_right, color: DyKalTheme.textGrey, size: 18),
             ]),
           ),
         ),
@@ -148,11 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Row(children: [
-              _statCard(PhosphorIcons.chatCircle(PhosphorIconsStyle.regular), "1.2k", "Chat"),
+              _statCard(Icons.chat, "1.2k", "Chat"),
               SizedBox(width: 12),
-              _statCard(PhosphorIcons.images(PhosphorIconsStyle.regular), "342", "Foto"),
+              _statCard(Icons.collections, "342", "Foto"),
               SizedBox(width: 12),
-              _statCard(PhosphorIcons.envelopeSimple(PhosphorIconsStyle.regular), "48", "Surat"),
+              _statCard(Icons.mail, "48", "Surat"),
             ]),
           ),
         ),
@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              Icon(PhosphorIcons.clockCounterClockwise(PhosphorIconsStyle.regular), size: 18, color: DyKalTheme.textDark),
+              Icon(Icons.history, size: 18, color: DyKalTheme.textDark),
               SizedBox(width: 8),
               Text("Kenangan Terakhir", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             ]),
@@ -175,17 +175,17 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
             child: Row(children: [
-              ClipRRect(borderRadius: BorderRadius.circular(12), child: Container(width: 60, height: 60, color: DyKalTheme.borderSoft, child: Icon(PhosphorIcons.image(PhosphorIconsStyle.regular), color: DyKalTheme.textGrey))),
+              ClipRRect(borderRadius: BorderRadius.circular(12), child: Container(width: 60, height: 60, color: DyKalTheme.borderSoft, child: Icon(Icons.image, color: DyKalTheme.textGrey))),
               SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Text("Pantai Selong", style: TextStyle(fontWeight: FontWeight.w600)),
                   SizedBox(width: 6),
-                  Icon(PhosphorIcons.camera(PhosphorIconsStyle.fill), size: 12, color: DyKalTheme.textGrey),
+                  Icon(Icons.camera_alt, size: 12, color: DyKalTheme.textGrey),
                 ]),
                 Text("7 Agustus 2026 • 2 foto baru", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
               ])),
-              Icon(PhosphorIcons.heart(PhosphorIconsStyle.regular), color: DyKalTheme.primary, size: 20),
+              Icon(Icons.favorite, color: DyKalTheme.primary, size: 20),
             ]),
           ),
         ),
@@ -201,13 +201,13 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Icon(PhosphorIcons.lockKey(PhosphorIconsStyle.fill), size: 14, color: DyKalTheme.primary),
+                  Icon(Icons.lock, size: 14, color: DyKalTheme.primary),
                   SizedBox(width: 6),
                   Text("Private & Aman", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ]),
                 Text("Hanya kalian berdua yang bisa lihat", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
               ])),
-              Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: DyKalTheme.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill), size: 12, color: DyKalTheme.success), SizedBox(width: 4), Text("Terenkripsi", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DyKalTheme.success))])),
+              Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: DyKalTheme.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.verified_user, size: 12, color: DyKalTheme.success), SizedBox(width: 4), Text("Terenkripsi", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DyKalTheme.success))])),
             ]),
           ),
         ),

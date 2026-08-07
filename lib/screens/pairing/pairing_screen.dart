@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import '../../config/theme.dart';
 
 class PairingScreen extends StatefulWidget {
@@ -28,12 +28,12 @@ class _PairingScreenState extends State<PairingScreen> {
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)),
-                  child: Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: Colors.white, size: 18),
+                  child: Icon(Icons.favorite, color: Colors.white, size: 18),
                 ),
                 SizedBox(width: 10),
                 Text("DyKal Pairing", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const Spacer(),
-                IconButton(onPressed: () => Navigator.pop(context), icon: Icon(PhosphorIcons.x(PhosphorIconsStyle.regular), color: Color(0xFF1A1C1E))),
+                IconButton(onPressed: () => Navigator.pop(context), icon: Icon(Icons.close, color: Color(0xFF1A1C1E))),
               ]),
               SizedBox(height: 16),
               Image.asset('assets/illustrations/webp/pairing.webp', width: 320, height: 160, fit: BoxFit.contain),
@@ -66,7 +66,7 @@ class _PairingScreenState extends State<PairingScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(isCreating ? PhosphorIconsFill.shareNetwork : PhosphorIcons.shareNetwork(PhosphorIconsStyle.regular), size: 16, color: isCreating ? Colors.white : const Color(0xFF8E9099)),
+                        Icon(isCreating ? Icons.share : Icons.share, size: 16, color: isCreating ? Colors.white : const Color(0xFF8E9099)),
                         SizedBox(width: 6),
                         Text("Buat Kode", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: isCreating ? Colors.white : const Color(0xFF8E9099))),
                       ]),
@@ -82,7 +82,7 @@ class _PairingScreenState extends State<PairingScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(!isCreating ? PhosphorIconsFill.signIn : PhosphorIcons.signIn(PhosphorIconsStyle.regular), size: 16, color: !isCreating ? Colors.white : const Color(0xFF8E9099)),
+                        Icon(!isCreating ? Icons.login : Icons.login, size: 16, color: !isCreating ? Colors.white : const Color(0xFF8E9099)),
                         SizedBox(width: 6),
                         Text("Masuk Kode", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: !isCreating ? Colors.white : const Color(0xFF8E9099))),
                       ]),
@@ -97,11 +97,11 @@ class _PairingScreenState extends State<PairingScreen> {
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF1E8EA)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)]),
                   child: Column(children: [
                     Row(children: [
-                      Icon(PhosphorIcons.qrCode(PhosphorIconsStyle.regular), color: DyKalTheme.primary, size: 18),
+                      Icon(Icons.qr_code, color: DyKalTheme.primary, size: 18),
                       SizedBox(width: 8),
                       Text("Kode Pairing Kamu", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       const Spacer(),
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF4ECDC4).withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(PhosphorIcons.clockCounterClockwise(PhosphorIconsStyle.regular), size: 12, color: Color(0xFF4ECDC4)), SizedBox(width: 4), Text("Aktif 24 jam", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF4ECDC4)))])),
+                      Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF4ECDC4).withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.history, size: 12, color: Color(0xFF4ECDC4)), SizedBox(width: 4), Text("Aktif 24 jam", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF4ECDC4)))])),
                     ]),
                     SizedBox(height: 14),
                     Stack(
@@ -123,9 +123,9 @@ class _PairingScreenState extends State<PairingScreen> {
                       Expanded(child: OutlinedButton.icon(onPressed: () {
                         Clipboard.setData(ClipboardData(text: myCode));
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kode disalin")));
-                      }, icon: Icon(PhosphorIcons.copy(PhosphorIconsStyle.regular), size: 16), label: Text("Salin"))),
+                      }, icon: Icon(Icons.content_copy, size: 16), label: Text("Salin"))),
                       SizedBox(width: 10),
-                      Expanded(child: FilledButton.icon(onPressed: () {}, icon: Icon(PhosphorIcons.shareNetwork(PhosphorIconsStyle.regular), size: 16), label: Text("Bagikan"))),
+                      Expanded(child: FilledButton.icon(onPressed: () {}, icon: Icon(Icons.share, size: 16), label: Text("Bagikan"))),
                     ]),
                   ]),
                 ),
@@ -134,7 +134,7 @@ class _PairingScreenState extends State<PairingScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(color: const Color(0xFF7B6CF6).withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFF7B6CF6).withOpacity(0.15))),
                   child: Row(children: [
-                    Icon(PhosphorIcons.shieldCheck(PhosphorIconsStyle.fill), color: Color(0xFF7B6CF6), size: 18),
+                    Icon(Icons.verified_user, color: Color(0xFF7B6CF6), size: 18),
                     SizedBox(width: 10),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text("Private hanya berdua", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
@@ -171,7 +171,7 @@ class _PairingScreenState extends State<PairingScreen> {
                         }
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Menghubungkan...")));
                       },
-                      icon: Icon(PhosphorIcons.link(PhosphorIconsStyle.regular), size: 16),
+                      icon: Icon(Icons.link, size: 16),
                       label: Text("Hubungkan Sekarang"),
                     )),
                   ]),
@@ -179,7 +179,7 @@ class _PairingScreenState extends State<PairingScreen> {
               ],
               SizedBox(height: 20),
               Row(children: [
-                Icon(PhosphorIcons.info(PhosphorIconsStyle.regular), size: 14, color: Color(0xFF8E9099)),
+                Icon(Icons.info, size: 14, color: Color(0xFF8E9099)),
                 SizedBox(width: 6),
                 Expanded(child: Text("Butuh bantuan? Hubungkan kedua HP di ruangan yang sama untuk scan QR lebih cepat.", style: TextStyle(color: Color(0xFF8E9099), fontSize: 11))),
               ]),

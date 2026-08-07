@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import '../../config/theme.dart';
 import '../../models/chat_message.dart';
 import '../../services/cloudinary_service.dart';
@@ -87,19 +87,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   Row(children: [
                     Text("Ayang", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                     SizedBox(width: 6),
-                    Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: DyKalTheme.primary, size: 14),
+                    Icon(Icons.favorite, color: DyKalTheme.primary, size: 14),
                   ]),
                   Row(children: [
-                    if (isTyping) Icon(PhosphorIcons.dotsThree(PhosphorIconsStyle.regular), size: 14, color: DyKalTheme.primary),
-                    if (isRecording) Icon(PhosphorIcons.waveform(PhosphorIconsStyle.regular), size: 14, color: DyKalTheme.primary),
+                    if (isTyping) Icon(Icons.more_horiz, size: 14, color: DyKalTheme.primary),
+                    if (isRecording) Icon(Icons.graphic_eq, size: 14, color: DyKalTheme.primary),
                     if (isTyping || isRecording) SizedBox(width: 4),
                     Text(subtitle, style: TextStyle(fontSize: 12, color: isTyping || isRecording ? DyKalTheme.primary : DyKalTheme.textGrey, fontStyle: isTyping ? FontStyle.italic : FontStyle.normal)),
                   ]),
                 ]);
               },
             )),
-            IconButton(onPressed: () => Navigator.pushNamed(context, '/audioCall'), icon: Icon(PhosphorIcons.phone(PhosphorIconsStyle.regular), color: DyKalTheme.primary, size: 22)),
-            IconButton(onPressed: () => Navigator.pushNamed(context, '/videoCall'), icon: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: DyKalTheme.primary, borderRadius: BorderRadius.circular(12)), child: Icon(PhosphorIcons.videoCamera(PhosphorIconsStyle.fill), color: Colors.white, size: 18))),
+            IconButton(onPressed: () => Navigator.pushNamed(context, '/audioCall'), icon: Icon(Icons.phone, color: DyKalTheme.primary, size: 22)),
+            IconButton(onPressed: () => Navigator.pushNamed(context, '/videoCall'), icon: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: DyKalTheme.primary, borderRadius: BorderRadius.circular(12)), child: Icon(Icons.videocam, color: Colors.white, size: 18))),
           ]),
         ),
 
@@ -117,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text("Belum ada chat", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                   SizedBox(height: 4),
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.regular), size: 14, color: DyKalTheme.textGrey),
+                    Icon(Icons.send, size: 14, color: DyKalTheme.textGrey),
                     SizedBox(width: 6),
                     Text("Kirim pesan pertama ke Ayang", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
                   ]),
@@ -156,13 +156,13 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: EdgeInsets.all(10),
             decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border(left: BorderSide(color: DyKalTheme.primary, width: 3))),
             child: Row(children: [
-              Icon(PhosphorIcons.arrowBendUpLeft(PhosphorIconsStyle.regular), size: 16, color: DyKalTheme.primary),
+              Icon(Icons.reply, size: 16, color: DyKalTheme.primary),
               SizedBox(width: 8),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text("Membalas", style: TextStyle(fontSize: 11, color: DyKalTheme.primary, fontWeight: FontWeight.w700)),
                 Text(_replyTo!.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13)),
               ])),
-              IconButton(onPressed: ()=> setState(()=> _replyTo=null), icon: Icon(PhosphorIcons.x(PhosphorIconsStyle.regular), size: 16)),
+              IconButton(onPressed: ()=> setState(()=> _replyTo=null), icon: Icon(Icons.close, size: 16)),
             ]),
           ),
 
@@ -175,8 +175,8 @@ class _ChatScreenState extends State<ChatScreen> {
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0,-2))],
           ),
           child: Row(children: [
-            IconButton(onPressed: () => _pickImage(viewOnce: false), icon: Icon(PhosphorIcons.image(PhosphorIconsStyle.regular), color: DyKalTheme.textGrey, size: 22)),
-            IconButton(onPressed: () => _pickImage(viewOnce: true), icon: Icon(PhosphorIcons.eyeClosed(PhosphorIconsStyle.regular), color: DyKalTheme.primary, size: 22), tooltip: "Foto 1x lihat"),
+            IconButton(onPressed: () => _pickImage(viewOnce: false), icon: Icon(Icons.image, color: DyKalTheme.textGrey, size: 22)),
+            IconButton(onPressed: () => _pickImage(viewOnce: true), icon: Icon(Icons.visibility_off, color: DyKalTheme.primary, size: 22), tooltip: "Foto 1x lihat"),
             Expanded(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -195,12 +195,12 @@ class _ChatScreenState extends State<ChatScreen> {
               builder: (_, v, __) => v.text.trim().isNotEmpty
                   ? GestureDetector(
                       onTap: () => _sendMessage(),
-                      child: Container(width: 44, height: 44, decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle), child: Icon(PhosphorIcons.paperPlaneRight(PhosphorIconsStyle.fill), color: Colors.white, size: 18)),
+                      child: Container(width: 44, height: 44, decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle), child: Icon(Icons.send, color: Colors.white, size: 18)),
                     )
                   : GestureDetector(
                       onLongPressStart: (_) => setState(()=> _isRecording = true),
                       onLongPressEnd: (_) => setState(()=> _isRecording = false),
-                      child: Container(width: 44, height: 44, decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(PhosphorIcons.microphone(PhosphorIconsStyle.fill), color: DyKalTheme.primary, size: 18)),
+                      child: Container(width: 44, height: 44, decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(Icons.mic, color: DyKalTheme.primary, size: 18)),
                     ),
             ),
           ]),

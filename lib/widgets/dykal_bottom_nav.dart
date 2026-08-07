@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import '../config/theme.dart';
 
 /// BottomNav DyKal - Mutlak tanpa emoji, icons Modern Rounded
@@ -19,10 +19,10 @@ class DyKalBottomNav extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _item(0, PhosphorIcons.house(PhosphorIconsStyle.regular), PhosphorIconsFill.house, "Home"),
-            _item(1, PhosphorIcons.chatCircle(PhosphorIconsStyle.regular), PhosphorIconsFill.chatCircle, "Chat"),
-            _item(2, PhosphorIcons.images(PhosphorIconsStyle.regular), PhosphorIconsFill.images, "Album"),
-            _item(3, PhosphorIcons.envelopeSimple(PhosphorIconsStyle.regular), PhosphorIconsFill.envelopeSimple, "Surat"),
+            _item(0, Icons.home, Icons.home, "Home"),
+            _item(1, Icons.chat, Icons.chat, "Chat"),
+            _item(2, Icons.collections, Icons.collections, "Album"),
+            _item(3, Icons.mail, Icons.mail, "Surat"),
           ],
         ),
       ),

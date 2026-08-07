@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import '../../config/theme.dart';
 import '../../services/call_service.dart';
 
@@ -66,10 +66,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Row(children: [
-                Container(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(PhosphorIcons.videoCamera(PhosphorIconsStyle.fill), color: Colors.white, size: 14), SizedBox(width: 6), Text("DyKal Video • 01:24", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12))])),
+                Container(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.videocam, color: Colors.white, size: 14), SizedBox(width: 6), Text("DyKal Video • 01:24", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12))])),
                 Spacer(),
-                IconButton(onPressed: () => call.switchCamera(), icon: Icon(PhosphorIcons.arrowsClockwise(), color: Colors.white)),
-                IconButton(onPressed: () => call.startScreenShare(), icon: Icon(call.isScreenSharing ? PhosphorIcons.monitor() : PhosphorIcons.shareNetwork(), color: call.isScreenSharing ? DyKalTheme.primary : Colors.white)),
+                IconButton(onPressed: () => call.switchCamera(), icon: Icon(Icons.sync(), color: Colors.white)),
+                IconButton(onPressed: () => call.startScreenShare(), icon: Icon(call.isScreenSharing ? Icons.desktop_windows() : Icons.share(), color: call.isScreenSharing ? DyKalTheme.primary : Colors.white)),
               ]),
             ),
           ),
@@ -85,7 +85,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: Stack(children: [
                   RTCVideoView(_localRenderer, mirror: true, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover),
-                  if (!call.isVideoEnabled) Container(color: Colors.black87, child: Center(child: Icon(PhosphorIcons.videoCameraSlash(), color: Colors.white))),
+                  if (!call.isVideoEnabled) Container(color: Colors.black87, child: Center(child: Icon(Icons.videocam_off(), color: Colors.white))),
                 ]),
               ),
             ),
@@ -97,11 +97,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
-                _filterChip("none", "Normal", PhosphorIcons.sparkle()),
-                _filterChip("warm", "Warm", PhosphorIcons.sun()),
-                _filterChip("cool", "Cool", PhosphorIcons.snowflake()),
-                _filterChip("bw", "B&W", PhosphorIcons.moon()),
-                _filterChip("beauty", "Beauty", PhosphorIcons.magicWand()),
+                _filterChip("none", "Normal", Icons.auto_awesome()),
+                _filterChip("warm", "Warm", Icons.wb_sunny()),
+                _filterChip("cool", "Cool", Icons.ac_unit()),
+                _filterChip("bw", "B&W", Icons.dark_mode()),
+                _filterChip("beauty", "Beauty", Icons.auto_fix_high()),
               ]),
             ),
           ),
@@ -113,11 +113,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + MediaQuery.of(context).padding.bottom),
               decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black87, Colors.transparent])),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                _controlBtn(PhosphorIcons.microphoneSlash(), call.isAudioMuted, () => setState(()=> call.toggleMute())),
-                _controlBtn(PhosphorIcons.videoCameraSlash(), !call.isVideoEnabled, () => setState(()=> call.toggleCamera())),
-                GestureDetector(onTap: ()=> Navigator.pop(context), child: Container(width: 64, height: 64, decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: Icon(PhosphorIcons.phoneDisconnect(PhosphorIconsStyle.fill), color: Colors.white, size: 26))),
-                _controlBtn(PhosphorIcons.speakerHigh(), call.isSpeakerOn, () => setState(()=> call.toggleSpeaker())),
-                _controlBtn(PhosphorIcons.monitor(), call.isScreenSharing, () => setState(()=> call.isScreenSharing ? call.stopScreenShare() : call.startScreenShare())),
+                _controlBtn(Icons.mic_off(), call.isAudioMuted, () => setState(()=> call.toggleMute())),
+                _controlBtn(Icons.videocam_off(), !call.isVideoEnabled, () => setState(()=> call.toggleCamera())),
+                GestureDetector(onTap: ()=> Navigator.pop(context), child: Container(width: 64, height: 64, decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: Icon(Icons.call_end, color: Colors.white, size: 26))),
+                _controlBtn(Icons.volume_up(), call.isSpeakerOn, () => setState(()=> call.toggleSpeaker())),
+                _controlBtn(Icons.desktop_windows(), call.isScreenSharing, () => setState(()=> call.isScreenSharing ? call.stopScreenShare() : call.startScreenShare())),
               ]),
             ),
           ),

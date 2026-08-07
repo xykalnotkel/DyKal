@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../config/theme.dart';
@@ -19,7 +19,7 @@ class AlbumScreen extends StatelessWidget {
       await CloudinaryService().uploadImage(File(f.path), folder: "dykal/album");
     }
     if (context.mounted) Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill), color: Colors.white, size: 18), SizedBox(width: 8), Text("Foto berhasil diupload ke Cloudinary")])));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [Icon(Icons.check_circle, color: Colors.white, size: 18), SizedBox(width: 8), Text("Foto berhasil diupload ke Cloudinary")])));
   }
 
   @override
@@ -31,11 +31,11 @@ class AlbumScreen extends StatelessWidget {
         SliverAppBar(
           backgroundColor: Colors.transparent, elevation: 0, floating: true,
           title: Row(children: [
-            Icon(PhosphorIcons.images(PhosphorIconsStyle.regular), color: DyKalTheme.textDark, size: 20),
+            Icon(Icons.collections, color: DyKalTheme.textDark, size: 20),
             SizedBox(width: 8),
             Text("Album Kita"),
           ]),
-          actions: [IconButton(onPressed: () => _upload(context), icon: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: DyKalTheme.primary, borderRadius: BorderRadius.circular(12)), child: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold), color: Colors.white, size: 18)))],
+          actions: [IconButton(onPressed: () => _upload(context), icon: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: DyKalTheme.primary, borderRadius: BorderRadius.circular(12)), child: Icon(Icons.add, color: Colors.white, size: 18)))],
         ),
 
         // HEADER ALBUM dengan overlay penghias - custom 320x140
@@ -58,9 +58,9 @@ class AlbumScreen extends StatelessWidget {
             child: Stack(
               children: [
                 // Decorative floating hearts overlay - positioned
-                Positioned(top: 12, right: 16, child: Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: DyKalTheme.primary.withOpacity(0.18), size: 18)),
-                Positioned(bottom: 16, left: 14, child: Icon(PhosphorIcons.star(PhosphorIconsStyle.fill), color: DyKalTheme.accent.withOpacity(0.5), size: 12)),
-                Positioned(top: 36, left: 22, child: Icon(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), color: DyKalTheme.secondary.withOpacity(0.25), size: 10)),
+                Positioned(top: 12, right: 16, child: Icon(Icons.favorite, color: DyKalTheme.primary.withOpacity(0.18), size: 18)),
+                Positioned(bottom: 16, left: 14, child: Icon(Icons.star, color: DyKalTheme.accent.withOpacity(0.5), size: 12)),
+                Positioned(top: 36, left: 22, child: Icon(Icons.auto_awesome, color: DyKalTheme.secondary.withOpacity(0.25), size: 10)),
                 // Konten header
                 Padding(
                   padding: EdgeInsets.all(16),
@@ -77,7 +77,7 @@ class AlbumScreen extends StatelessWidget {
                     SizedBox(width: 14),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
                       Row(children: [
-                        Icon(PhosphorIcons.bookOpen(PhosphorIconsStyle.regular), size: 14, color: DyKalTheme.primary),
+                        Icon(Icons.menu_book, size: 14, color: DyKalTheme.primary),
                         SizedBox(width: 6),
                         Text("Scrapbook Kita", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                       ]),
@@ -88,7 +88,7 @@ class AlbumScreen extends StatelessWidget {
                         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(PhosphorIcons.images(PhosphorIconsStyle.fill), size: 12, color: DyKalTheme.primary),
+                          Icon(Icons.collections, size: 12, color: DyKalTheme.primary),
                           SizedBox(width: 4),
                           Text("Lihat semua", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DyKalTheme.primary)),
                         ]),
@@ -108,7 +108,7 @@ class AlbumScreen extends StatelessWidget {
             Text("Belum ada foto", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             SizedBox(height: 4),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(PhosphorIcons.camera(PhosphorIconsStyle.regular), size: 14, color: DyKalTheme.textGrey),
+              Icon(Icons.camera_alt, size: 14, color: DyKalTheme.textGrey),
               SizedBox(width: 6),
               Text("Upload foto pertama kalian", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
             ]),
@@ -143,7 +143,7 @@ class AlbumScreen extends StatelessWidget {
                               child: Stack(children: [
                                 CachedNetworkImage(imageUrl: photos[i], fit: BoxFit.cover, placeholder: (_, __) => Container(height: isEven ? 200 : 160, color: DyKalTheme.borderSoft)),
                                 Positioned(bottom: 0, left: 0, right: 0, child: Container(height: 40, decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black54, Colors.transparent])))),
-                                Positioned(bottom: 8, left: 8, right: 8, child: Container(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)), child: Row(children: [Icon(PhosphorIcons.calendarBlank(PhosphorIconsStyle.regular), size: 10, color: Colors.white), SizedBox(width: 4), Text("7 Aug 2026", style: TextStyle(color: Colors.white, fontSize: 10))]))),
+                                Positioned(bottom: 8, left: 8, right: 8, child: Container(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)), child: Row(children: [Icon(Icons.calendar_today, size: 10, color: Colors.white), SizedBox(width: 4), Text("7 Aug 2026", style: TextStyle(color: Colors.white, fontSize: 10))]))),
                               ]),
                             ),
                             // tape pojok foto
@@ -152,10 +152,10 @@ class AlbumScreen extends StatelessWidget {
                               child: Container(
                                 width: 44, height: 14,
                                 decoration: BoxDecoration(color: isEven ? DyKalTheme.accent.withOpacity(0.9) : DyKalTheme.primary.withOpacity(0.85), borderRadius: BorderRadius.circular(4)),
-                                child: Center(child: Icon(isEven ? PhosphorIcons.star(PhosphorIconsStyle.fill) : PhosphorIcons.heart(PhosphorIconsStyle.fill), size: 8, color: Colors.white)),
+                                child: Center(child: Icon(isEven ? Icons.star : Icons.favorite, size: 8, color: Colors.white)),
                               ),
                             ),
-                            Positioned(top: 8, right: 8, child: Container(padding: EdgeInsets.all(5), decoration: BoxDecoration(color: Colors.white.withOpacity(0.92), shape: BoxShape.circle), child: Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), size: 10, color: DyKalTheme.primary))),
+                            Positioned(top: 8, right: 8, child: Container(padding: EdgeInsets.all(5), decoration: BoxDecoration(color: Colors.white.withOpacity(0.92), shape: BoxShape.circle), child: Icon(Icons.favorite, size: 10, color: DyKalTheme.primary))),
                           ],
                         ),
                       );
@@ -164,13 +164,13 @@ class AlbumScreen extends StatelessWidget {
                 ),
                 // === ELEMEN POJOK DI ATAS GRID - kayak stiker pojokan ===
                 // Pojok kiri atas
-                Positioned(top: 0, left: 6, child: _cornerSticker(PhosphorIcons.heart(PhosphorIconsStyle.fill), DyKalTheme.primary, 22)),
+                Positioned(top: 0, left: 6, child: _cornerSticker(Icons.favorite, DyKalTheme.primary, 22)),
                 // Pojok kanan atas
-                Positioned(top: 2, right: 8, child: _cornerSticker(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), DyKalTheme.accent, 16)),
+                Positioned(top: 2, right: 8, child: _cornerSticker(Icons.auto_awesome, DyKalTheme.accent, 16)),
                 // Pojok kiri bawah (di atas footer)
-                Positioned(bottom: 4, left: 10, child: _cornerSticker(PhosphorIcons.star(PhosphorIconsStyle.fill), DyKalTheme.secondary, 14)),
+                Positioned(bottom: 4, left: 10, child: _cornerSticker(Icons.star, DyKalTheme.secondary, 14)),
                 // Pojok kanan bawah
-                Positioned(bottom: 6, right: 12, child: _cornerSticker(PhosphorIcons.heart(PhosphorIconsStyle.fill), DyKalTheme.primary.withOpacity(0.7), 18)),
+                Positioned(bottom: 6, right: 12, child: _cornerSticker(Icons.favorite, DyKalTheme.primary.withOpacity(0.7), 18)),
               ],
             ),
           ),
@@ -185,11 +185,11 @@ class AlbumScreen extends StatelessWidget {
               children: [
                 Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/illustrations/webp/album_overlay.webp', fit: BoxFit.cover, opacity: AlwaysStoppedAnimation(0.07)))),
                 Center(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(PhosphorIcons.sparkle(PhosphorIconsStyle.fill), color: DyKalTheme.accent, size: 14),
+                  Icon(Icons.auto_awesome, color: DyKalTheme.accent, size: 14),
                   SizedBox(width: 8),
                   Text("Kenangan manis kalian", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                   SizedBox(width: 8),
-                  Icon(PhosphorIcons.heart(PhosphorIconsStyle.fill), color: DyKalTheme.primary, size: 14),
+                  Icon(Icons.favorite, color: DyKalTheme.primary, size: 14),
                 ])),
               ],
             ),

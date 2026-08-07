@@ -53,7 +53,7 @@ class DyKalTheme {
       selectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 11),
       unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500, fontSize: 11),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: card,
       elevation: 0,
       shape: RoundedRectangleBorder(

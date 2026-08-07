@@ -3,11 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:workmanager/workmanager.dart';
 
 /// Service Ucapan Ulang Tahun Otomatis
 /// Karena Firebase Spark (No CC) tidak bisa pakai Cloud Functions Scheduled,
-/// kita pakai LOCAL SCHEDULING + Workmanager (100% gratis, offline pun jalan)
+/// kita pakai LOCAL SCHEDULING via flutter_local_notifications (100% gratis, offline pun jalan)
 class BirthdayService {
   final _firestore = FirebaseFirestore.instance;
   final _notifications = FlutterLocalNotificationsPlugin();
@@ -98,11 +97,4 @@ class BirthdayService {
     return null;
   }
 
-  /// Workmanager callback untuk cek tiap jam (backup jika zonedSchedule miss)
-  static void callbackDispatcher() {
-    Workmanager().executeTask((task, inputData) async {
-      // Bisa cek Firestore dan trigger notif manual
-      return Future.value(true);
-    });
-  }
 }

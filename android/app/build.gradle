@@ -26,13 +26,12 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.dykal.app"
-    compileSdk 36
-    ndkVersion "27.0.12077973"
+    compileSdk 34
+    ndkVersion "26.3.11579264"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
-        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -45,8 +44,8 @@ android {
 
     defaultConfig {
         applicationId "com.dykal.app"
-        minSdk 23
-        targetSdk 36
+        minSdk 21
+        targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -62,6 +61,4 @@ flutter {
     source '../..'
 }
 
-dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
-}
+dependencies {}

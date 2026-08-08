@@ -144,7 +144,7 @@ class FCMService {
     if (myUid == null) return;
 
     _db.collection('chats').doc(coupleId).collection('messages')
-      .orderBy('createdAt', descending: true).limit(1)
+      .limit(1)
       .snapshots()
       .listen((snap) {
         if (snap.docs.isEmpty) return;

@@ -177,10 +177,10 @@ class _MainNavState extends State<MainNav> {
     final coupleId = AuthService().coupleId;
     final myId = AuthService().myId;
     if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
-    FirebaseFirestore.instance.collection('chats/$coupleId/messages').where('status', isEqualTo: 'sent').snapshots().listen((qs) {
+    FirebaseFirestore.instance.collection('chats/$coupleId/messages').snapshots().listen((qs) {
       for (final d in qs.docs) {
         final m = d.data() as Map<String, dynamic>;
-        if (m['fromId'] != myId) d.reference.update({'status': 'delivered'});
+        if (m['fromId'] != myId && m['status'] == 'sent') d.reference.update({'status': 'delivered'});
       }
     });
   }

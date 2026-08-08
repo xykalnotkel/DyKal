@@ -275,7 +275,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
   Widget _list() => StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').orderBy('createdAt').snapshots(),
+        stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').snapshots(),
         builder: (_, snap) {
           if (snap.hasError) {
             DevLogger.instance.error('chat', 'Stream ERROR', snap.error);
@@ -291,7 +291,14 @@ class _ChatScreenState extends State<ChatScreen> {
             ])));
           }
           if (!snap.hasData) return Center(child: CircularProgressIndicator(color: DyKalTheme.primary));
-          final docs = snap.data!.docs;
+          final rawDocs = snap.data!.docs;
+          rawDocs.sort((a, b) {
+            final ta = (a.data() as Map<String, dynamic>)['createdAt'];
+            final tb = (b.data() as Map<String, dynamic>)['createdAt'];
+            if (ta is Timestamp && tb is Timestamp) return ta.compareTo(tb);
+            return 0;
+          });
+          final docs = rawDocs;
           if (docs.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(Icons.chat_bubble_outline, size: 56, color: DyKalTheme.textGrey.withOpacity(0.4)),
             const SizedBox(height: 12),

@@ -59,7 +59,7 @@ class AlbumScreen extends StatelessWidget {
             ],
           ),
           StreamBuilder<QuerySnapshot>(
-            stream: _coupleId.isEmpty ? null : FirebaseFirestore.instance.collection('couples/$_coupleId/albums').orderBy('createdAt', descending: true).snapshots(),
+            stream: _coupleId.isEmpty ? null : FirebaseFirestore.instance.collection('couples/$_coupleId/albums').snapshots(),
             builder: (context, snap) {
               if (_coupleId.isEmpty || snap.hasError) {
                 return SliverFillRemaining(child: Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Belum ada album. Tap + untuk membuat.', style: TextStyle(color: DyKalTheme.textGrey)))));

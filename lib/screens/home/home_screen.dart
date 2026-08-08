@@ -70,7 +70,7 @@ class HomeScreen extends StatelessWidget {
       child: SizedBox(
         height: 112,
         child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('couples/$coupleId/albums').orderBy('createdAt', descending: true).snapshots(),
+          stream: FirebaseFirestore.instance.collection('couples/$coupleId/albums').snapshots(),
           builder: (_, snap) {
             final docs = snap.data?.docs ?? [];
             if (docs.isEmpty) return const SizedBox.shrink();

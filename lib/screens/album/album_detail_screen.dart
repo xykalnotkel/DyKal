@@ -74,11 +74,18 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         slivers: [
           SliverAppBar(backgroundColor: Colors.transparent, elevation: 0, floating: true, title: Text(widget.albumName, style: const TextStyle(fontWeight: FontWeight.w700)), leading: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back)), actions: [IconButton(onPressed: _upload, icon: const Icon(Icons.add_a_photo, color: Color(0xFFFF6B8A)))]),
           StreamBuilder<QuerySnapshot>(
-            stream: _photos.orderBy('createdAt', descending: true).snapshots(),
+            stream: _photos.snapshots(),
             builder: (context, snap) {
               if (snap.hasError) return SliverFillRemaining(child: Center(child: Text('Gagal memuat. Cek rules Firestore.', style: TextStyle(color: DyKalTheme.textGrey))));
               if (!snap.hasData) return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(0xFFFF6B8A)))));
-              final docs = snap.data!.docs;
+              final rawDocs = snap.data!.docs;
+              rawDocs.sort((a, b) {
+                final ta = (a.data() as Map<String, dynamic>)['createdAt'];
+                final tb = (b.data() as Map<String, dynamic>)['createdAt'];
+                if (ta is Timestamp && tb is Timestamp) return tb.compareTo(ta);
+                return 0;
+              });
+              final docs = rawDocs;
               if (docs.isEmpty) return SliverFillRemaining(child: _empty());
               return SliverPadding(
                 padding: const EdgeInsets.all(4),

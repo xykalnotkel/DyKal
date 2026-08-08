@@ -78,8 +78,12 @@ class _ChatScreenState extends State<ChatScreen> {
       createdAt: Timestamp.now(),
     );
     FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id).set(msg.toMap());
-    // Privacy: layar kunci hanya "1 pesan baru", isi asli tampil saat app dibuka.
-    PushService.notifyPartner(title: AuthService().myName, body: '1 pesan baru');
+    // Konten asli dikirim; Worker set visibility PRIVATE -> layar kunci sembunyikan,
+    // shade (hp tidak terkunci) tampilkan pesan asli + aksi balas.
+    final preview = msg.type == MessageType.voice
+        ? '🎙️ Voice note'
+        : (msg.imageUrl != null ? '📷 Foto' : msg.text);
+    PushService.notifyPartner(title: AuthService().myName, body: preview);
     _msgController.clear();
     setState(() { _replyTo = null; _isTyping = false; });
     _setTyping(false);

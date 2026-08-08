@@ -30,10 +30,13 @@ class FCMService {
     // 1. Request permission (Android 13+ & iOS)
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
-    // 2. Init local notifications (untuk fallback)
+    // 2. Init local notifications (untuk fallback) + handler aksi (balas dari notif)
     const android = AndroidInitializationSettings('@mipmap/launcher_icon');
     const ios = DarwinInitializationSettings();
-    await _local.initialize(InitializationSettings(android: android, iOS: ios));
+    await _local.initialize(
+      InitializationSettings(android: android, iOS: ios),
+      onDidReceiveNotificationResponse: _onNotifResponse,
+    );
 
     // 3. Dapatkan & simpan token
     await _saveToken();
@@ -77,14 +80,17 @@ class FCMService {
     final notif = msg.notification;
     if (notif == null) return;
     // Tampilkan sebagai local notification biar ada heads-up
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'dykal_chat',
       'DyKal Chat',
       channelDescription: 'Notifikasi chat & surat',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
-      color: Color(0xFFFF6B8A),
+      color: const Color(0xFFFF6B8A),
+      actions: [
+        AndroidNotificationAction('reply', 'Balas', inputs: [AndroidNotificationActionInput(label: 'Ketik balasan...')], showsUserInterface: false, cancelNotification: false),
+      ],
     );
     await _local.show(
       notif.hashCode,
@@ -92,6 +98,33 @@ class FCMService {
       notif.body,
       NotificationDetails(android: androidDetails),
     );
+  }
+
+  /// Handler aksi notifikasi (Quick Reply dari notif)
+  Future<void> _onNotifResponse(NotificationResponse r) async {
+    if (r.actionId == 'reply' && r.input != null && r.input!.trim().isNotEmpty) {
+      await _sendReply(r.input!.trim());
+    }
+  }
+
+  Future<void> _sendReply(String text) async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final meSnap = await _db.doc('users/$uid').get();
+      final coupleId = meSnap.data()?['coupleId'] as String?;
+      if (coupleId == null) return;
+      final msgId = DateTime.now().millisecondsSinceEpoch.toString();
+      await _db.collection('chats/$coupleId/messages').doc(msgId).set({
+        'id': msgId,
+        'fromId': uid,
+        'toId': '',
+        'text': text,
+        'type': 'text',
+        'status': 'sent',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
   }
 
   void _handleTap(RemoteMessage msg) {

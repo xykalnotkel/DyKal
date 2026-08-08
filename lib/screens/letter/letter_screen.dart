@@ -16,7 +16,7 @@ class LetterScreen extends StatelessWidget {
         SliverAppBar(
           backgroundColor: Colors.transparent, elevation: 0, floating: true,
           title: Row(children: [Icon(Icons.mail, size: 20, color: DyKalTheme.textDark), const SizedBox(width: 8), const Text("Surat Cinta")]),
-          actions: [IconButton(onPressed: () => _compose(context), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.edit, color: Theme.of(context).colorScheme.surface, size: 18)))],
+          actions: [IconButton(onPressed: () => _compose(context), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.edit, color: Colors.white, size: 18)))],
         ),
         SliverToBoxAdapter(child: _intro()),
         StreamBuilder<QuerySnapshot>(
@@ -38,7 +38,7 @@ class LetterScreen extends StatelessWidget {
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         CircleAvatar(radius: 16, backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.mail, size: 16, color: DyKalTheme.primary)),
@@ -80,7 +80,7 @@ class LetterScreen extends StatelessWidget {
   Widget _intro() => Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
         child: Row(children: [
           Image.asset('assets/illustrations/webp/letter.webp', width: 80, height: 80, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.mail, size: 48, color: Color(0xFFFF6B8A))),
           const SizedBox(width: 12),

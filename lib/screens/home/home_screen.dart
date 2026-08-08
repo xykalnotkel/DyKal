@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
             Container(
               width: 36, height: 36,
               decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.favorite, color: Theme.of(context).colorScheme.surface, size: 18),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 10),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -123,7 +123,7 @@ class HomeScreen extends StatelessWidget {
           icon: Stack(clipBehavior: Clip.none, children: [
             Icon(Icons.chat_bubble_outline, color: DyKalTheme.textDark),
             if (unread > 0)
-              Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.all(3.5), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: Text('$unread', style: const TextStyle(color: Theme.of(context).colorScheme.surface, fontSize: 9, fontWeight: FontWeight.w700)))),
+              Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.all(3.5), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)))),
           ]),
         );
       },
@@ -135,7 +135,7 @@ class HomeScreen extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: DyKalTheme.borderSoft),
       ),
@@ -230,10 +230,10 @@ class HomeScreen extends StatelessWidget {
             boxShadow: [BoxShadow(color: DyKalTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
           ),
           child: Row(children: [
-            Image.asset('assets/illustrations/webp/birthday.webp', width: 70, height: 70, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.cake, color: Theme.of(context).colorScheme.surface, size: 40)),
+            Image.asset('assets/illustrations/webp/birthday.webp', width: 70, height: 70, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.cake, color: Colors.white, size: 40)),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: const [Icon(Icons.cake, color: Theme.of(context).colorScheme.surface, size: 18), SizedBox(width: 6), Text("Selamat Ulang Tahun", style: TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.w800, fontSize: 16))]),
+              Row(children: const [Icon(Icons.cake, color: Colors.white, size: 18), SizedBox(width: 6), Text("Selamat Ulang Tahun", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))]),
               const SizedBox(height: 4),
               Text("Hari ini ulang tahun $who. Kirim surat cinta yuk 💌", style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
             ])),
@@ -263,7 +263,7 @@ class HomeScreen extends StatelessWidget {
   Widget _stat(IconData icon, Stream<int> Function() stream, String label) {
     return Expanded(child: Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
       child: Column(children: [
         Icon(icon, color: DyKalTheme.primary, size: 22),
         const SizedBox(height: 8),

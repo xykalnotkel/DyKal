@@ -74,7 +74,7 @@ class ProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/illustrations/card_bg.png'), fit: BoxFit.cover)),
       child: Row(children: [
         Expanded(child: _memberCol(myId, '')),
-        const Icon(Icons.favorite, color: Theme.of(context).colorScheme.surface, size: 28),
+        const Icon(Icons.favorite, color: Colors.white, size: 28),
         Expanded(child: _memberCol(partnerId, '')),
       ]),
     );
@@ -83,9 +83,9 @@ class ProfileScreen extends StatelessWidget {
   Widget _memberCol(String uid, String fallback) {
     if (uid.isEmpty) {
       return Column(children: [
-        CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), child: Text(fallback.isNotEmpty ? fallback[0] : '?', style: const TextStyle(fontSize: 24, color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.w800))),
+        CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), child: Text(fallback.isNotEmpty ? fallback[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800))),
         const SizedBox(height: 8),
-        Text(fallback, style: const TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.w700)),
+        Text(fallback, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       ]);
     }
     return StreamBuilder<DocumentSnapshot>(
@@ -95,9 +95,9 @@ class ProfileScreen extends StatelessWidget {
         final name = (d?['displayName'] as String?) ?? fallback;
         final photo = d?['photoUrl'] as String?;
         return Column(children: [
-          CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.w800)) : null),
+          CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)) : null),
           const SizedBox(height: 8),
-          Text(name, style: const TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+          Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
         ]);
       },
     );
@@ -106,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _dateTile(BuildContext context, IconData icon, String label, DateTime? value, VoidCallback onTap) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Material(
-          color: Theme.of(context).colorScheme.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
@@ -190,7 +190,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _editProfileTile(BuildContext context) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Material(
-          color: Theme.of(context).colorScheme.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           child: ListTile(
             leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.edit, color: DyKalTheme.primary)),

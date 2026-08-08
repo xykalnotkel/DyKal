@@ -209,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
               final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
               if (x != null) setS(() => picked = File(x.path));
             },
-            child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withOpacity(0.15), backgroundImage: picked != null ? FileImage(picked!) : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
+            child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withOpacity(0.15), backgroundImage: picked != null ? FileImage(picked!) as ImageProvider : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) as ImageProvider : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
           ),
           const SizedBox(height: 8),
           Text('Ketuk foto untuk ganti', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),

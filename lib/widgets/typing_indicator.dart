@@ -40,7 +40,7 @@ class _TypingDotsState extends State<TypingDots> with TickerProviderStateMixin {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1.5),
         child: ScaleTransition(
-          scale: Tween(begin: 0.5, end: 1.0).animate(CurvedAnimation(parentVC: _cs[i], curve: Curves.easeInOut)),
+          scale: Tween(begin: 0.5, end: 1.0).animate(CurvedAnimation(parent: _cs[i], curve: Curves.easeInOut)),
           child: Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         ),
       );

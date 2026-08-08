@@ -22,8 +22,10 @@ import 'screens/call/audio_call_screen.dart';
 import 'screens/call/incoming_call_screen.dart';
 import 'services/auth_service.dart';
 import 'services/birthday_service.dart';
+import 'services/dev_logger.dart';
 import 'services/fcm_service.dart';
 import 'services/theme_controller.dart';
+import 'widgets/floating_devlog.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -31,13 +33,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 Future<void> main() async {
+  DevLogger.instance.info('app', 'Starting DyKal...');
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
+    DevLogger.instance.info('firebase', 'InitializeApp SUCCESS');
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e) {
-    // Log error, jangan swallow silently
-    print('FIREBASE INIT ERROR: $e');
+    DevLogger.instance.error('firebase', 'InitializeApp FAILED', e);
   }
 
   // High refresh rate 60/90/120Hz
@@ -74,7 +77,10 @@ class DyKalApp extends StatelessWidget {
         darkTheme: DyKalTheme.darkTheme,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
-          child: child!,
+          child: Stack(children: [
+            child!,
+            const FloatingDevLog(),
+          ]),
         ),
         home: AuthGate(),
         routes: {
@@ -107,7 +113,11 @@ class AuthGate extends StatelessWidget {
       builder: (context, authSnap) {
         if (authSnap.connectionState != ConnectionState.active) return _splash();
         final user = authSnap.data;
-        if (user == null) return AuthScreen();
+        if (user == null) {
+          DevLogger.instance.info('auth', 'No user -> AuthScreen');
+          return AuthScreen();
+        }
+        DevLogger.instance.info('auth', 'User logged in: ${user.uid}');
 
         // Inisialisasi FCM sekali per login
         FCMService().ensureInit();
@@ -117,8 +127,12 @@ class AuthGate extends StatelessWidget {
           builder: (context, cSnap) {
             if (cSnap.connectionState != ConnectionState.active) return _splash();
             final cid = cSnap.data;
-            if (cid == null) return PairingScreen(); // belum punya couple
-            AuthService().coupleId = cid; // pastikan ter-cache untuk semua screen
+            if (cid == null) {
+              DevLogger.instance.info('auth', 'coupleId null -> PairingScreen');
+              return PairingScreen();
+            }
+            DevLogger.instance.info('auth', 'coupleId: $cid');
+            AuthService().coupleId = cid;
             AuthService().refresh();
             // Hanya masuk app kalau pasangan sudah join (members >= 2).
             // Kalau cuma 1 (creator belum di-join) -> tetap di PairingScreen nunjukin kode.
@@ -128,6 +142,7 @@ class AuthGate extends StatelessWidget {
                 if (!cs.hasData) return _splash();
                 final d = cs.data!.data() as Map<String, dynamic>?;
                 final members = List<String>.from(d?['members'] ?? []);
+                DevLogger.instance.info('auth', 'couple members: ${members.length}');
                 return members.length >= 2 ? MainNav() : PairingScreen();
               },
             );

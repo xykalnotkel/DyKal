@@ -11,6 +11,7 @@ import '../../config/theme.dart';
 import '../../models/chat_message.dart';
 import '../../services/app_logger.dart';
 import '../../services/auth_service.dart';
+import '../../services/dev_logger.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/media_saver.dart';
 import '../../services/push_service.dart';
@@ -277,6 +278,7 @@ class _ChatScreenState extends State<ChatScreen> {
         stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').orderBy('createdAt').snapshots(),
         builder: (_, snap) {
           if (snap.hasError) {
+            DevLogger.instance.error('chat', 'Stream ERROR', snap.error);
             AppLogger.error('chat_stream', snap.error);
             return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.cloud_off, size: 48, color: DyKalTheme.textGrey.withOpacity(0.5)),

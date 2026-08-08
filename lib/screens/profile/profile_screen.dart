@@ -29,7 +29,7 @@ class ProfileScreen extends StatelessWidget {
         final ann = (d?['anniversary'] as Timestamp?)?.toDate();
         return CustomScrollView(slivers: [
           SliverAppBar(backgroundColor: Colors.transparent, elevation: 0, floating: true, title: const Text("Profil & Pengaturan")),
-          SliverToBoxAdapter(child: _coupleCard(nameA, nameB, photoA, photoB)),
+          SliverToBoxAdapter(child: _coupleCard()),
           SliverToBoxHeader(label: "Tanggal Penting"),
           SliverToBoxAdapter(child: _dateTile(context, Icons.favorite, "Anniversary", ann, () async {
             final picked = await _pick(context, ann);
@@ -65,31 +65,43 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _coupleCard(String a, String b, String? photoA, String? photoB) => Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(24)),
-        child: Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            _avatar(photoA, a),
-            const SizedBox(height: 8),
-            Text(a, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
-          ])),
-          const Icon(Icons.favorite, color: Colors.white, size: 28),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            _avatar(photoB, b),
-            const SizedBox(height: 8),
-            Text(b, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
-          ])),
-        ]),
-      );
+  Widget _coupleCard() {
+    final myId = AuthService().myId;
+    final partnerId = AuthService().partnerId ?? '';
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(24)),
+      child: Row(children: [
+        Expanded(child: _memberCol(myId, 'Aku')),
+        const Icon(Icons.favorite, color: Colors.white, size: 28),
+        Expanded(child: _memberCol(partnerId, 'Ayang')),
+      ]),
+    );
+  }
 
-  Widget _avatar(String? photo, String name) => CircleAvatar(
-        radius: 34,
-        backgroundColor: Colors.white.withOpacity(0.25),
-        backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null,
-        child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)) : null,
-      );
+  Widget _memberCol(String uid, String fallback) {
+    if (uid.isEmpty) {
+      return Column(children: [
+        CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), child: Text(fallback.isNotEmpty ? fallback[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800))),
+        const SizedBox(height: 8),
+        Text(fallback, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      ]);
+    }
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.doc('users/$uid').snapshots(),
+      builder: (_, snap) {
+        final d = snap.data?.data() as Map<String, dynamic>?;
+        final name = (d?['displayName'] as String?) ?? fallback;
+        final photo = d?['photoUrl'] as String?;
+        return Column(children: [
+          CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)) : null),
+          const SizedBox(height: 8),
+          Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+        ]);
+      },
+    );
+  }
 
   Widget _dateTile(BuildContext context, IconData icon, String label, DateTime? value, VoidCallback onTap) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

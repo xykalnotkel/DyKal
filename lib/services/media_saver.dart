@@ -6,15 +6,14 @@ import 'package:dio/dio.dart';
 class MediaSaver {
   static const _pkg = 'com.dykal.app';
 
-  /// Buat & kembalikan path folder tujuan
+  /// Buat & kembalikan path folder tujuan (type: 'Foto' / 'Audio' / 'Video' / 'Stiker')
   static Future<String> _dir(String type) async {
-    final root = Directory('/storage/emulated/0/Android/media/$_pkg/Dykal/Media/$type');
+    final root = Directory('/storage/emulated/0/Android/media/$_pkg/Dykal/$type');
     try {
       if (!await root.exists()) await root.create(recursive: true);
       return root.path;
     } catch (_) {
-      // fallback: folder app-specific
-      final fb = Directory('/storage/emulated/0/Android/data/$_pkg/files/Dykal/Media/$type');
+      final fb = Directory('/storage/emulated/0/Android/data/$_pkg/files/Dykal/$type');
       if (!await fb.exists()) await fb.create(recursive: true);
       return fb.path;
     }

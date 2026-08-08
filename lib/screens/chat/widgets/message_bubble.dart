@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:just_audio/just_audio.dart';
@@ -111,7 +112,7 @@ class MessageBubble extends StatelessWidget {
               Container(
                 constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                 margin: EdgeInsets.symmetric(vertical: 4),
-                padding: EdgeInsets.all(message.type == MessageType.image ? 4 : 12),
+                padding: EdgeInsets.all(message.type == MessageType.image ? 3 : 9),
                 decoration: BoxDecoration(
                   color: isMe ? DyKalTheme.primary : Colors.white,
                   borderRadius: BorderRadius.only(
@@ -197,19 +198,54 @@ class MessageBubble extends StatelessWidget {
   }
 
   void _showOptions(BuildContext context) {
-    showModalBottomSheet(context: context, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))), builder: (_) => SafeArea(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (message.imageUrl != null) ListTile(leading: Icon(Icons.download, color: DyKalTheme.primary), title: Text('Simpan Foto'), onTap: (){ Navigator.pop(context); onDownload?.call(); }),
-        ListTile(leading: Icon(Icons.favorite, color: DyKalTheme.primary), title: Text(message.isLoved ? "Hapus Love" : "Love Pesan"), onTap: (){ Navigator.pop(context); onLove(); }),
-        ListTile(leading: Icon(Icons.reply), title: Text("Balas (Swipe)"), onTap: (){ Navigator.pop(context); onSwipeReply(); }),
-        if (isMe) ListTile(leading: Icon(Icons.edit), title: Text("Edit Pesan"), onTap: (){
-          Navigator.pop(context);
-          final c = TextEditingController(text: message.text);
-          showDialog(context: context, builder: (_) => AlertDialog(title: Text("Edit Pesan"), content: TextField(controller: c), actions: [TextButton(onPressed: ()=> Navigator.pop(context), child: Text("Batal")), FilledButton(onPressed: (){ Navigator.pop(context); onEdit(c.text); }, child: Text("Simpan"))]));
-        }),
-        if (isMe) ListTile(leading: Icon(Icons.delete, color: Colors.red), title: Text("Hapus Pesan", style: TextStyle(color: Colors.red)), onTap: (){ Navigator.pop(context); onDelete(); }),
-      ]),
-    ));
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.pop(ctx),
+        child: Stack(children: [
+          Positioned.fill(child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7), child: Container(color: Colors.black.withOpacity(0.32)))),
+          Center(child: _iOSMenu(ctx)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _iOSMenu(BuildContext ctx) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 36),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: const Color(0xFF2C2C2E).withOpacity(0.96), borderRadius: BorderRadius.circular(22)),
+        child: Wrap(alignment: WrapAlignment.center, spacing: 10, runSpacing: 10, children: [
+          if (message.imageUrl != null) _act(Icons.download_rounded, 'Simpan', DyKalTheme.primary, () { Navigator.pop(ctx); onDownload?.call(); }),
+          _act(message.isLoved ? Icons.favorite : Icons.favorite_border, message.isLoved ? 'Hapus Love' : 'Love', DyKalTheme.primary, () { Navigator.pop(ctx); onLove(); }),
+          _act(Icons.reply_rounded, 'Balas', const Color(0xFF0A84FF), () { Navigator.pop(ctx); onSwipeReply(); }),
+          if (isMe && message.type == MessageType.text) _act(Icons.edit_rounded, 'Edit', const Color(0xFF0A84FF), () { Navigator.pop(ctx); _editDialog(ctx); }),
+          if (isMe) _act(Icons.delete_rounded, 'Hapus Semua', Colors.redAccent, () { Navigator.pop(ctx); onDelete(); }),
+          if (isMe) _act(Icons.delete_outline_rounded, 'Hapus Saya', Colors.redAccent, () { Navigator.pop(ctx); onDelete(); }),
+        ]),
+      ),
+    );
+  }
+
+  Widget _act(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 70,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(14)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: color, size: 24), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500), textAlign: TextAlign.center)]),
+      ),
+    );
+  }
+
+  void _editDialog(BuildContext context) {
+    final c = TextEditingController(text: message.text);
+    showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Edit Pesan'), content: TextField(controller: c, autofocus: true, maxLines: null), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')), FilledButton(onPressed: () { Navigator.pop(context); onEdit(c.text); }, child: const Text('Simpan'))]));
   }
 }
 

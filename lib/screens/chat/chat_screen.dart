@@ -31,6 +31,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isRecording = false;
   int _recSecs = 0;
   String? _recPath;
+  int? _lastMsgCount;
 
   String get _coupleId => AuthService().coupleId ?? '';
   String get _myId => AuthService().myId;
@@ -253,7 +254,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
   Widget _list() => StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').orderBy('createdAt', descending: true).snapshots(),
+        stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').orderBy('createdAt').snapshots(),
         builder: (_, snap) {
           if (!snap.hasData) return Center(child: CircularProgressIndicator(color: DyKalTheme.primary));
           final docs = snap.data!.docs;
@@ -263,8 +264,14 @@ class _ChatScreenState extends State<ChatScreen> {
             const Text('Belum ada chat', style: TextStyle(fontWeight: FontWeight.w600)),
             Text('Kirim pesan pertama ke $_partnerName', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
           ]));
+          if (_lastMsgCount != null && docs.length > _lastMsgCount!) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_scrollController.hasClients) _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            });
+          }
+          _lastMsgCount = docs.length;
           return ListView.builder(
-            controller: _scrollController, reverse: true,
+            controller: _scrollController, reverse: false,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             itemCount: docs.length,
             itemBuilder: (_, i) {

@@ -44,8 +44,6 @@ class CloudinaryService {
         ),
         'upload_preset': uploadPreset,
         'folder': folder,
-        // Optimasi Cloudinary: auto format & quality
-        'transformation': 'f_auto,q_auto',
       });
 
       final res = await _dio.post(

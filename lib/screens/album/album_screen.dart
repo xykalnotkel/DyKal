@@ -54,7 +54,8 @@ class AlbumScreen extends StatelessWidget {
             backgroundColor: Colors.transparent, elevation: 0, floating: true,
             title: Row(children: [Icon(Icons.collections, color: DyKalTheme.primary, size: 22), const SizedBox(width: 8), const Text('Album Kita')]),
             actions: [
-              Padding(padding: const EdgeInsets.only(right: 12), child: FloatingActionButton.mini(backgroundColor: DyKalTheme.primary, foregroundColor: Colors.white, onPressed: () => _createAlbum(context), child: const Icon(Icons.add))),
+              IconButton(onPressed: () => _createAlbum(context), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.add, color: Colors.white, size: 20))),
+              const SizedBox(width: 8),
             ],
           ),
           StreamBuilder<QuerySnapshot>(

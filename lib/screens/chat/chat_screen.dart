@@ -26,6 +26,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
   final _recorder = AudioRecorder();
+  Timer? _recTimer;
   ChatMessage? _replyTo;
   bool _isTyping = false;
   bool _isRecording = false;
@@ -178,6 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _recPath = '${dir.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
     await _recorder.start(RecordConfig(encoder: AudioEncoder.aacLc), path: _recPath!);
     setState(() { _isRecording = true; _recSecs = 0; });
+    _recTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _recSecs++));
     _setRecording(true);
   }
 
@@ -188,6 +190,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _stopRec({bool send = true}) async {
     if (!_isRecording) return;
+    _recTimer?.cancel();
     final path = await _recorder.stop();
     setState(() => _isRecording = false);
     _setRecording(false);

@@ -23,7 +23,7 @@ class AuthService {
   String? myPhotoUrl;
   String? partnerPhotoUrl;
   String get myId => _auth.currentUser?.uid ?? '';
-  String get myName => _auth.currentUser?.displayName ?? 'Aku';
+  String get myName => _auth.currentUser?.displayName ?? '';
 
   Stream<User?> get authState => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -72,7 +72,7 @@ class AuthService {
       'birthdayA': null,
       'birthdayB': null,
       'inviteCode': code,
-      'displayNameA': _auth.currentUser?.displayName ?? 'Aku',
+      'displayNameA': _auth.currentUser?.displayName ?? '',
       'displayNameB': null,
       'photoA': myPhotoUrl,
       'photoB': null,

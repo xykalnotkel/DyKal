@@ -20,7 +20,7 @@ class ProfileScreen extends StatelessWidget {
       stream: coupleId == null ? null : FirebaseFirestore.instance.doc('couples/$coupleId').snapshots(),
       builder: (context, snap) {
         final d = snap.data?.data() as Map<String, dynamic>?;
-        final nameA = (d?['displayNameA'] as String?) ?? 'Aku';
+        final nameA = (d?['displayNameA'] as String?) ?? '';
         final nameB = (d?['displayNameB'] as String?) ?? '';
         final photoA = d?['photoA'] as String?;
         final photoB = d?['photoB'] as String?;
@@ -73,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/illustrations/card_bg.png'), fit: BoxFit.cover)),
       child: Row(children: [
-        Expanded(child: _memberCol(myId, 'Aku')),
+        Expanded(child: _memberCol(myId, '')),
         const Icon(Icons.favorite, color: Colors.white, size: 28),
         Expanded(child: _memberCol(partnerId, '')),
       ]),

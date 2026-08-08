@@ -215,7 +215,7 @@ class HomeScreen extends StatelessWidget {
         final now = DateTime.now();
         final bA = (d['birthdayA'] as Timestamp?)?.toDate();
         final bB = (d['birthdayB'] as Timestamp?)?.toDate();
-        final nameA = d['displayNameA'] as String? ?? 'Aku';
+        final nameA = d['displayNameA'] as String? ?? '';
         final nameB = d['displayNameB'] as String? ?? '';
         final isBA = bA != null && bA.month == now.month && bA.day == now.day;
         final isBB = bB != null && bB.month == now.month && bB.day == now.day;

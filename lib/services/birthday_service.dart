@@ -92,7 +92,7 @@ class BirthdayService {
     final bA = (data['birthdayA'] as Timestamp?)?.toDate();
     final bB = (data['birthdayB'] as Timestamp?)?.toDate();
     if (bA != null && bA.month == now.month && bA.day == now.day) {
-      return {'who': data['displayNameA'] ?? 'Aku', 'isA': true};
+      return {'who': data['displayNameA'] ?? '', 'isA': true};
     }
     if (bB != null && bB.month == now.month && bB.day == now.day) {
       return {'who': data['displayNameB'] ?? '', 'isA': false};

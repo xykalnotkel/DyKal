@@ -35,7 +35,10 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } catch (_) {}
+  } catch (e) {
+    // Log error, jangan swallow silently
+    print('FIREBASE INIT ERROR: $e');
+  }
 
   // High refresh rate 60/90/120Hz
   try {

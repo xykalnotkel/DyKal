@@ -81,6 +81,7 @@ flutter:
     - assets/logo/
     - assets/logo/webp/
     - assets/icons/
+    - assets/sounds/
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/call_service.dart';
+import '../../services/ringtone_player.dart';
 
 /// Layar panggilan masuk. Tombol Angkat/Tolak di-SWIPE ke atas + animasi melayang.
 class IncomingCallScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
     _type = (ModalRoute.of(context)?.settings.arguments as String?) ?? 'video';
     _float = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
     _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+    RingtonePlayer.start();
     final coupleId = AuthService().coupleId ?? '';
     _sub = FirebaseFirestore.instance.doc('calls/$coupleId').snapshots().listen((doc) {
       final data = doc.data();
@@ -44,6 +46,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
 
   @override
   void dispose() {
+    RingtonePlayer.stop();
     _sub?.cancel();
     _float.dispose();
     _pulse.dispose();

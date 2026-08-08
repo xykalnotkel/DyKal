@@ -149,7 +149,22 @@ class _MainNavState extends State<MainNav> {
   void initState() {
     super.initState();
     AuthService().refresh();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _listenIncomingCalls());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _listenIncomingCalls();
+      _listenDelivered();
+    });
+  }
+
+  void _listenDelivered() {
+    final coupleId = AuthService().coupleId;
+    final myId = AuthService().myId;
+    if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
+    FirebaseFirestore.instance.collection('chats/$coupleId/messages').where('status', isEqualTo: 'sent').snapshots().listen((qs) {
+      for (final d in qs.docs) {
+        final m = d.data() as Map<String, dynamic>;
+        if (m['fromId'] != myId) d.reference.update({'status': 'delivered'});
+      }
+    });
   }
 
   void _listenIncomingCalls() {

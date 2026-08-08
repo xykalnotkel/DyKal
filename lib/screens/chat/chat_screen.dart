@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import '../../config/theme.dart';
 import '../../models/chat_message.dart';
+import '../../services/app_logger.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/media_saver.dart';
@@ -276,12 +277,15 @@ class _ChatScreenState extends State<ChatScreen> {
         stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').orderBy('createdAt').snapshots(),
         builder: (_, snap) {
           if (snap.hasError) {
+            AppLogger.error('chat_stream', snap.error);
             return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.cloud_off, size: 48, color: DyKalTheme.textGrey.withOpacity(0.5)),
               const SizedBox(height: 12),
               const Text('Gagal memuat chat', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text('Cek koneksi & pastikan Firestore rules sudah di-publish.', textAlign: TextAlign.center, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+              const SizedBox(height: 8),
+              Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.red.withOpacity(0.08), borderRadius: BorderRadius.circular(8)), child: SelectableText('Error: ${snap.error}', style: const TextStyle(fontSize: 11, color: Colors.red), textAlign: TextAlign.center)),
+              const SizedBox(height: 8),
+              Text('Log tersimpan di Android/media/com.dykal.app/logs/app.log', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 10)),
             ])));
           }
           if (!snap.hasData) return Center(child: CircularProgressIndicator(color: DyKalTheme.primary));

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_service.dart';
 import 'letter_detail_screen.dart';
 
 class LetterScreen extends StatelessWidget {
@@ -124,6 +125,7 @@ class LetterScreen extends StatelessWidget {
               });
               if (context.mounted) {
                 Navigator.pop(context);
+                PushService.notifyPartner(title: auth.myName, body: '💌 Surat baru untukmu', type: 'letter');
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Surat terkirim 💕")));
               }
             },

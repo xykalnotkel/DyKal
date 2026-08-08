@@ -33,7 +33,10 @@ class ProfileScreen extends StatelessWidget {
           SliverToBoxHeader(label: "Tanggal Penting"),
           SliverToBoxAdapter(child: _dateTile(context, Icons.favorite, "Anniversary", ann, () async {
             final picked = await _pick(context, ann);
-            if (picked != null) await FirebaseFirestore.instance.doc('couples/$coupleId').update({'anniversary': Timestamp.fromDate(picked)});
+            if (picked != null) {
+              await FirebaseFirestore.instance.doc('couples/$coupleId').update({'anniversary': Timestamp.fromDate(picked)});
+              await BirthdayService().scheduleAnniversary(picked);
+            }
           })),
           SliverToBoxAdapter(child: _dateTile(context, Icons.cake, "Ulang Tahun $nameA", bA, () async {
             final picked = await _pick(context, bA);
@@ -46,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
           if (bA != null && bB != null) SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.all(16),
             child: FilledButton.icon(
-              onPressed: () async { await BirthdayService().saveBirthdays(birthdayA: bA, birthdayB: bB); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi ulang tahun dijadwalkan ✅'))); },
+              onPressed: () async { await BirthdayService().scheduleBirthdays(birthdayA: bA, birthdayB: bB, nameA: nameA, nameB: nameB); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi ulang tahun dijadwalkan ✅'))); },
               icon: const Icon(Icons.notifications_active, size: 16), label: const Text('Jadwalkan Notif Ulang Tahun'),
             ),
           )),

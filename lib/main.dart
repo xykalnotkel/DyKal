@@ -123,7 +123,8 @@ class AuthGate extends StatelessWidget {
               stream: FirebaseFirestore.instance.doc('couples/$cid').snapshots(),
               builder: (context, cs) {
                 if (!cs.hasData) return _splash();
-                final members = List<String>.from(cs.data!.data()?['members'] ?? []);
+                final d = cs.data!.data() as Map<String, dynamic>?;
+                final members = List<String>.from(d?['members'] ?? []);
                 return members.length >= 2 ? MainNav() : PairingScreen();
               },
             );

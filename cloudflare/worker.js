@@ -24,6 +24,11 @@ export default {
     const { token, title, body: msgBody, data, type } = body || {};
     if (!token || !title) return json({ error: 'token & title required' }, 400);
 
+    // Diagnostik: pastikan 3 secret sudah ter-set
+    if (!env.FCM_PROJECT_ID || !env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY) {
+      return json({ error: 'Secret Cloudflare belum lengkap', set: { FCM_PROJECT_ID: !!env.FCM_PROJECT_ID, FCM_CLIENT_EMAIL: !!env.FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY: !!env.FCM_PRIVATE_KEY } }, 400);
+    }
+
     try {
       const accessToken = await getAccessToken(env);
       const isCall = type === 'call';

@@ -54,7 +54,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     ])));
   }
 
-  Widget _viewerBtn(IconData icon, String label, VoidCallback onTap, {bool red = false}) => GestureDetector(onTap: onTap, child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: red ? Colors.redAccent : Colors.white, size: 24), const SizedBox(height: 2), Text(label, style: const TextStyle(color: Colors.white, fontSize: 10))]));
+  Widget _viewerBtn(IconData icon, String label, VoidCallback onTap, {bool red = false}) => GestureDetector(onTap: onTap, child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: red ? Colors.redAccent : Colors.white, size: 24), const SizedBox(height: 2), Text(label, style: const TextStyle(color: Theme.of(context).colorScheme.surface, fontSize: 10))]));
 
   Future<void> _share(String url) async {
     try {

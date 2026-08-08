@@ -54,7 +54,7 @@ class HomeScreen extends StatelessWidget {
         // STATISTIK
         SliverToBoxHeader(label: "Statistik Kalian"),
         SliverToBoxAdapter(child: _stats()),
-        SliverToBox(child: SizedBox(height: 110)),
+        SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
     );
   }

@@ -120,7 +120,7 @@ class DyKalCallService extends ChangeNotifier {
     _ansSub = _db.collection('calls/$coupleId/answerCandidates').snapshots().listen((qs) async {
       for (final d in qs.docChanges) {
         if (d.type == DocumentChangeType.added) {
-          await _pc?.addCandidate(RTCIceCandidate.fromMap(d.doc.data()!));
+          final _m = d.doc.data() as Map<String,dynamic>; await _pc?.addCandidate(RTCIceCandidate(_m["candidate"] as String?, _m["sdpMid"] as String?, _m["sdpMLineIndex"] as int?));
         }
       }
     });
@@ -153,7 +153,7 @@ class DyKalCallService extends ChangeNotifier {
     _offerCandSub = _db.collection('calls/$coupleId/offerCandidates').snapshots().listen((qs) async {
       for (final d in qs.docChanges) {
         if (d.type == DocumentChangeType.added) {
-          await _pc?.addCandidate(RTCIceCandidate.fromMap(d.doc.data()!));
+          final _m = d.doc.data() as Map<String,dynamic>; await _pc?.addCandidate(RTCIceCandidate(_m["candidate"] as String?, _m["sdpMid"] as String?, _m["sdpMLineIndex"] as int?));
         }
       }
     });

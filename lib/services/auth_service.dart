@@ -127,7 +127,8 @@ class AuthService {
       if (coupleId != null) {
         final cSnap = await _db.doc('couples/$coupleId').get();
         final members = List<String>.from(cSnap.data()?['members'] ?? []);
-        partnerId = members.where((m) => m != uid).followedBy([null]).first as String?;
+        final others = members.where((m) => m != uid).toList();
+        partnerId = others.isNotEmpty ? others.first : null;
         if (partnerId != null && partnerId!.isNotEmpty) {
           final pSnap = await _db.doc('users/$partnerId').get();
           partnerName = pSnap.data()?['displayName'] ?? 'Ayang';

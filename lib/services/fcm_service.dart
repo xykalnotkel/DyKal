@@ -15,6 +15,9 @@ class FCMService {
   FCMService._();
   factory FCMService() => _i;
   bool _initialized = false;
+  final _messaging = FirebaseMessaging.instance;
+  final _local = FlutterLocalNotificationsPlugin();
+  final _db = FirebaseFirestore.instance;
 
   /// Dipanggil dari AuthGate setelah login (idempoten)
   void ensureInit() {

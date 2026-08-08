@@ -7,7 +7,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../services/floating_service.dart';
-import 'package:system_ringtone_picker/system_ringtone_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+// CATATAN: 'system_ringtone_picker' DIHAPUS — package itu TIDAK ADA di pub.dev (404). Dipake sebelumnya bikin compile error.
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,6 +27,7 @@ bool _notifVibrate = true;
   String _notifRingtone = 'Default Sistem';
   String _callRingtone = 'Default Sistem';
   final _audioPlayer = AudioPlayer();
+  int _bubbleStyle = 0; // FIX: dipake tapi gak pernah dideklarasi -> compile error
 
 @override
   void initState() {
@@ -90,8 +92,10 @@ Future<void> _loadBubbleStyle() async {
         _toggle(Icons.cake, 'Ultah & Anniversary', _notifBirthday),
         const Divider(),
         _sectionHeader('Nada Dering & Suara'),
-        _tile(Icons.notifications_active, 'Nada Notifikasi', _notifRingtone, _pickNotifRingtone),
-        _tile(Icons.phone_in_talk, 'Nada Telepon', _callRingtone, _pickCallRingtone),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: Text('Catatan: pemilih nada dering sistem sedang diperbaiki (package yang dipakai sebelumnya ternyata tidak ada di pub.dev). Untuk sementara pakai nada default sistem.', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
+        ),
         _toggle(Icons.volume_up, 'Suara Notifikasi', _notifSound),
         _toggle(Icons.vibration, 'Getaran', _notifVibrate),
         const Divider(),
@@ -144,6 +148,18 @@ Future<void> _loadBubbleStyle() async {
           const SizedBox(width: 8),
           Expanded(child: _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline)),
         ])),
+        const SizedBox(height: 24),
+        FutureBuilder<String>(
+          future: () async {
+            final info = await PackageInfo.fromPlatform();
+            return 'DyKal v' + info.version;
+          }(),
+          builder: (_, ss) => Text(
+            ss.data ?? 'DyKal',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12),
+          ),
+        ),
         const SizedBox(height: 40),
       ]),
     );

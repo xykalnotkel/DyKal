@@ -54,11 +54,15 @@ jobs:
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk DyKal-arm64.apk
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk DyKal-armeabi-v7a.apk
 
+      - name: Baca versi dari pubspec.yaml
+        id: ver
+        run: echo "version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d '+' -f 1)" >> "$GITHUB_OUTPUT"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: DyKal v1.0.${{ github.run_number }}
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: DyKal v${{ steps.ver.outputs.version }}
           body: |
             ## Download APK
             - **DyKal-armeabi-v7a.apk** = HP 32-bit

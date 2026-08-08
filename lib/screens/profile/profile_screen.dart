@@ -58,7 +58,9 @@ class ProfileScreen extends StatelessWidget {
           SliverToBoxAdapter(child: _themeSelector()),
           SliverToBoxHeader(label: "Akun"),
           SliverToBoxAdapter(child: _editProfileTile(context)),
+          SliverToBoxAdapter(child: _settingsTile(context)),
           SliverToBoxAdapter(child: _account(context, nameA)),
+          SliverToBoxAdapter(child: _versionFooter()),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ]);
       },
@@ -199,6 +201,37 @@ class ProfileScreen extends StatelessWidget {
             trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onTap: () => _editProfile(context),
+          ),
+        ),
+      );
+
+  Widget _settingsTile(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: ListTile(
+            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.tune, color: DyKalTheme.primary)),
+            title: const Text('Pengaturan Lanjutan', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Notifikasi, overlay, bubble, story audio', style: TextStyle(fontSize: 12)),
+            trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
+        ),
+      );
+
+  Widget _versionFooter() => Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: FutureBuilder<String>(
+          future: () async {
+            final info = await PackageInfo.fromPlatform();
+            return 'DyKal v${info.version}';
+          }(),
+          builder: (_, s) => Text(
+            s.data ?? 'DyKal',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12),
           ),
         ),
       );

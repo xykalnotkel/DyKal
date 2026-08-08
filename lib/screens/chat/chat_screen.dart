@@ -9,6 +9,8 @@ import '../../config/theme.dart';
 import '../../models/chat_message.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/push_service.dart';
+import '../../widgets/typing_indicator.dart';
 import 'image_send_screen.dart';
 import 'widgets/message_bubble.dart';
 
@@ -76,6 +78,10 @@ class _ChatScreenState extends State<ChatScreen> {
       createdAt: Timestamp.now(),
     );
     FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id).set(msg.toMap());
+    final preview = msg.type == MessageType.voice
+        ? '🎙️ Voice note'
+        : (msg.imageUrl != null ? '📷 Foto' : msg.text);
+    PushService.notifyPartner(title: AuthService().myName, body: preview);
     _msgController.clear();
     setState(() { _replyTo = null; _isTyping = false; });
     _setTyping(false);
@@ -164,7 +170,10 @@ class _ChatScreenState extends State<ChatScreen> {
               String sub = typing ? 'mengetik...' : rec ? 'merekam audio...' : online ? 'online' : 'offline';
               return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Text(_partnerName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(width: 6), Icon(Icons.favorite, color: DyKalTheme.primary, size: 14)]),
-                Text(sub, style: TextStyle(fontSize: 12, color: (typing || rec) ? DyKalTheme.primary : DyKalTheme.textGrey)),
+                if (typing)
+                  Row(children: [TypingDots(color: DyKalTheme.primary), const SizedBox(width: 6), Text('mengetik', style: TextStyle(fontSize: 12, color: DyKalTheme.primary))])
+                else
+                  Text(sub, style: TextStyle(fontSize: 12, color: DyKalTheme.textGrey)),
               ]);
             },
           )),

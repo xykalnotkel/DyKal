@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/birthday_service.dart';
+import '../../services/cloudinary_service.dart';
 import '../../services/theme_controller.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -51,6 +54,7 @@ class ProfileScreen extends StatelessWidget {
           SliverToBoxHeader(label: "Tampilan"),
           SliverToBoxAdapter(child: _themeSelector()),
           SliverToBoxHeader(label: "Akun"),
+          SliverToBoxAdapter(child: _editProfileTile(context)),
           SliverToBoxAdapter(child: _account(context, nameA)),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ]);
@@ -167,6 +171,76 @@ class ProfileScreen extends StatelessWidget {
           },
         ),
       );
+
+  Widget _editProfileTile(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          child: ListTile(
+            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.edit, color: DyKalTheme.primary)),
+            title: const Text('Edit Nama & Foto', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Ubah profil kamu (real-time)', style: TextStyle(fontSize: 12)),
+            trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onTap: () => _editProfile(context),
+          ),
+        ),
+      );
+
+  Future<void> _editProfile(BuildContext context) async {
+    final auth = AuthService();
+    final coupleId = auth.coupleId ?? '';
+    final myId = auth.myId;
+    final nameCtl = TextEditingController(text: auth.myName);
+    String? photoUrl = auth.myPhotoUrl;
+    File? picked;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (s) => StatefulBuilder(builder: (s, setS) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(s).viewInsets.bottom + 16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: DyKalTheme.borderSoft, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () async {
+              final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+              if (x != null) setS(() => picked = File(x.path));
+            },
+            child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withOpacity(0.15), backgroundImage: picked != null ? FileImage(picked!) : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
+          ),
+          const SizedBox(height: 8),
+          Text('Ketuk foto untuk ganti', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
+          const SizedBox(height: 12),
+          TextField(controller: nameCtl, decoration: const InputDecoration(hintText: 'Nama panggilan', filled: true, fillColor: Color(0xFFFFF8F9), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))))),
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            onPressed: () async {
+              final newName = nameCtl.text.trim();
+              if (newName.isEmpty) return;
+              Navigator.pop(s);
+              String? newPhoto = photoUrl;
+              if (picked != null) newPhoto = await CloudinaryService().uploadImage(picked!, folder: 'dykal/avatar');
+              await FirebaseAuth.instance.currentUser?.updateDisplayName(newName);
+              await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto}, SetOptions(merge: true));
+              if (coupleId.isNotEmpty) {
+                final cSnap = await FirebaseFirestore.instance.doc('couples/$coupleId').get();
+                final amA = cSnap.data()?['createdBy'] == myId;
+                await FirebaseFirestore.instance.doc('couples/$coupleId').update({
+                  amA ? 'displayNameA' : 'displayNameB': newName,
+                  amA ? 'photoA' : 'photoB': newPhoto,
+                });
+              }
+              await AuthService().refresh();
+            },
+            icon: const Icon(Icons.save), label: const Text('Simpan'),
+          )),
+        ]),
+      )),
+    );
+  }
 
   Future<DateTime?> _pick(BuildContext context, DateTime? initial) async {
     return showDatePicker(

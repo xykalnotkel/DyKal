@@ -4,6 +4,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_constants.dart';
 import 'auth_service.dart';
+import 'push_service.dart';
 
 /// Service WebRTC dengan signaling via Firestore (top-level doc calls/{coupleId}).
 /// - Caller: startOutgoing -> offer + status 'ringing'
@@ -21,6 +22,7 @@ class DyKalCallService extends ChangeNotifier {
   bool speakerOn = true;
   bool screenSharing = false;
   bool connected = false;
+  String peerFilter = 'none';
 
   StreamSubscription? _ansSub;       // answerCandidates (dipakai caller)
   StreamSubscription? _offerCandSub; // offerCandidates (dipakai callee)
@@ -106,11 +108,20 @@ class DyKalCallService extends ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
+    // Push notif "panggilan masuk" ke pasangan (jalan walau app-nya di-kill)
+    PushService.notifyPartner(
+      title: '📞 Panggilan ${callType == 'video' ? 'Video' : 'Suara'} Masuk',
+      body: '${AuthService().myName} menelpon kamu',
+      type: 'call',
+    );
+
     // Dengar jawaban & ICE lawan
     _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
       final data = doc.data();
       if (data == null) return;
       if (data['status'] == 'ended') { await _cleanup(); return; }
+      final pf = data['calleeFilter'] as String?;
+      if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
       final answer = data['answer'];
       if (answer != null && !_remoteDescriptionSet) {
         _remoteDescriptionSet = true;
@@ -159,7 +170,9 @@ class DyKalCallService extends ChangeNotifier {
     });
     _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
       final d = doc.data();
-      if (d == null || d['status'] == 'ended') await _cleanup();
+      if (d == null || d['status'] == 'ended') { await _cleanup(); return; }
+      final pf = d['callerFilter'] as String?;
+      if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
     });
   }
 
@@ -178,6 +191,14 @@ class DyKalCallService extends ChangeNotifier {
       t.enabled = videoOn;
     }
     notifyListeners();
+  }
+
+  /// Tulis filter pilihanku ke call doc -> lawan lihat aku ter-filter (filter di-display sisi penerima)
+  Future<void> setMyFilter(String f) async {
+    final field = _amCaller ? 'callerFilter' : 'calleeFilter';
+    try {
+      await _db.doc('calls/$coupleId').update({field: f});
+    } catch (_) {}
   }
 
   Future<void> toggleSpeaker() async {

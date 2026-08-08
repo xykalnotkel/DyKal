@@ -1,0 +1,6 @@
+name = "dykal-push"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Secrets di-set terpisah via dashboard atau `wrangler secret put`:
+#   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY

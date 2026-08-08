@@ -19,6 +19,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   int _elapsed = 0;
   String _filter = 'none';
   bool _started = false;
+  bool _swapped = false;
 
   @override
   void initState() {
@@ -90,14 +91,17 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   Widget build(BuildContext context) {
     final fc = _filterColor();
+    final bigRenderer = _swapped ? _local : _remote;
+    final pipRenderer = _swapped ? _remote : _local;
+    final bigIsLocal = _swapped;
     return Scaffold(
       backgroundColor: const Color(0xFF1A1C1E),
       body: SafeArea(child: Stack(children: [
-        // Remote (full)
+        // Tampilan besar (remote atau local kalau ditukar)
         Positioned.fill(child: fc == null
-          ? RTCVideoView(_remote, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover, mirror: false)
-          : ColorFiltered(colorFilter: fc, child: RTCVideoView(_remote, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover, mirror: false))),
-        if (call.remoteStream == null)
+          ? RTCVideoView(bigRenderer, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover, mirror: bigIsLocal)
+          : ColorFiltered(colorFilter: fc, child: RTCVideoView(bigRenderer, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover, mirror: bigIsLocal))),
+        if (!_swapped && call.remoteStream == null)
           Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 120, height: 120, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: DyKalTheme.dykalGradient),
               child: const Center(child: Icon(Icons.videocam, color: Colors.white, size: 40))),
@@ -107,12 +111,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             Text(call.connected ? 'Terhubung...' : 'Memanggil...', style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ])),
 
-        // Local (picture-in-picture)
-        Positioned(top: 48, right: 16, child: Container(
-          width: 110, height: 160,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white24, width: 2)),
-          clipBehavior: Clip.antiAlias,
-          child: RTCVideoView(_local, mirror: true, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover),
+        // Picture-in-picture (ketuk untuk tukar posisi)
+        Positioned(top: 48, right: 16, child: GestureDetector(
+          onTap: () => setState(() => _swapped = !_swapped),
+          child: Container(
+            width: 110, height: 160,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white54, width: 2)),
+            clipBehavior: Clip.antiAlias,
+            child: RTCVideoView(pipRenderer, mirror: !bigIsLocal, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover),
+          ),
         )),
 
         // Filter chips
@@ -140,7 +147,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             _btn(Icons.mic_off, call.muted, call.toggleMute),
             _btn(Icons.videocam_off, !call.videoOn, call.toggleVideo),
-            _btn(Icons.screen_share, call.screenSharing, () => call.toggleScreenShare()),
+            _btn(Icons.swap_horiz, _swapped, () => setState(() => _swapped = !_swapped)),
             _btn(Icons.volume_up, call.speakerOn, () => call.toggleSpeaker()),
           ]),
           const SizedBox(height: 22),

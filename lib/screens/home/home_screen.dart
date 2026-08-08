@@ -39,7 +39,7 @@ class HomeScreen extends StatelessWidget {
             ]),
           ]),
           actions: [
-            IconButton(onPressed: () => Navigator.pushNamed(context, '/chat'), icon: Icon(Icons.chat_bubble_outline, color: DyKalTheme.textDark)),
+            _chatButton(context),
             IconButton(onPressed: () => Navigator.pushNamed(context, '/profile'), icon: Icon(Icons.settings, color: DyKalTheme.textDark)),
             const SizedBox(width: 4),
           ],
@@ -56,6 +56,29 @@ class HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(child: _stats()),
         SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
+    );
+  }
+
+  Widget _chatButton(BuildContext context) {
+    final coupleId = AuthService().coupleId;
+    final myId = AuthService().myId;
+    return StreamBuilder<QuerySnapshot>(
+      stream: (coupleId == null || myId.isEmpty) ? null : FirebaseFirestore.instance.collection('chats/$coupleId/messages').snapshots(),
+      builder: (_, snap) {
+        final unread = snap.data?.docs.where((d) {
+              final m = d.data() as Map<String, dynamic>;
+              return m['fromId'] != myId && m['status'] != 'read';
+            }).length ??
+            0;
+        return IconButton(
+          onPressed: () => Navigator.pushNamed(context, '/chat'),
+          icon: Stack(clipBehavior: Clip.none, children: [
+            Icon(Icons.chat_bubble_outline, color: DyKalTheme.textDark),
+            if (unread > 0)
+              Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.all(3.5), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)))),
+          ]),
+        );
+      },
     );
   }
 

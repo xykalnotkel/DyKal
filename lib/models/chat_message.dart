@@ -13,6 +13,8 @@ class ChatMessage {
   final String? voiceUrl;
   final int? voiceDuration; // detik
   final String? replyToId;
+  final String? replyToText;
+  final String? replyToName;
   final bool isEdited;
   final bool isDeleted;
   final bool isLoved; // Love kan pesan
@@ -31,6 +33,8 @@ class ChatMessage {
     this.voiceUrl,
     this.voiceDuration,
     this.replyToId,
+    this.replyToText,
+    this.replyToName,
     this.isEdited = false,
     this.isDeleted = false,
     this.isLoved = false,
@@ -50,6 +54,8 @@ class ChatMessage {
     'voiceUrl': voiceUrl,
     'voiceDuration': voiceDuration,
     'replyToId': replyToId,
+    'replyToText': replyToText,
+    'replyToName': replyToName,
     'isEdited': isEdited,
     'isDeleted': isDeleted,
     'isLoved': isLoved,
@@ -69,6 +75,8 @@ class ChatMessage {
     voiceUrl: m['voiceUrl'],
     voiceDuration: m['voiceDuration'],
     replyToId: m['replyToId'],
+    replyToText: m['replyToText'],
+    replyToName: m['replyToName'],
     isEdited: m['isEdited'] ?? false,
     isDeleted: m['isDeleted'] ?? false,
     isLoved: m['isLoved'] ?? false,

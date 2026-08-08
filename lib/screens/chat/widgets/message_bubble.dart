@@ -104,6 +104,20 @@ class MessageBubble extends StatelessWidget {
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (message.replyToText != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isMe ? Colors.white.withOpacity(0.2) : DyKalTheme.primary.withOpacity(0.08),
+                        border: Border(left: BorderSide(color: isMe ? Colors.white : DyKalTheme.primary, width: 2)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(message.replyToName ?? '', style: TextStyle(color: isMe ? Colors.white : DyKalTheme.primary, fontSize: 11, fontWeight: FontWeight.w700)),
+                        Text(message.replyToText!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isMe ? Colors.white70 : DyKalTheme.textGrey, fontSize: 12)),
+                      ]),
+                    ),
                   if (message.type == MessageType.voice && message.voiceUrl != null)
                     _VoicePlayer(
                       url: message.voiceUrl!,

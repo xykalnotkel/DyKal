@@ -9,6 +9,7 @@ import '../../config/theme.dart';
 import '../../models/chat_message.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
+import 'image_send_screen.dart';
 import 'widgets/message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -57,19 +58,21 @@ class _ChatScreenState extends State<ChatScreen> {
     FirebaseFirestore.instance.doc('presence/$_myId').set({'isTyping': v}, SetOptions(merge: true));
   }
 
-  void _sendMessage({String? imageUrl, bool viewOnce = false, String? voiceUrl, int? voiceDuration}) {
-    final text = _msgController.text.trim();
-    if (text.isEmpty && imageUrl == null && voiceUrl == null) return;
+  void _sendMessage({String? imageUrl, bool viewOnce = false, String? voiceUrl, int? voiceDuration, String? text}) {
+    final body = text ?? _msgController.text.trim();
+    if (body.isEmpty && imageUrl == null && voiceUrl == null) return;
     final msg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       fromId: _myId,
       toId: _partnerId,
-      text: voiceUrl != null ? '' : text,
+      text: voiceUrl != null ? '' : body,
       type: voiceUrl != null ? MessageType.voice : (imageUrl != null ? (viewOnce ? MessageType.viewOnce : MessageType.image) : MessageType.text),
       imageUrl: imageUrl,
       voiceUrl: voiceUrl,
       voiceDuration: voiceDuration,
       replyToId: _replyTo?.id,
+      replyToText: _replyTo?.text,
+      replyToName: _replyTo == null ? null : (_replyTo!.fromId == _myId ? AuthService().myName : _partnerName),
       createdAt: Timestamp.now(),
     );
     FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id).set(msg.toMap());
@@ -78,12 +81,13 @@ class _ChatScreenState extends State<ChatScreen> {
     _setTyping(false);
   }
 
-  Future<void> _pickImage({bool viewOnce = false}) async {
+  Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (xfile == null) return;
-    final url = await CloudinaryService().uploadImage(File(xfile.path), folder: viewOnce ? "dykal/view_once" : "dykal/chat");
-    if (url != null) _sendMessage(imageUrl: url, viewOnce: viewOnce);
+    final res = await Navigator.push<Map<String, dynamic>>(context, MaterialPageRoute(builder: (_) => ImageSendScreen(image: File(xfile.path))));
+    if (!mounted || res == null) return;
+    _sendMessage(imageUrl: res['url'] as String, viewOnce: res['viewOnce'] as bool, text: (res['caption'] as String?)?.isEmpty == true ? null : res['caption'] as String?);
   }
 
   Future<void> _startRec() async {
@@ -232,8 +236,7 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -2))]),
         child: Row(children: [
-          IconButton(onPressed: () => _pickImage(viewOnce: false), icon: Icon(Icons.image, color: DyKalTheme.textGrey, size: 22)),
-          IconButton(onPressed: () => _pickImage(viewOnce: true), icon: Icon(Icons.visibility_off, color: DyKalTheme.primary, size: 22), tooltip: 'Foto 1x lihat'),
+          IconButton(onPressed: _pickImage, icon: Icon(Icons.image, color: DyKalTheme.primary, size: 22), tooltip: 'Kirim foto'),
           Expanded(child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(color: DyKalTheme.background, borderRadius: BorderRadius.circular(24)),
@@ -247,9 +250,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   onTap: () => _sendMessage(),
                   child: Container(width: 44, height: 44, decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle), child: const Icon(Icons.send, color: Colors.white, size: 18)))
               : GestureDetector(
-                  onLongPressStart: (_) => _startRec(),
-                  onLongPressEnd: (_) => _stopRec(send: true),
-                  child: Container(width: 44, height: 44, decoration: BoxDecoration(color: _isRecording ? Colors.red : DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(Icons.mic, color: _isRecording ? Colors.white : DyKalTheme.primary, size: 20)),
+                  onTap: () => _isRecording ? _stopRec(send: true) : _startRec(),
+                  child: Container(width: 44, height: 44, decoration: BoxDecoration(color: _isRecording ? Colors.red : DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(_isRecording ? Icons.send : Icons.mic, color: _isRecording ? Colors.white : DyKalTheme.primary, size: 20)),
                 ),
           ),
         ]),

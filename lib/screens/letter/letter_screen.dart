@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import 'letter_detail_screen.dart';
 
 class LetterScreen extends StatelessWidget {
   const LetterScreen({super.key});
@@ -29,26 +30,37 @@ class LetterScreen extends StatelessWidget {
                 final data = docs[i].data() as Map<String, dynamic>;
                 final fromName = data['fromName'] as String? ?? 'Ayang';
                 final isLoved = data['isLoved'] as bool? ?? false;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      CircleAvatar(radius: 16, backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.mail, size: 16, color: DyKalTheme.primary)),
-                      const SizedBox(width: 8),
-                      Text("Dari $fromName", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () => docs[i].reference.update({'isLoved': !isLoved}),
-                        child: Icon(Icons.favorite, size: 18, color: isLoved ? DyKalTheme.primary : DyKalTheme.textGrey.withOpacity(0.4)),
-                      ),
+                final created = (data['createdAt'] as Timestamp?)?.toDate();
+                final text = data['text'] as String? ?? '';
+                return GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LetterDetailScreen(text: text, fromName: fromName, createdAt: created))),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        CircleAvatar(radius: 16, backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.mail, size: 16, color: DyKalTheme.primary)),
+                        const SizedBox(width: 8),
+                        Text("Dari $fromName", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => docs[i].reference.update({'isLoved': !isLoved}),
+                          child: Icon(Icons.favorite, size: 18, color: isLoved ? DyKalTheme.primary : DyKalTheme.textGrey.withOpacity(0.4)),
+                        ),
+                      ]),
+                      const SizedBox(height: 10),
+                      Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.5)),
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        const Icon(Icons.touch_app, size: 12, color: Color(0xFFFF6B8A)),
+                        const SizedBox(width: 4),
+                        Text("Ketuk untuk membuka surat", style: TextStyle(color: DyKalTheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        if (created != null) Text(_fmt(created), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11, fontStyle: FontStyle.italic)),
+                      ]),
                     ]),
-                    const SizedBox(height: 10),
-                    Text(data['text'] ?? '', style: const TextStyle(fontSize: 14, height: 1.5)),
-                    const SizedBox(height: 8),
-                    Align(alignment: Alignment.centerRight, child: Text(_fmt(data['createdAt']), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11, fontStyle: FontStyle.italic))),
-                  ]),
+                  ),
                 );
               },
             );
@@ -69,7 +81,7 @@ class LetterScreen extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [const Text("Tulis surat untuk Ayang", style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 6), Icon(Icons.favorite, size: 14, color: DyKalTheme.primary)]),
             const SizedBox(height: 4),
-            Text("Surat tersimpan permanen & bisa di-love.", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+            Text("Ketuk surat untuk membuka dengan segel love ✉️", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
           ])),
         ]),
       );
@@ -94,10 +106,7 @@ class LetterScreen extends StatelessWidget {
           const SizedBox(height: 16),
           const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text("Tulis Surat Cinta", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))]),
           const SizedBox(height: 12),
-          TextField(
-            controller: c, maxLines: 6,
-            decoration: InputDecoration(hintText: "Tulis isi hatimu disini...", filled: true, fillColor: DyKalTheme.background, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)),
-          ),
+          TextField(controller: c, maxLines: 6, decoration: InputDecoration(hintText: "Tulis isi hatimu disini...", filled: true, fillColor: DyKalTheme.background, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none))),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: FilledButton.icon(
             onPressed: () async {
@@ -125,12 +134,5 @@ class LetterScreen extends StatelessWidget {
     );
   }
 
-  String _fmt(dynamic ts) {
-    try {
-      final d = (ts as Timestamp).toDate();
-      return "${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}";
-    } catch (_) {
-      return "";
-    }
-  }
+  String _fmt(DateTime d) => "${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}";
 }

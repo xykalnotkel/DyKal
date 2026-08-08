@@ -8,3 +8,8 @@ build/
 .DS_Store
 # tapi jangan ignore google-services.json agar APK bisa build
 !android/app/google-services.json
+
+# Secrets - jangan di-commit
+android/key.properties
+*.jks
+*.keystore

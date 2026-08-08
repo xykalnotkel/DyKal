@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/cloudinary_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,6 +18,12 @@ class _AuthScreenState extends State<AuthScreen> {
   final _name = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool loading = false;
+  File? _photo;
+
+  Future<void> _pickPhoto() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (x != null) setState(() => _photo = File(x.path));
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -24,10 +33,15 @@ class _AuthScreenState extends State<AuthScreen> {
       if (isLogin) {
         await auth.login(email: _email.text.trim(), password: _pass.text.trim());
       } else {
+        String? photoUrl;
+        if (_photo != null) {
+          photoUrl = await CloudinaryService().uploadImage(_photo!, folder: 'dykal/avatar');
+        }
         await auth.register(
           email: _email.text.trim(),
           password: _pass.text.trim(),
           displayName: _name.text.trim(),
+          photoUrl: photoUrl,
         );
       }
       // AuthGate akan otomatis route via authState
@@ -72,10 +86,15 @@ class _AuthScreenState extends State<AuthScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-                Container(
-                  width: 64, height: 64,
-                  decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(20)),
-                  child: const Icon(Icons.favorite, color: Colors.white, size: 32),
+                Image.asset(
+                  'assets/logo/dykal_logo_hd.png',
+                  width: 96,
+                  height: 96,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 96, height: 96,
+                    decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(24)),
+                    child: const Icon(Icons.favorite, color: Colors.white, size: 44),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text("DyKal", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: DyKalTheme.textDark)),
@@ -95,6 +114,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 20),
 
                 if (!isLogin) ...[
+                  _avatarPicker(),
+                  const SizedBox(height: 16),
                   _field(_name, "Nama Panggilan", Icons.person, false),
                   const SizedBox(height: 12),
                 ],
@@ -136,6 +157,26 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         alignment: Alignment.center,
         child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: active ? Colors.white : DyKalTheme.textGrey, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _avatarPicker() {
+    return GestureDetector(
+      onTap: _pickPhoto,
+      child: Container(
+        width: 96, height: 96,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        child: Stack(alignment: Alignment.center, children: [
+          _photo != null
+              ? ClipOval(child: Image.file(_photo!, width: 92, height: 92, fit: BoxFit.cover))
+              : Container(
+                  width: 92, height: 92,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.primary.withOpacity(0.12)),
+                  child: Icon(Icons.person, size: 46, color: DyKalTheme.primary),
+                ),
+          Positioned(bottom: 0, right: 0, child: Container(padding: const EdgeInsets.all(6), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: const Icon(Icons.camera_alt, color: Colors.white, size: 16))),
+        ]),
       ),
     );
   }

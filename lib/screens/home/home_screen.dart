@@ -179,7 +179,7 @@ class HomeScreen extends StatelessWidget {
       child: Row(children: [
         _stat(Icons.chat, () => _countStream('chats/$coupleId/messages'), "Chat"),
         const SizedBox(width: 12),
-        _stat(Icons.collections, () => _countStream('couples/$coupleId/album'), "Foto"),
+        _stat(Icons.collections, () => _countStream('couples/$coupleId/albums'), "Album"),
         const SizedBox(width: 12),
         _stat(Icons.mail, () => _countStream('couples/$coupleId/letters'), "Surat"),
       ]),

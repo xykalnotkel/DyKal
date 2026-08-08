@@ -10,6 +10,10 @@ class DyKalTheme {
   static const background = Color(0xFFFFF8F9); // Warm white, bukan putih kasar
   static const surface = Color(0xFFFFFFFF);
   static const card = Color(0xFFFFFFFF);
+  // Dark mode
+  static const backgroundDark = Color(0xFF14161B);
+  static const surfaceDark = Color(0xFF1E2128);
+  static const borderSoftDark = Color(0xFF2A2E37);
   static const textDark = Color(0xFF1A1C1E);
   static const textGrey = Color(0xFF8E9099);
   static const borderSoft = Color(0xFFF1E8EA);
@@ -67,6 +71,48 @@ class DyKalTheme {
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
+
+  // ================= DARK THEME =================
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: backgroundDark,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.dark,
+      surface: surfaceDark,
+    ),
+    textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme).copyWith(
+      displayLarge: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: Colors.white),
+      titleLarge: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: backgroundDark,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      titleTextStyle: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+      iconTheme: IconThemeData(color: Colors.white),
+    ),
+    cardTheme: CardThemeData(
+      color: surfaceDark,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: borderSoftDark, width: 1),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
       ),
     ),

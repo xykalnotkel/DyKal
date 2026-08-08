@@ -4,40 +4,61 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
-    // Profil masing-masing user
-    match /users/{uid} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && request.auth.uid == uid;
-      allow delete: if signedIn() && request.auth.uid == uid;
+    // Cek apakah user login adalah salah satu member couple
+    function isMember(coupleId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.members;
     }
 
-    // Kehadiran (online/typing) - siapa saja yg login bisa tulis dokumennya sendiri
+    // === Profil user ===
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // === Status online/typing (presence) ===
     match /presence/{uid} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Invite code: siapa saja yg login boleh baca (buat join) & hapus (setelah dipakai)
+    // === Invite code pairing ===
     match /inviteCodes/{code} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow delete: if signedIn();
+      allow read, create, delete: if signedIn();
     }
 
-    // Couple & semua subkoleksinya (chat, album, letters, call) -> hanya 2 member
-    function isCoupleMember(coupleId) {
-      return signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.members;
-    }
-
+    // === Couple (metadata) ===
     match /couples/{coupleId} {
-      // buat couple baru: creator harus memasukkan dirinya sendiri sbg member
-      allow create: if signedIn()
-        && request.auth.uid in request.resource.data.members;
-      allow read, update, delete: if isCoupleMember(coupleId);
+      // Bikin couple baru: creator wajib memasukkan dirinya ke members
+      allow create: if signedIn() && request.auth.uid in request.resource.data.members;
+      // Baca metadata: siapa saja yang login (pasangan kedua butuh ini SEBELUM jadi member)
+      allow read: if signedIn();
+      // Update: member boleh; ATAU orang join (nambah diri) selama total member <= 2
+      allow update: if signedIn() && (
+        request.auth.uid in resource.data.members ||
+        (request.auth.uid in request.resource.data.members && request.resource.data.members.size() <= 2)
+      );
+      allow delete: if isMember(coupleId);
 
+      // SEMUA subkoleksi couple (album, letters) -> KUNCI hanya member
       match /{document=**} {
-        allow read, write: if isCoupleMember(coupleId);
+        allow read, write: if isMember(coupleId);
+      }
+    }
+
+    // === Chat (koleksi top-level chats/{coupleId}/messages) ===
+    match /chats/{coupleId} {
+      allow read, write: if isMember(coupleId);
+      match /{document=**} {
+        allow read, write: if isMember(coupleId);
+      }
+    }
+
+    // === Signaling panggilan (koleksi top-level calls/{coupleId}) ===
+    match /calls/{coupleId} {
+      allow read, write: if isMember(coupleId);
+      match /{document=**} {
+        allow read, write: if isMember(coupleId);
       }
     }
   }

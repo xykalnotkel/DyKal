@@ -23,6 +23,7 @@ import 'screens/call/incoming_call_screen.dart';
 import 'services/auth_service.dart';
 import 'services/birthday_service.dart';
 import 'services/fcm_service.dart';
+import 'services/theme_controller.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -43,6 +44,7 @@ Future<void> main() async {
     await FlutterDisplayMode.setPreferredMode(high);
   } catch (_) {}
 
+  await ThemeController.instance.load();
   await BirthdayService().init();
 
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -59,21 +61,27 @@ class DyKalApp extends StatelessWidget {
   const DyKalApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DyKal',
-      debugShowCheckedModeBanner: false,
-      theme: DyKalTheme.lightTheme,
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
-        child: child!,
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'DyKal',
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeController.instance.mode,
+        theme: DyKalTheme.lightTheme,
+        darkTheme: DyKalTheme.darkTheme,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
+          child: child!,
+        ),
+        home: AuthGate(),
+        routes: {
+          '/chat': (_) => ChatScreen(),
+          '/videoCall': (_) => VideoCallScreen(),
+          '/audioCall': (_) => AudioCallScreen(),
+          '/incomingCall': (_) => IncomingCallScreen(),
+          '/profile': (_) => ProfileScreen(),
+        },
       ),
-      home: AuthGate(),
-      routes: {
-        '/chat': (_) => ChatScreen(),
-        '/videoCall': (_) => VideoCallScreen(),
-        '/audioCall': (_) => AudioCallScreen(),
-        '/incomingCall': (_) => IncomingCallScreen(),
-      },
     );
   }
 }
@@ -106,9 +114,19 @@ class AuthGate extends StatelessWidget {
           builder: (context, cSnap) {
             if (cSnap.connectionState != ConnectionState.active) return _splash();
             final cid = cSnap.data;
-            if (cid == null) return PairingScreen();
+            if (cid == null) return PairingScreen(); // belum punya couple
             AuthService().coupleId = cid; // pastikan ter-cache untuk semua screen
-            return MainNav();
+            AuthService().refresh();
+            // Hanya masuk app kalau pasangan sudah join (members >= 2).
+            // Kalau cuma 1 (creator belum di-join) -> tetap di PairingScreen nunjukin kode.
+            return StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.doc('couples/$cid').snapshots(),
+              builder: (context, cs) {
+                if (!cs.hasData) return _splash();
+                final members = List<String>.from(cs.data!.data()?['members'] ?? []);
+                return members.length >= 2 ? MainNav() : PairingScreen();
+              },
+            );
           },
         );
       },

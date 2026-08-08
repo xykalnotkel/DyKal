@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 
 /// Scaffold Seamless DyKal - Tanpa garis pemisah
-/// TopBar & BottomNav nyatu dengan background utama
+/// TopBar & BottomNav nyatu dengan background utama (tema-aware + bottom nav tanpa background).
 class SeamlessScaffold extends StatelessWidget {
   final Widget body;
   final PreferredSizeWidget? appBar;
@@ -21,39 +21,27 @@ class SeamlessScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      extendBody: extendBody, // Biar BottomNav transparan nyatu
+      extendBody: extendBody, // Biar konten menggulung di belakang nav transparan
       extendBodyBehindAppBar: true,
-      backgroundColor: DyKalTheme.background,
+      backgroundColor: dark ? DyKalTheme.backgroundDark : DyKalTheme.background,
       appBar: appBar,
       body: Container(
         decoration: BoxDecoration(
-          color: DyKalTheme.background,
-          // Background gradient halus biar ga flat
+          // Background gradient halus biar ga flat (light & dark)
           gradient: LinearGradient(
-            colors: [DyKalTheme.background, Color(0xFFFFF0F2)],
+            colors: dark
+                ? const [DyKalTheme.backgroundDark, Color(0xFF0E1014)]
+                : const [DyKalTheme.background, Color(0xFFFFF0F2)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: body,
       ),
-      bottomNavigationBar: bottomNavigationBar != null
-          ? Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                // Efek blur + tanpa border tegas
-                border: Border(top: BorderSide(color: Colors.transparent)), // HAPUS GARIS
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: Offset(0, -4)),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                child: bottomNavigationBar,
-              ),
-            )
-          : null,
+      // Bottom nav TANPA background solid (transparan, nyatu)
+      bottomNavigationBar: bottomNavigationBar,
       floatingActionButton: floatingActionButton,
     );
   }

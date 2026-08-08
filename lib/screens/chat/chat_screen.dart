@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -142,7 +143,12 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         child: Row(children: [
           IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back)),
-          CircleAvatar(radius: 20, backgroundColor: DyKalTheme.primary, child: Text(_partnerName.isNotEmpty ? _partnerName[0] : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: DyKalTheme.primary,
+            backgroundImage: AuthService().partnerPhotoUrl != null ? CachedNetworkImageProvider(AuthService().partnerPhotoUrl!) : null,
+            child: AuthService().partnerPhotoUrl == null ? Text(_partnerName.isNotEmpty ? _partnerName[0] : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)) : null,
+          ),
           const SizedBox(width: 10),
           Expanded(child: StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.doc('presence/$_partnerId').snapshots(),

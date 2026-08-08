@@ -20,6 +20,8 @@ class AuthService {
   String? coupleId;
   String? partnerId;
   String? partnerName;
+  String? myPhotoUrl;
+  String? partnerPhotoUrl;
   String get myId => _auth.currentUser?.uid ?? '';
   String get myName => _auth.currentUser?.displayName ?? 'Aku';
 
@@ -33,13 +35,15 @@ class AuthService {
     return _db.doc('users/$uid').snapshots().map((s) => s.data()?['coupleId'] as String?);
   }
 
-  Future<UserCredential> register({required String email, required String password, required String displayName}) async {
+  Future<UserCredential> register({required String email, required String password, required String displayName, String? photoUrl}) async {
     final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
     await cred.user!.updateDisplayName(displayName);
+    myPhotoUrl = photoUrl;
     await _db.doc('users/${cred.user!.uid}').set({
       'uid': cred.user!.uid,
       'displayName': displayName,
       'email': email,
+      'photoUrl': photoUrl,
       'coupleId': null,
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -67,8 +71,11 @@ class AuthService {
       'anniversary': null,
       'birthdayA': null,
       'birthdayB': null,
+      'inviteCode': code,
       'displayNameA': _auth.currentUser?.displayName ?? 'Aku',
       'displayNameB': null,
+      'photoA': myPhotoUrl,
+      'photoB': null,
     });
 
     await _db.doc('inviteCodes/$code').set({
@@ -108,6 +115,7 @@ class AuthService {
       'members': FieldValue.arrayUnion([uid]),
       'pairedAt': FieldValue.serverTimestamp(),
       'displayNameB': _auth.currentUser?.displayName ?? 'Ayang',
+      'photoB': myPhotoUrl,
     });
 
     await _db.doc('users/$uid').set({'coupleId': coupleId}, SetOptions(merge: true));
@@ -120,10 +128,14 @@ class AuthService {
   /// Isi cache coupleId/partnerId/partnerName dari Firestore
   Future<void> refresh() async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) { coupleId = partnerId = partnerName = null; return; }
+    if (uid == null) {
+      coupleId = partnerId = partnerName = myPhotoUrl = partnerPhotoUrl = null;
+      return;
+    }
     try {
       final meSnap = await _db.doc('users/$uid').get();
       coupleId = meSnap.data()?['coupleId'] as String?;
+      myPhotoUrl = meSnap.data()?['photoUrl'] as String?;
       if (coupleId != null) {
         final cSnap = await _db.doc('couples/$coupleId').get();
         final members = List<String>.from(cSnap.data()?['members'] ?? []);
@@ -132,6 +144,7 @@ class AuthService {
         if (partnerId != null && partnerId!.isNotEmpty) {
           final pSnap = await _db.doc('users/$partnerId').get();
           partnerName = pSnap.data()?['displayName'] ?? 'Ayang';
+          partnerPhotoUrl = pSnap.data()?['photoUrl'] as String?;
         }
       }
     } catch (_) {}
@@ -142,7 +155,7 @@ class AuthService {
     if (uid != null) {
       await _db.doc('presence/$uid').set({'isOnline': false, 'lastSeen': FieldValue.serverTimestamp()}, SetOptions(merge: true));
     }
-    coupleId = partnerId = partnerName = null;
+    coupleId = partnerId = partnerName = myPhotoUrl = partnerPhotoUrl = null;
     await _auth.signOut();
   }
 

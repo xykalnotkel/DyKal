@@ -20,10 +20,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter
+      - name: Setup Flutter (pin 3.44.9)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.44.9'
           cache: true
 
       - name: Decode google-services.json (dari GitHub Secrets)
@@ -32,17 +33,36 @@ jobs:
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
-            echo "✅ google-services.json terpasang"
+            echo "google-services.json terpasang"
           else
-            echo "⚠️ GOOGLE_SERVICES_JSON_BASE64 belum di-set, build tetap jalan tapi Firebase tidak akan connect"
+            echo "GOOGLE_SERVICES_JSON_BASE64 belum di-set, build tetap jalan tapi Firebase tidak akan connect"
+          fi
+
+      - name: Setup release keystore (dari GitHub Secrets)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/dykal-release-key.jks
+            cat > android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=dykal-release-key.jks
+          EOF
+            echo "Keystore terpasang dari secret"
+          else
+            echo "KEYSTORE_BASE64 belum di-set - set secret agar release signing jalan"
           fi
 
       - name: Setup Cloudinary & App Constants
         run: |
-          # Ganti Cloud Name jika pakai secrets (opsional)
           if [ -n "${{ secrets.CLOUDINARY_CLOUD_NAME }}" ]; then
             sed -i "s/GANTI_DENGAN_CLOUD_NAME_KALIAN/${{ secrets.CLOUDINARY_CLOUD_NAME }}/g" lib/config/app_constants.dart || true
-            echo "✅ Cloudinary cloud_name dari secrets"
+            echo "Cloudinary cloud_name dari secrets"
           fi
           cat lib/config/app_constants.dart
 

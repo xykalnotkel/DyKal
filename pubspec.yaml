@@ -58,6 +58,7 @@ dependencies:
   image_picker: ^1.0.4
   flutter_image_compress: ^2.1.0 # Compress ke WebP otomatis
   shared_preferences: ^2.2.2 # simpan preferensi tema (dark/light)
+  connectivity_plus: ^6.0.5 # cek koneksi (popup no internet saat kirim)
   flutter_local_notifications: ^19.5.0 # Notif ultah (fix #2329 build error, mulai 17.2.1)
   timezone: ^0.10.1 # (dinaikkan: dibutuhkan flutter_local_notifications ^19.5.0)
   swipe_to: ^1.0.2 # Swipe to reply

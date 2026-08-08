@@ -11,6 +11,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback onLove;
   final Function(String) onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onDownload;
 
   const MessageBubble({
     super.key,
@@ -20,6 +21,7 @@ class MessageBubble extends StatelessWidget {
     required this.onLove,
     required this.onEdit,
     required this.onDelete,
+    this.onDownload,
   });
 
   @override
@@ -197,6 +199,7 @@ class MessageBubble extends StatelessWidget {
   void _showOptions(BuildContext context) {
     showModalBottomSheet(context: context, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))), builder: (_) => SafeArea(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (message.imageUrl != null) ListTile(leading: Icon(Icons.download, color: DyKalTheme.primary), title: Text('Simpan Foto'), onTap: (){ Navigator.pop(context); onDownload?.call(); }),
         ListTile(leading: Icon(Icons.favorite, color: DyKalTheme.primary), title: Text(message.isLoved ? "Hapus Love" : "Love Pesan"), onTap: (){ Navigator.pop(context); onLove(); }),
         ListTile(leading: Icon(Icons.reply), title: Text("Balas (Swipe)"), onTap: (){ Navigator.pop(context); onSwipeReply(); }),
         if (isMe) ListTile(leading: Icon(Icons.edit), title: Text("Edit Pesan"), onTap: (){

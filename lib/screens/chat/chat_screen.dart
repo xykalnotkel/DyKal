@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -9,6 +10,7 @@ import '../../config/theme.dart';
 import '../../models/chat_message.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/media_saver.dart';
 import '../../services/push_service.dart';
 import '../../widgets/typing_indicator.dart';
 import 'image_send_screen.dart';
@@ -75,18 +77,63 @@ class _ChatScreenState extends State<ChatScreen> {
       replyToId: _replyTo?.id,
       replyToText: _replyTo?.text,
       replyToName: _replyTo == null ? null : (_replyTo!.fromId == _myId ? AuthService().myName : _partnerName),
+      status: MessageStatus.sending,
       createdAt: Timestamp.now(),
     );
-    FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id).set(msg.toMap());
-    // Konten asli dikirim; Worker set visibility PRIVATE -> layar kunci sembunyikan,
-    // shade (hp tidak terkunci) tampilkan pesan asli + aksi balas.
-    final preview = msg.type == MessageType.voice
-        ? '🎙️ Voice note'
-        : (msg.imageUrl != null ? '📷 Foto' : msg.text);
-    PushService.notifyPartner(title: AuthService().myName, body: preview);
+    final ref = FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id);
+    // Tulis (offline-persist: pesan muncul dgn icon jam). Saat sync -> 'sent' + push.
+    ref.set(msg.toMap()).then((_) {
+      ref.update({'status': 'sent'});
+      final preview = msg.type == MessageType.voice ? '🎙️ Voice note' : (msg.imageUrl != null ? '📷 Foto' : msg.text);
+      PushService.notifyPartner(title: AuthService().myName, body: preview);
+    });
     _msgController.clear();
     setState(() { _replyTo = null; _isTyping = false; });
     _setTyping(false);
+    _checkConn();
+  }
+
+  Future<void> _checkConn() async {
+    try {
+      final r = await Connectivity().checkConnectivity();
+      final offline = r.isEmpty || r.every((e) => e == ConnectivityResult.none);
+      if (offline && mounted) {
+        showDialog(context: context, builder: (_) => AlertDialog(
+          icon: const Icon(Icons.wifi_off, color: Color(0xFFFF6B8A), size: 40),
+          title: const Text('Tidak ada koneksi internet'),
+          content: const Text('Pesan tertahan (ikon jam ⏳). Nyalakan data seluler atau sambungkan ke WiFi — pesan terkirim otomatis saat online.'),
+          actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+        ));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _showPartnerProfile() async {
+    if (_partnerId.isEmpty) return;
+    final snap = await FirebaseFirestore.instance.doc('users/$_partnerId').get();
+    final d = snap.data();
+    final name = d?['displayName'] ?? _partnerName;
+    final email = d?['email'] ?? '';
+    final photo = d?['photoUrl'];
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DyKalTheme.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        CircleAvatar(radius: 50, backgroundColor: DyKalTheme.primary, backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.w800)) : null),
+        const SizedBox(height: 12),
+        Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        if (email.toString().isNotEmpty) Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.email, size: 14, color: DyKalTheme.textGrey), const SizedBox(width: 6), Flexible(child: Text(email, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 13), overflow: TextOverflow.ellipsis))]),
+        const SizedBox(height: 12),
+        StreamBuilder<DocumentSnapshot>(stream: FirebaseFirestore.instance.doc('presence/$_partnerId').snapshots(), builder: (_, s) {
+          final data = s.data?.data() as Map<String, dynamic>?;
+          final online = data?['isOnline'] ?? false;
+          return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: (online ? DyKalTheme.online : DyKalTheme.textGrey).withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.circle, size: 8, color: online ? DyKalTheme.online : DyKalTheme.textGrey), const SizedBox(width: 6), Text(online ? 'Online' : 'Offline', style: TextStyle(color: online ? DyKalTheme.online : DyKalTheme.textGrey, fontWeight: FontWeight.w600, fontSize: 12))]));
+        }),
+      ]))),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -178,11 +225,9 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         child: Row(children: [
           IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back)),
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: DyKalTheme.primary,
-            backgroundImage: AuthService().partnerPhotoUrl != null ? CachedNetworkImageProvider(AuthService().partnerPhotoUrl!) : null,
-            child: AuthService().partnerPhotoUrl == null ? Text(_partnerName.isNotEmpty ? _partnerName[0] : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)) : null,
+          GestureDetector(
+            onTap: _showPartnerProfile,
+            child: CircleAvatar(radius: 20, backgroundColor: DyKalTheme.primary, backgroundImage: AuthService().partnerPhotoUrl != null ? CachedNetworkImageProvider(AuthService().partnerPhotoUrl!) : null, child: AuthService().partnerPhotoUrl == null ? Text(_partnerName.isNotEmpty ? _partnerName[0] : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)) : null),
           ),
           const SizedBox(width: 10),
           Expanded(child: StreamBuilder<DocumentSnapshot>(
@@ -228,14 +273,18 @@ class _ChatScreenState extends State<ChatScreen> {
               if (!isMe && msg.status != MessageStatus.read) {
                 docs[i].reference.update({'status': 'read'});
               }
-              return MessageBubble(
-                message: msg,
-                isMe: isMe,
-                onSwipeReply: () => setState(() => _replyTo = msg),
-                onLove: () => docs[i].reference.update({'isLoved': !msg.isLoved}),
-                onEdit: (newText) => docs[i].reference.update({'text': newText, 'isEdited': true}),
-                onDelete: () => docs[i].reference.update({'isDeleted': true, 'text': 'Pesan ini telah dihapus'}),
-              );
+                      return MessageBubble(
+                        message: msg,
+                        isMe: isMe,
+                        onSwipeReply: () => setState(() => _replyTo = msg),
+                        onLove: () => docs[i].reference.update({'isLoved': !msg.isLoved}),
+                        onEdit: (newText) => docs[i].reference.update({'text': newText, 'isEdited': true}),
+                        onDelete: () => docs[i].reference.update({'isDeleted': true, 'text': 'Pesan ini telah dihapus'}),
+                        onDownload: msg.imageUrl != null ? () async {
+                          final p = await MediaSaver.save(msg.imageUrl!, type: 'foto');
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(p == null ? 'Gagal menyimpan' : 'Foto tersimpan ✅')));
+                        } : null,
+                      );
             },
           );
         },

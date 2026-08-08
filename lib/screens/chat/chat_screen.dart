@@ -256,6 +256,15 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _list() => StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').orderBy('createdAt').snapshots(),
         builder: (_, snap) {
+          if (snap.hasError) {
+            return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.cloud_off, size: 48, color: DyKalTheme.textGrey.withOpacity(0.5)),
+              const SizedBox(height: 12),
+              const Text('Gagal memuat chat', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text('Cek koneksi & pastikan Firestore rules sudah di-publish.', textAlign: TextAlign.center, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+            ])));
+          }
           if (!snap.hasData) return Center(child: CircularProgressIndicator(color: DyKalTheme.primary));
           final docs = snap.data!.docs;
           if (docs.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

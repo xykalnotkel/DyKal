@@ -46,7 +46,12 @@ class LetterScreen extends StatelessWidget {
                         Text("Dari $fromName", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         const Spacer(),
                         GestureDetector(
-                          onTap: () => docs[i].reference.update({'isLoved': !isLoved}),
+                          onTap: () {
+                            docs[i].reference.update({'isLoved': !isLoved});
+                            if (!isLoved && data['fromId'] != AuthService().myId) {
+                              PushService.notifyPartner(title: AuthService().myName, body: '❤️ menyukai suratmu', type: 'letter');
+                            }
+                          },
                           child: Icon(Icons.favorite, size: 18, color: isLoved ? DyKalTheme.primary : DyKalTheme.textGrey.withOpacity(0.4)),
                         ),
                       ]),

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/photo_shape.dart';
 import 'album_detail_screen.dart';
 
 class AlbumScreen extends StatelessWidget {
@@ -12,25 +13,31 @@ class AlbumScreen extends StatelessWidget {
 
   Future<void> _createAlbum(BuildContext context) async {
     final c = TextEditingController();
-    final name = await showDialog<String>(
+    PhotoShape shape = PhotoShape.love;
+    final ok = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => StatefulBuilder(builder: (_, setS) => AlertDialog(
         title: const Text('Buat Album Baru'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(hintText: 'Mis. Liburan, Anniversary...', border: OutlineInputBorder()),
-        ),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          TextField(controller: c, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Mis. Liburan, Anniversary...', border: OutlineInputBorder())),
+          const SizedBox(height: 16),
+          const Text('Bentuk cover:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: PhotoShape.values.map((s) => GestureDetector(
+            onTap: () => setS(() => shape = s),
+            child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: shape == s ? DyKalTheme.primary : Colors.grey.shade200, borderRadius: BorderRadius.circular(20)), child: Text(s.label, style: TextStyle(color: shape == s ? Colors.white : Colors.black87, fontSize: 12, fontWeight: FontWeight.w600))),
+          )).toList()),
+        ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(context, c.text.trim()), child: const Text('Buat')),
+          FilledButton(onPressed: () => Navigator.pop(context, {'name': c.text.trim(), 'shape': shape.name}), child: const Text('Buat')),
         ],
-      ),
+      )),
     );
-    if (name == null || name.isEmpty || _coupleId.isEmpty) return;
+    if (ok == null || (ok['name'] as String).isEmpty || _coupleId.isEmpty) return;
     await FirebaseFirestore.instance.collection('couples/$_coupleId/albums').add({
-      'name': name,
+      'name': ok['name'],
+      'shape': ok['shape'],
       'coverUrl': null,
       'createdBy': AuthService().myId,
       'createdAt': FieldValue.serverTimestamp(),
@@ -47,14 +54,14 @@ class AlbumScreen extends StatelessWidget {
             backgroundColor: Colors.transparent, elevation: 0, floating: true,
             title: Row(children: [Icon(Icons.collections, color: DyKalTheme.primary, size: 22), const SizedBox(width: 8), const Text('Album Kita')]),
             actions: [
-              IconButton(onPressed: () => _createAlbum(context), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.add, color: Colors.white, size: 18))),
+              Padding(padding: const EdgeInsets.only(right: 12), child: FloatingActionButton.mini(backgroundColor: DyKalTheme.primary, foregroundColor: Colors.white, onPressed: () => _createAlbum(context), child: const Icon(Icons.add))),
             ],
           ),
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('couples/$_coupleId/albums').orderBy('createdAt', descending: true).snapshots(),
+            stream: _coupleId.isEmpty ? null : FirebaseFirestore.instance.collection('couples/$_coupleId/albums').orderBy('createdAt', descending: true).snapshots(),
             builder: (context, snap) {
               if (_coupleId.isEmpty || snap.hasError) {
-                return SliverFillRemaining(child: _empty(context));
+                return SliverFillRemaining(child: Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Belum ada album. Tap + untuk membuat.', style: TextStyle(color: DyKalTheme.textGrey)))));
               }
               if (!snap.hasData) return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(0xFFFF6B8A)))));
               final docs = snap.data!.docs;
@@ -68,52 +75,27 @@ class AlbumScreen extends StatelessWidget {
                       final id = docs[i].id;
                       final name = data['name'] as String? ?? 'Album';
                       final cover = data['coverUrl'] as String?;
+                      final shape = shapeFromName(data['shape'] as String?);
                       return GestureDetector(
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AlbumDetailScreen(albumId: id, albumName: name))),
-                        child: Container(
-                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? DyKalTheme.borderSoftDark : DyKalTheme.borderSoft)),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                                child: cover != null
-                                    ? CachedNetworkImage(imageUrl: cover, fit: BoxFit.cover, placeholder: (_, __) => Container(color: DyKalTheme.borderSoft))
-                                    : Container(
-                                        decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient),
-                                        child: const Center(child: Icon(Icons.photo_library, color: Colors.white70, size: 36)),
-                                      ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Row(children: [
-                                Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                StreamBuilder<QuerySnapshot>(
-                                  stream: FirebaseFirestore.instance.collection('couples/$_coupleId/albums/$id/photos').snapshots(),
-                                  builder: (_, s) => Row(children: [Icon(Icons.photo, size: 13, color: DyKalTheme.textGrey), const SizedBox(width: 3), Text('${s.data?.docs.length ?? 0}', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12))]),
-                                ),
-                              ]),
-                            ),
+                        child: Column(children: [
+                          Expanded(child: Center(child: cover != null ? ShapedPhoto(url: cover, shape: shape, size: 130) : Container(width: 130, height: 130, decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: shape == PhotoShape.bulat ? BoxShape.circle : BoxShape.rectangle, borderRadius: shape == PhotoShape.bulat ? null : BorderRadius.circular(20)), child: const Center(child: Icon(Icons.photo_library, color: Colors.white70, size: 36))))),
+                          const SizedBox(height: 6),
+                          Row(mainAxisSize: MainAxisSize.min, children: [
+                            Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
                           ]),
-                        ),
+                        ]),
                       );
                     },
                     childCount: docs.length,
                   ),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.78),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.82),
                 ),
               );
             },
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createAlbum(context),
-        backgroundColor: DyKalTheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.create_new_folder_outlined),
-        label: const Text('Buat Album'),
       ),
     );
   }
@@ -125,8 +107,6 @@ class AlbumScreen extends StatelessWidget {
           const Text('Belum ada album', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 4),
           Text('Buat album pertama kalian 💕', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
-          const SizedBox(height: 16),
-          FilledButton.icon(onPressed: () => _createAlbum(context), icon: const Icon(Icons.add), label: const Text('Buat Album')),
         ]),
       );
 }

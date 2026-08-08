@@ -71,7 +71,7 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/illustrations/card_bg.png'), fit: BoxFit.cover)),
       child: Row(children: [
         Expanded(child: _memberCol(myId, 'Aku')),
         const Icon(Icons.favorite, color: Colors.white, size: 28),

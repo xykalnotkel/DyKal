@@ -19,6 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   bool loading = false;
   File? _photo;
+  bool _showPass = false;
 
   Future<void> _pickPhoto() async {
     final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
@@ -121,7 +122,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ],
                 _field(_email, "Email", Icons.email, false, validator: (v) => (v != null && v.contains('@')) ? null : 'Email tidak valid'),
                 const SizedBox(height: 12),
-                _field(_pass, "Password", Icons.lock, true, validator: (v) => (v != null && v.length >= 6) ? null : 'Min 6 karakter'),
+                _passwordField(),
                 const SizedBox(height: 24),
 
                 SizedBox(
@@ -177,6 +178,24 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
           Positioned(bottom: 0, right: 0, child: Container(padding: const EdgeInsets.all(6), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: const Icon(Icons.camera_alt, color: Colors.white, size: 16))),
         ]),
+      ),
+    );
+  }
+
+  Widget _passwordField() {
+    return TextFormField(
+      controller: _pass,
+      obscureText: !_showPass,
+      validator: (v) => (v != null && v.length >= 6) ? null : 'Min 6 karakter',
+      decoration: InputDecoration(
+        hintText: 'Password',
+        prefixIcon: Icon(Icons.lock, color: DyKalTheme.textGrey),
+        suffixIcon: IconButton(
+          icon: Icon(_showPass ? Icons.visibility_off : Icons.visibility, color: DyKalTheme.textGrey),
+          onPressed: () => setState(() => _showPass = !_showPass),
+        ),
+        filled: true, fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       ),
     );
   }

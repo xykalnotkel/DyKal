@@ -21,7 +21,7 @@ class ProfileScreen extends StatelessWidget {
       builder: (context, snap) {
         final d = snap.data?.data() as Map<String, dynamic>?;
         final nameA = (d?['displayNameA'] as String?) ?? 'Aku';
-        final nameB = (d?['displayNameB'] as String?) ?? 'Ayang';
+        final nameB = (d?['displayNameB'] as String?) ?? '';
         final photoA = d?['photoA'] as String?;
         final photoB = d?['photoB'] as String?;
         final bA = (d?['birthdayA'] as Timestamp?)?.toDate();
@@ -75,7 +75,7 @@ class ProfileScreen extends StatelessWidget {
       child: Row(children: [
         Expanded(child: _memberCol(myId, 'Aku')),
         const Icon(Icons.favorite, color: Colors.white, size: 28),
-        Expanded(child: _memberCol(partnerId, 'Ayang')),
+        Expanded(child: _memberCol(partnerId, '')),
       ]),
     );
   }

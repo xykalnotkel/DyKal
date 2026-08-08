@@ -95,7 +95,7 @@ class BirthdayService {
       return {'who': data['displayNameA'] ?? 'Aku', 'isA': true};
     }
     if (bB != null && bB.month == now.month && bB.day == now.day) {
-      return {'who': data['displayNameB'] ?? 'Ayang', 'isA': false};
+      return {'who': data['displayNameB'] ?? '', 'isA': false};
     }
     return null;
   }

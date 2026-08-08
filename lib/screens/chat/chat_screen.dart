@@ -14,7 +14,10 @@ import '../../services/cloudinary_service.dart';
 import '../../services/media_saver.dart';
 import '../../services/push_service.dart';
 import '../../widgets/typing_indicator.dart';
+import '../../widgets/gallery_picker.dart';
 import 'image_send_screen.dart';
+import 'sticker_edit_screen.dart';
+import 'sticker_sheet.dart';
 import 'widgets/message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -38,7 +41,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String get _coupleId => AuthService().coupleId ?? '';
   String get _myId => AuthService().myId;
   String get _partnerId => AuthService().partnerId ?? '';
-  String get _partnerName => AuthService().partnerName ?? 'Ayang';
+  String get _partnerName => AuthService().partnerName ?? '';
 
   @override
   void initState() {
@@ -65,16 +68,17 @@ class _ChatScreenState extends State<ChatScreen> {
     FirebaseFirestore.instance.doc('presence/$_myId').set({'isTyping': v}, SetOptions(merge: true));
   }
 
-  void _sendMessage({String? imageUrl, bool viewOnce = false, String? voiceUrl, int? voiceDuration, String? text, String? sticker}) {
+  void _sendMessage({String? imageUrl, bool viewOnce = false, String? voiceUrl, int? voiceDuration, String? text, String? sticker, String? stickerUrl}) {
     final body = text ?? _msgController.text.trim();
-    if (body.isEmpty && imageUrl == null && voiceUrl == null && sticker == null) return;
+    if (body.isEmpty && imageUrl == null && voiceUrl == null && sticker == null && stickerUrl == null) return;
+    final isSticker = sticker != null || stickerUrl != null;
     final msg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       fromId: _myId,
       toId: _partnerId,
-      text: sticker ?? (voiceUrl != null ? '' : body),
-      type: sticker != null ? MessageType.sticker : (voiceUrl != null ? MessageType.voice : (imageUrl != null ? (viewOnce ? MessageType.viewOnce : MessageType.image) : MessageType.text)),
-      imageUrl: imageUrl,
+      text: sticker ?? (stickerUrl != null ? '' : (voiceUrl != null ? '' : body)),
+      type: isSticker ? MessageType.sticker : (voiceUrl != null ? MessageType.voice : (imageUrl != null ? (viewOnce ? MessageType.viewOnce : MessageType.image) : MessageType.text)),
+      imageUrl: stickerUrl ?? imageUrl,
       voiceUrl: voiceUrl,
       voiceDuration: voiceDuration,
       replyToId: _replyTo?.id,
@@ -87,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Tulis (offline-persist: pesan muncul dgn icon jam). Saat sync -> 'sent' + push.
     ref.set(msg.toMap()).then((_) {
       ref.update({'status': 'sent'});
-      final preview = msg.type == MessageType.voice ? '🎙️ Voice note' : (msg.imageUrl != null ? '📷 Foto' : msg.text);
+      final preview = msg.type == MessageType.voice ? '🎙️ Voice note' : (msg.type == MessageType.sticker ? '😎 Stiker' : (msg.imageUrl != null ? '📷 Foto' : msg.text));
       PushService.notifyPartner(title: AuthService().myName, body: preview);
     });
     _msgController.clear();
@@ -149,26 +153,37 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _pickSticker() {
-    const stickers = ['❤️', '😍', '🥰', '😘', '💕', '💑', '🥺', '😭', '😂', '🤣', '🔥', '✨', '🌹', '💍', '😻', '🤩', '😴', '🤗', '😋', '🙏', '👏', '🫶', '💋', '🎂', '🎁', '🌙', '⭐', '🥳'];
+    const emojis = ['❤️', '😍', '🥰', '😘', '💕', '💑', '🥺', '😭', '😂', '🤣', '🔥', '✨', '🌹', '💍', '😻', '🤩', '😴', '🤗', '😋', '🙏', '👏', '🫶', '💋', '🎂', '🎁', '🌙', '⭐', '🥳'];
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: DyKalTheme.background,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Stiker', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: stickers.map((e) => GestureDetector(
-              onTap: () { Navigator.pop(context); _sendMessage(sticker: e); },
-              child: Container(width: 52, height: 52, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: DyKalTheme.borderSoft)), alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
-            )).toList()),
-            const SizedBox(height: 8),
-          ]),
-        ),
+      builder: (_) => StickerSheet(
+        emojis: emojis,
+        onEmoji: (e) { Navigator.pop(context); _sendMessage(sticker: e); },
+        onSendLocal: (f) { Navigator.pop(context); _sendLocalSticker(f); },
+        onMake: () { Navigator.pop(context); _buatStiker(); },
       ),
     );
+  }
+
+  Future<void> _buatStiker() async {
+    final file = await Navigator.push<File>(context, MaterialPageRoute(builder: (_) => const GalleryPickerScreen()));
+    if (file == null || !mounted) return;
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => StickerEditScreen(image: file)));
+  }
+
+  Future<void> _sendLocalSticker(File f) async {
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B8A))));
+    final url = await CloudinaryService().uploadImage(f, folder: 'dykal/stiker');
+    if (!mounted) return;
+    Navigator.pop(context);
+    if (url != null) {
+      _sendMessage(stickerUrl: url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal upload stiker')));
+    }
   }
 
   Future<void> _startRec() async {
@@ -212,7 +227,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     if (_coupleId.isEmpty || _partnerId.isEmpty) {
-      return Scaffold(body: Center(child: Text('Pasangan belum terhubung', style: TextStyle(color: DyKalTheme.textGrey))));
+      return Scaffold(body: Center(child: Text('Belum terhubung', style: TextStyle(color: DyKalTheme.textGrey))));
     }
     return Scaffold(
       backgroundColor: DyKalTheme.background,

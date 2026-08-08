@@ -60,6 +60,7 @@ dependencies:
   shared_preferences: ^2.2.2 # simpan preferensi tema (dark/light)
   connectivity_plus: ^6.0.5 # cek koneksi (popup no internet saat kirim)
   share_plus: ^10.0.0 # share foto dari album
+  photo_manager: ^2.8.0 # custom gallery picker (album + image/video)
   flutter_local_notifications: ^19.5.0 # Notif ultah (fix #2329 build error, mulai 17.2.1)
   timezone: ^0.10.1 # (dinaikkan: dibutuhkan flutter_local_notifications ^19.5.0)
   swipe_to: ^1.0.2 # Swipe to reply

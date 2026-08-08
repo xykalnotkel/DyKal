@@ -87,9 +87,9 @@ class _PairingScreenState extends State<PairingScreen> {
         const SizedBox(height: 16),
         Image.asset('assets/illustrations/webp/pairing.webp', width: 260, height: 140, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(height: 140)),
         const SizedBox(height: 8),
-        Text(waiting ? "Bagikan Kode ke Pasangan" : (isCreating ? "Hubungkan dengan Pasangan" : "Masukkan Kode Pasangan"), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18), textAlign: TextAlign.center),
+        Text(waiting ? "Bagikan Kode" : (isCreating ? "Hubungkan Akun" : "Masukkan Kode"), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18), textAlign: TextAlign.center),
         const SizedBox(height: 6),
-        Text(waiting ? "Tunggu Ayang masukin kode ini. Layar pindah otomatis saat dia bergabung." : (isCreating ? "Bikin kode, lalu kirim ke Ayang untuk menghubungkan akun kalian." : "Masukkan 4 huruf dari kode Ayang."), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12, height: 1.5), textAlign: TextAlign.center),
+        Text(waiting ? "Bagikan kode ini. Layar pindah otomatis saat ia bergabung." : (isCreating ? "Bikin kode lalu kirim untuk menghubungkan akun kalian." : "Masukkan 4 huruf kodenya."), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12, height: 1.5), textAlign: TextAlign.center),
         const SizedBox(height: 20),
 
         if (waiting) ...[
@@ -115,7 +115,7 @@ class _PairingScreenState extends State<PairingScreen> {
         const SizedBox(height: 14),
         Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16), decoration: BoxDecoration(color: DyKalTheme.background, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.primary.withOpacity(0.2), width: 1.5)), child: Text(code, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 26, letterSpacing: 3, color: Color(0xFFFF6B8A)))),
         const SizedBox(height: 14),
-        Row(children: [Expanded(child: OutlinedButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Kode disalin"); }, icon: const Icon(Icons.content_copy, size: 16), label: const Text("Salin"))), const SizedBox(width: 10), Expanded(child: FilledButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Tempel & kirim ke Ayang"); }, icon: const Icon(Icons.share, size: 16), label: const Text("Bagikan")))]),
+        Row(children: [Expanded(child: OutlinedButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Kode disalin"); }, icon: const Icon(Icons.content_copy, size: 16), label: const Text("Salin"))), const SizedBox(width: 10), Expanded(child: FilledButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Kode siap dikirim"); }, icon: const Icon(Icons.share, size: 16), label: const Text("Bagikan")))]),
       ]),
     );
   }
@@ -142,7 +142,7 @@ class _PairingScreenState extends State<PairingScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
       child: Column(children: [
-        const Text("Masukkan 4 huruf kode dari Ayang", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const Text("Masukkan 4 huruf kodenya", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         const SizedBox(height: 12),
         // Auto-prefix DYKAL- + 4 huruf uppercase
         TextField(

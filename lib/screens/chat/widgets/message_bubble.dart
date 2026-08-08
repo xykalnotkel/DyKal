@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
+import '../../../services/sticker_store.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -46,18 +47,33 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
-    // Stiker (emoji besar)
+    // Pesan sistem: log panggilan / log pesan dihapus (tengah, tanpa bubble)
+    if (message.type == MessageType.system) {
+      return Align(
+        alignment: Alignment.center,
+        child: Container(margin: const EdgeInsets.symmetric(vertical: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5), decoration: BoxDecoration(color: DyKalTheme.textGrey.withOpacity(0.12), borderRadius: BorderRadius.circular(12)), child: Text(message.text, style: TextStyle(fontSize: 11, color: DyKalTheme.textGrey, fontWeight: FontWeight.w500))),
+      );
+    }
+
+    // Stiker (emoji besar atau gambar stiker tanpa bubble)
     if (message.type == MessageType.sticker) {
       return Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
+          onTap: () { if (!isMe && message.imageUrl != null) _addStikerMenu(); },
           onLongPress: () => _showOptions(context),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
-              Text(message.text, style: const TextStyle(fontSize: 64)),
+              if (message.imageUrl != null)
+                CachedNetworkImage(imageUrl: message.imageUrl!, width: 140, height: 140, fit: BoxFit.contain, placeholder: (_, __) => const SizedBox(width: 140, height: 140, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B8A)))))
+              else
+                Text(message.text, style: const TextStyle(fontSize: 64)),
               const SizedBox(height: 2),
-              Text(_formatTime(message.createdAt), style: TextStyle(fontSize: 10, color: DyKalTheme.textGrey)),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(_formatTime(message.createdAt), style: TextStyle(fontSize: 10, color: DyKalTheme.textGrey)),
+                if (isMe) ...[const SizedBox(width: 4), _statusIcon()],
+              ]),
             ]),
           ),
         ),
@@ -241,6 +257,21 @@ class MessageBubble extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: color, size: 24), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500), textAlign: TextAlign.center)]),
       ),
     );
+  }
+
+  void _addStikerMenu() {
+    if (message.imageUrl == null) return;
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      content: const Text('Tambahkan stiker ini ke koleksimu?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+        FilledButton(onPressed: () async {
+          Navigator.pop(ctx);
+          final p = await StickerStore.addFromUrl(message.imageUrl!);
+          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(p == null ? 'Gagal menambah stiker' : 'Stiker ditambahkan ✅')));
+        }, child: const Text('Tambah')),
+      ],
+    ));
   }
 
   void _editDialog(BuildContext context) {

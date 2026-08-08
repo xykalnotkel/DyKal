@@ -15,7 +15,7 @@ class IncomingCallScreen extends StatefulWidget {
 
 class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProviderStateMixin {
   String _type = 'video';
-  String _callerName = 'Ayang';
+  String _callerName = '';
   StreamSubscription? _sub;
   final call = DyKalCallService();
   bool _gone = false;
@@ -39,7 +39,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
       }
       if (mounted) setState(() {
         _type = (data['type'] as String?) ?? 'video';
-        _callerName = (data['callerName'] as String?) ?? 'Ayang';
+        _callerName = (data['callerName'] as String?) ?? '';
       });
     });
   }

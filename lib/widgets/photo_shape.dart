@@ -26,6 +26,16 @@ PhotoShape shapeFromName(String? s) => PhotoShape.values.firstWhere(
       orElse: () => PhotoShape.bulat,
     );
 
+/// Clipper publik per bentuk (dipakai album cover placeholder dsb.)
+CustomClipper<Path> photoShapeClipper(PhotoShape s) {
+  switch (s) {
+    case PhotoShape.love: return const _HeartClipper();
+    case PhotoShape.abstrak: return const _BlobClipper();
+    case PhotoShape.bunga: return const _FlowerClipper();
+    case PhotoShape.bulat: return const _CircleClipper();
+  }
+}
+
 /// Foto dengan bingkai bentuk (Love/Bulat/Abstrak/Bunga) + badge AI di pojok.
 class ShapedPhoto extends StatelessWidget {
   final String url;

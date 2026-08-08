@@ -29,7 +29,7 @@ class LetterScreen extends StatelessWidget {
               itemCount: docs.length,
               itemBuilder: (_, i) {
                 final data = docs[i].data() as Map<String, dynamic>;
-                final fromName = data['fromName'] as String? ?? 'Ayang';
+                final fromName = data['fromName'] as String? ?? '';
                 final isLoved = data['isLoved'] as bool? ?? false;
                 final created = (data['createdAt'] as Timestamp?)?.toDate();
                 final text = data['text'] as String? ?? '';
@@ -85,7 +85,7 @@ class LetterScreen extends StatelessWidget {
           Image.asset('assets/illustrations/webp/letter.webp', width: 80, height: 80, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.mail, size: 48, color: Color(0xFFFF6B8A))),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [const Text("Tulis surat untuk Ayang", style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 6), Icon(Icons.favorite, size: 14, color: DyKalTheme.primary)]),
+            Row(children: [const Text("Tulis Surat", style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 6), Icon(Icons.favorite, size: 14, color: DyKalTheme.primary)]),
             const SizedBox(height: 4),
             Text("Ketuk surat untuk membuka dengan segel love ✉️", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
           ])),

@@ -55,6 +55,18 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
+  Future<void> _endCallLog() async {
+    final coupleId = AuthService().coupleId ?? '';
+    if (coupleId.isEmpty) return;
+    final connected = call.remoteStream != null;
+    final text = connected ? '📞 Panggilan video • $_time' : '📵 Panggilan video tidak terjawab';
+    try {
+      await FirebaseFirestore.instance.collection('chats/$coupleId/messages').add({
+        'id': 'log_${DateTime.now().millisecondsSinceEpoch}', 'fromId': AuthService().myId, 'toId': '', 'text': text, 'type': 'system', 'status': 'read', 'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
   void _onChanged() {
     if (!mounted) return;
     _local.srcObject = call.localStream;
@@ -110,7 +122,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             Container(width: 120, height: 120, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: DyKalTheme.dykalGradient),
               child: const Center(child: Icon(Icons.videocam, color: Colors.white, size: 40))),
             const SizedBox(height: 16),
-            Text(AuthService().partnerName ?? 'Ayang', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(AuthService().partnerName ?? '', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance.doc('presence/${AuthService().partnerId}').snapshots(),
@@ -166,7 +178,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           ]),
           const SizedBox(height: 22),
           GestureDetector(
-            onTap: () { call.hangUp(); Navigator.pop(context); },
+            onTap: () { _endCallLog(); call.hangUp(); Navigator.pop(context); },
             child: Container(width: 68, height: 68, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
               child: const Icon(Icons.call_end, color: Colors.white, size: 28)),
           ),

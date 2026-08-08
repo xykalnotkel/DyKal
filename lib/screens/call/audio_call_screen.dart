@@ -75,10 +75,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
         Container(
           width: 140, height: 140,
           decoration: BoxDecoration(shape: BoxShape.circle, gradient: DyKalTheme.dykalGradient, boxShadow: [BoxShadow(color: DyKalTheme.primary.withOpacity(0.4), blurRadius: 30)]),
-          child: Center(child: Text((AuthService().partnerName ?? 'Ayang')[0], style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w800, color: Colors.white))),
+          child: Center(child: Text((AuthService().partnerName ?? '?').isNotEmpty ? (AuthService().partnerName ?? '?')[0] : '?', style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w800, color: Colors.white))),
         ),
         const SizedBox(height: 16),
-        Text(AuthService().partnerName ?? 'Ayang', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
+        Text(AuthService().partnerName ?? '', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.graphic_eq, color: Colors.white70, size: 14),

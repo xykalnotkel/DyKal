@@ -156,7 +156,7 @@ class FCMService {
         // Cek apakah app sedang di chat screen? bisa skip
         // Tampilkan local notif
         final text = data['text'] ?? (data['imageUrl'] != null ? 'Foto' : 'Pesan baru');
-        _showLocalChatNotif(data['fromName'] ?? 'Ayang', text);
+        _showLocalChatNotif(data['fromName'] ?? '', text);
       });
   }
 

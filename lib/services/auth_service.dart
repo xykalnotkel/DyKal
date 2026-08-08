@@ -114,7 +114,7 @@ class AuthService {
     await coupleRef.update({
       'members': FieldValue.arrayUnion([uid]),
       'pairedAt': FieldValue.serverTimestamp(),
-      'displayNameB': _auth.currentUser?.displayName ?? 'Ayang',
+      'displayNameB': _auth.currentUser?.displayName ?? '',
       'photoB': myPhotoUrl,
     });
 
@@ -143,7 +143,7 @@ class AuthService {
         partnerId = others.isNotEmpty ? others.first : null;
         if (partnerId != null && partnerId!.isNotEmpty) {
           final pSnap = await _db.doc('users/$partnerId').get();
-          partnerName = pSnap.data()?['displayName'] ?? 'Ayang';
+          partnerName = pSnap.data()?['displayName'] ?? '';
           partnerPhotoUrl = pSnap.data()?['photoUrl'] as String?;
         }
       }

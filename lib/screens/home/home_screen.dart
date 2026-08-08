@@ -9,7 +9,7 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   String _myName(Map<String, dynamic>? d) => d?['displayNameA'] as String? ?? AuthService().myName;
-  String _partnerName(Map<String, dynamic>? d) => d?['displayNameB'] as String? ?? 'Ayang';
+  String _partnerName(Map<String, dynamic>? d) => d?['displayNameB'] as String? ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +152,7 @@ class HomeScreen extends StatelessWidget {
           FilledButton.icon(
             onPressed: () => Navigator.pushNamed(context, '/chat'),
             icon: const Icon(Icons.chat, size: 16),
-            label: const Text("Chat dengan Ayang"),
+            label: const Text("Mulai Chat"),
           ),
         ])),
         Image.asset('assets/illustrations/webp/home_hero.webp', width: 110, height: 110, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 110, height: 110)),
@@ -216,7 +216,7 @@ class HomeScreen extends StatelessWidget {
         final bA = (d['birthdayA'] as Timestamp?)?.toDate();
         final bB = (d['birthdayB'] as Timestamp?)?.toDate();
         final nameA = d['displayNameA'] as String? ?? 'Aku';
-        final nameB = d['displayNameB'] as String? ?? 'Ayang';
+        final nameB = d['displayNameB'] as String? ?? '';
         final isBA = bA != null && bA.month == now.month && bA.day == now.day;
         final isBB = bB != null && bB.month == now.month && bB.day == now.day;
         if (!isBA && !isBB) return const SizedBox.shrink();

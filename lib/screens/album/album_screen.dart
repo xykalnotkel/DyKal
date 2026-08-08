@@ -80,7 +80,10 @@ class AlbumScreen extends StatelessWidget {
                       return GestureDetector(
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AlbumDetailScreen(albumId: id, albumName: name))),
                         child: Column(children: [
-                          Expanded(child: Center(child: cover != null ? ShapedPhoto(url: cover, shape: shape, size: 130) : Container(width: 130, height: 130, decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: shape == PhotoShape.bulat ? BoxShape.circle : BoxShape.rectangle, borderRadius: shape == PhotoShape.bulat ? null : BorderRadius.circular(20)), child: const Center(child: Icon(Icons.photo_library, color: Colors.white70, size: 36))))),
+                          Expanded(child: Center(child: cover != null
+                            ? ShapedPhoto(url: cover, shape: shape, size: 130)
+                            : ClipPath(clipper: photoShapeClipper(shape), child: Container(width: 130, height: 130, decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient), child: const Center(child: Icon(Icons.photo_library, color: Colors.white70, size: 36))))))
+                          ,
                           const SizedBox(height: 6),
                           Row(mainAxisSize: MainAxisSize.min, children: [
                             Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),

@@ -90,7 +90,7 @@ function b64ToBuf(b64) {
   return bytes;
 }
 async function importPkcs8(pem) {
-  const contents = String(pem).replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace(/\s+/g, '');
+  const contents = String(pem).replace(/\\n/g, '\n').replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace(/\s+/g, '');
   const der = b64ToBuf(contents);
   return crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
 }

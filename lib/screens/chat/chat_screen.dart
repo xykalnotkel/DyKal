@@ -60,15 +60,15 @@ class _ChatScreenState extends State<ChatScreen> {
     FirebaseFirestore.instance.doc('presence/$_myId').set({'isTyping': v}, SetOptions(merge: true));
   }
 
-  void _sendMessage({String? imageUrl, bool viewOnce = false, String? voiceUrl, int? voiceDuration, String? text}) {
+  void _sendMessage({String? imageUrl, bool viewOnce = false, String? voiceUrl, int? voiceDuration, String? text, String? sticker}) {
     final body = text ?? _msgController.text.trim();
-    if (body.isEmpty && imageUrl == null && voiceUrl == null) return;
+    if (body.isEmpty && imageUrl == null && voiceUrl == null && sticker == null) return;
     final msg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       fromId: _myId,
       toId: _partnerId,
-      text: voiceUrl != null ? '' : body,
-      type: voiceUrl != null ? MessageType.voice : (imageUrl != null ? (viewOnce ? MessageType.viewOnce : MessageType.image) : MessageType.text),
+      text: sticker ?? (voiceUrl != null ? '' : body),
+      type: sticker != null ? MessageType.sticker : (voiceUrl != null ? MessageType.voice : (imageUrl != null ? (viewOnce ? MessageType.viewOnce : MessageType.image) : MessageType.text)),
       imageUrl: imageUrl,
       voiceUrl: voiceUrl,
       voiceDuration: voiceDuration,
@@ -96,6 +96,29 @@ class _ChatScreenState extends State<ChatScreen> {
     final res = await Navigator.push<Map<String, dynamic>>(context, MaterialPageRoute(builder: (_) => ImageSendScreen(image: File(xfile.path))));
     if (!mounted || res == null) return;
     _sendMessage(imageUrl: res['url'] as String, viewOnce: res['viewOnce'] as bool, text: (res['caption'] as String?)?.isEmpty == true ? null : res['caption'] as String?);
+  }
+
+  void _pickSticker() {
+    const stickers = ['❤️', '😍', '🥰', '😘', '💕', '💑', '🥺', '😭', '😂', '🤣', '🔥', '✨', '🌹', '💍', '😻', '🤩', '😴', '🤗', '😋', '🙏', '👏', '🫶', '💋', '🎂', '🎁', '🌙', '⭐', '🥳'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DyKalTheme.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Stiker', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: stickers.map((e) => GestureDetector(
+              onTap: () { Navigator.pop(context); _sendMessage(sticker: e); },
+              child: Container(width: 52, height: 52, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: DyKalTheme.borderSoft)), alignment: Alignment.center, child: Text(e, style: const TextStyle(fontSize: 28))),
+            )).toList()),
+            const SizedBox(height: 8),
+          ]),
+        ),
+      ),
+    );
   }
 
   Future<void> _startRec() async {
@@ -248,6 +271,7 @@ class _ChatScreenState extends State<ChatScreen> {
         decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -2))]),
         child: Row(children: [
           IconButton(onPressed: _pickImage, icon: Icon(Icons.image, color: DyKalTheme.primary, size: 22), tooltip: 'Kirim foto'),
+          IconButton(onPressed: _pickSticker, icon: Icon(Icons.emoji_emotions_outlined, color: DyKalTheme.primary, size: 22), tooltip: 'Stiker'),
           Expanded(child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(color: DyKalTheme.background, borderRadius: BorderRadius.circular(24)),

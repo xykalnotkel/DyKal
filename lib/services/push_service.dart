@@ -8,7 +8,7 @@ import 'auth_service.dart';
 /// Aktif setelah kamu deploy Worker & mengisi workerUrl di bawah.
 class PushService {
   /// Ganti dengan URL Worker kamu (lihat cloudflare/README.md).
-  static const String workerUrl = 'https://dykal-push.example.workers.dev';
+  static const String workerUrl = 'https://dykal.akuntiktok76y.workers.dev';
 
   static bool get _enabled =>
       workerUrl.contains('workers.dev') && !workerUrl.contains('example');

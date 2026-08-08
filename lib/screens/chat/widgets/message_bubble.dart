@@ -43,6 +43,24 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
+    // Stiker (emoji besar)
+    if (message.type == MessageType.sticker) {
+      return Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: GestureDetector(
+          onLongPress: () => _showOptions(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
+              Text(message.text, style: const TextStyle(fontSize: 64)),
+              const SizedBox(height: 2),
+              Text(_formatTime(message.createdAt), style: TextStyle(fontSize: 10, color: DyKalTheme.textGrey)),
+            ]),
+          ),
+        ),
+      );
+    }
+
     // View Once handling
     if (message.isViewOnce && !isMe && !message.viewOnceOpened) {
       return Align(

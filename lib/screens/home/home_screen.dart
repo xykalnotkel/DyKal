@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../album/album_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -47,6 +49,8 @@ class HomeScreen extends StatelessWidget {
 
         // HERO + tombol Chat
         SliverToBoxAdapter(child: _hero(context)),
+        // CERITA ALBUM (story)
+        SliverToBoxAdapter(child: _storiesRow(context)),
         // ANNIVERSARY
         SliverToBoxAdapter(child: _anniversary()),
         // ULTAH
@@ -56,6 +60,50 @@ class HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(child: _stats()),
         SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
+    );
+  }
+
+  Widget _storiesRow(BuildContext context) {
+    final coupleId = AuthService().coupleId ?? '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SizedBox(
+        height: 112,
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('couples/$coupleId/albums').orderBy('createdAt', descending: true).snapshots(),
+          builder: (_, snap) {
+            final docs = snap.data?.docs ?? [];
+            if (docs.isEmpty) return const SizedBox.shrink();
+            return ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: docs.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 14),
+              itemBuilder: (_, i) {
+                final data = docs[i].data() as Map<String, dynamic>;
+                final name = data['name'] as String? ?? 'Album';
+                final cover = data['coverUrl'] as String?;
+                return GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AlbumDetailScreen(albumId: docs[i].id, albumName: name))),
+                  child: Column(children: [
+                    Container(
+                      width: 72, height: 72,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle),
+                      child: Container(
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.background, image: cover != null ? DecorationImage(image: CachedNetworkImageProvider(cover), fit: BoxFit.cover) : null),
+                        child: cover == null ? Center(child: Icon(Icons.photo_library, color: DyKalTheme.primary)) : null,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(width: 74, child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+                  ]),
+                );
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 

@@ -1,232 +1,224 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
-import '../../services/birthday_service.dart';
+import '../../services/auth_service.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
 
-class _HomeScreenState extends State<HomeScreen> {
-  Map<String, dynamic>? birthdayToday;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkBirthday();
-  }
-
-  Future<void> _checkBirthday() async {
-    final res = await BirthdayService().checkTodayIsBirthday();
-    if (res != null) setState(() => birthdayToday = res);
-  }
+  String _myName(Map<String, dynamic>? d) => d?['displayNameA'] as String? ?? AuthService().myName;
+  String _partnerName(Map<String, dynamic>? d) => d?['displayNameB'] as String? ?? 'Ayang';
 
   @override
   Widget build(BuildContext context) {
+    final coupleId = AuthService().coupleId;
     return CustomScrollView(
       slivers: [
-        // TOPBAR SEAMLESS - Tanpa garis, background nyatu
         SliverAppBar(
           floating: true,
-          pinned: false,
           backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          title: Row(
-            children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  gradient: DyKalTheme.dykalGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.favorite, color: Colors.white, size: 18),
+          title: Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text("DyKal", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              StreamBuilder<DocumentSnapshot>(
+                stream: coupleId == null ? null : FirebaseFirestore.instance.doc('couples/$coupleId').snapshots(),
+                builder: (context, snap) {
+                  final d = snap.data?.data() as Map<String, dynamic>?;
+                  final name = _partnerName(d);
+                  return Text("Kamu & $name", style: TextStyle(fontSize: 11, color: DyKalTheme.textGrey));
+                },
               ),
-              SizedBox(width: 10),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text("DyKal", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                Text("Kamu & Dia • 365 hari", style: TextStyle(fontSize: 11, color: DyKalTheme.textGrey)),
-              ]),
-            ],
-          ),
+            ]),
+          ]),
           actions: [
-            IconButton(onPressed: (){}, icon: Icon(Icons.notifications, color: DyKalTheme.textDark)),
-            IconButton(onPressed: (){}, icon: Icon(Icons.settings, color: DyKalTheme.textDark)),
-            SizedBox(width: 8),
+            IconButton(onPressed: () => Navigator.pushNamed(context, '/chat'), icon: Icon(Icons.chat_bubble_outline, color: DyKalTheme.textDark)),
+            IconButton(onPressed: () => Navigator.pushNamed(context, '/profile'), icon: Icon(Icons.settings, color: DyKalTheme.textDark)),
+            const SizedBox(width: 4),
           ],
         ),
 
-        // BIRTHDAY BANNER OTOMATIS - Custom size 80x80
-        if (birthdayToday != null)
-          SliverToBoxAdapter(
-            child: Container(
-              margin: EdgeInsets.all(16),
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: DyKalTheme.loveGradient,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: DyKalTheme.primary.withOpacity(0.3), blurRadius: 20, offset: Offset(0,8))],
-              ),
-              child: Row(children: [
-                Image.asset('assets/illustrations/webp/birthday.webp', width: 80, height: 80, fit: BoxFit.contain),
-                SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Icon(Icons.cake, color: Colors.white, size: 18),
-                    SizedBox(width: 6),
-                    Text("Selamat Ulang Tahun", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                  ]),
-                  SizedBox(height: 4),
-                  Text("Hari ini ulang tahun ${birthdayToday!['who']}. Kirim surat cinta yuk", style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
-                ])),
-              ]),
-            ),
-          ),
-
-        // HERO CARD - Ilustrasi custom 110x110
-        SliverToBoxAdapter(
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: DyKalTheme.borderSoft),
-            ),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Text("Hai, Kalian Berdua", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                  SizedBox(width: 6),
-                  Icon(Icons.favorite, color: DyKalTheme.primary, size: 18),
-                ]),
-                SizedBox(height: 6),
-                Text("Semoga harimu indah. Sudah kirim kabar ke dia hari ini?", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 13)),
-                SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: (){},
-                  icon: Icon(Icons.send, size: 16),
-                  label: Text("Kirim Surat"),
-                ),
-              ])),
-              Image.asset('assets/illustrations/webp/home_hero.webp', width: 110, height: 110, fit: BoxFit.contain),
-            ]),
-          ),
-        ),
-
-        // ONBOARDING / ANNIVERSARY CARD - Ilustrasi custom 100x100
-        SliverToBoxAdapter(
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: DyKalTheme.secondary.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: DyKalTheme.secondary.withOpacity(0.15)),
-            ),
-            child: Row(children: [
-              Image.asset('assets/illustrations/webp/anniversary.webp', width: 72, height: 72, fit: BoxFit.contain),
-              SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.event_available, color: DyKalTheme.secondary, size: 16),
-                  SizedBox(width: 6),
-                  Text("365 Hari Bersama", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                ]),
-                SizedBox(height: 4),
-                Text("Anniversary kalian 14 Feb • 191 hari lagi", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
-              ])),
-              Icon(Icons.chevron_right, color: DyKalTheme.textGrey, size: 18),
-            ]),
-          ),
-        ),
-
-        // QUICK STATS - Icons modern rounded
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(children: [
-              _statCard(Icons.chat, "1.2k", "Chat"),
-              SizedBox(width: 12),
-              _statCard(Icons.collections, "342", "Foto"),
-              SizedBox(width: 12),
-              _statCard(Icons.mail, "48", "Surat"),
-            ]),
-          ),
-        ),
-
-        // MEMORY TIMELINE - Icons rounded
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Row(children: [
-              Icon(Icons.history, size: 18, color: DyKalTheme.textDark),
-              SizedBox(width: 8),
-              Text("Kenangan Terakhir", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            ]),
-          ),
-        ),
-        SliverList.builder(
-          itemCount: 3,
-          itemBuilder: (_, i) => Container(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
-            child: Row(children: [
-              ClipRRect(borderRadius: BorderRadius.circular(12), child: Container(width: 60, height: 60, color: DyKalTheme.borderSoft, child: Icon(Icons.image, color: DyKalTheme.textGrey))),
-              SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Text("Pantai Selong", style: TextStyle(fontWeight: FontWeight.w600)),
-                  SizedBox(width: 6),
-                  Icon(Icons.camera_alt, size: 12, color: DyKalTheme.textGrey),
-                ]),
-                Text("7 Agustus 2026 • 2 foto baru", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
-              ])),
-              Icon(Icons.favorite, color: DyKalTheme.primary, size: 20),
-            ]),
-          ),
-        ),
-
-        // PRIVATE SECURE CARD - Ilustrasi love_lock 56x56
-        SliverToBoxAdapter(
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
-            child: Row(children: [
-              Image.asset('assets/illustrations/webp/love_lock.webp', width: 56, height: 56, fit: BoxFit.contain),
-              SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.lock, size: 14, color: DyKalTheme.primary),
-                  SizedBox(width: 6),
-                  Text("Private & Aman", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                ]),
-                Text("Hanya kalian berdua yang bisa lihat", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
-              ])),
-              Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: DyKalTheme.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.verified_user, size: 12, color: DyKalTheme.success), SizedBox(width: 4), Text("Terenkripsi", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DyKalTheme.success))])),
-            ]),
-          ),
-        ),
-
-        SliverToBoxAdapter(child: SizedBox(height: 100)),
+        // HERO + tombol Chat
+        SliverToBoxAdapter(child: _hero(context)),
+        // ANNIVERSARY
+        SliverToBoxAdapter(child: _anniversary()),
+        // ULTAH
+        SliverToBoxAdapter(child: _birthday()),
+        // STATISTIK
+        SliverToBoxHeader(label: "Statistik Kalian"),
+        SliverToBoxAdapter(child: _stats()),
+        SliverToBox(child: SizedBox(height: 110)),
       ],
     );
   }
 
-  Widget _statCard(IconData icon, String value, String label) {
+  Widget _hero(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: DyKalTheme.borderSoft),
+      ),
+      child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Text("Hai, Kalian Berdua", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            const SizedBox(width: 6),
+            Icon(Icons.favorite, color: DyKalTheme.primary, size: 18),
+          ]),
+          const SizedBox(height: 6),
+          Text("Semoga harimu indah. Sapa dia sekarang 💕", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 13)),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: () => Navigator.pushNamed(context, '/chat'),
+            icon: const Icon(Icons.chat, size: 16),
+            label: const Text("Chat dengan Ayang"),
+          ),
+        ])),
+        Image.asset('assets/illustrations/webp/home_hero.webp', width: 110, height: 110, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 110, height: 110)),
+      ]),
+    );
+  }
+
+  Widget _anniversary() {
+    final coupleId = AuthService().coupleId;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: coupleId == null ? null : FirebaseFirestore.instance.doc('couples/$coupleId').snapshots(),
+      builder: (context, snap) {
+        final d = snap.data?.data() as Map<String, dynamic>?;
+        final ann = d == null ? null : (d['anniversary'] as Timestamp?)?.toDate();
+        String subtitle = 'Atur tanggal anniversary di Profil';
+        String title = 'Anniversary Kalian';
+        int days = 0;
+        if (ann != null) {
+          days = DateTime.now().difference(ann).inDays;
+          title = 'Hari ke-${days < 0 ? 0 : days} Bersama';
+          // hitung ulang tahun anniversary berikutnya
+          DateTime next = DateTime(DateTime.now().year, ann.month, ann.day);
+          if (next.isBefore(DateTime.now())) next = DateTime(DateTime.now().year + 1, ann.month, ann.day);
+          final left = next.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+          subtitle = '${ann.day}/${ann.month}/${ann.year} • $left hari lagi ke tahun depan';
+        }
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: DyKalTheme.secondary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DyKalTheme.secondary.withOpacity(0.15)),
+          ),
+          child: Row(children: [
+            Image.asset('assets/illustrations/webp/anniversary.webp', width: 64, height: 64, fit: BoxFit.contain, errorBuilder: (_, __, ___) => SizedBox(width: 64, height: 64, child: Icon(Icons.cake, color: DyKalTheme.secondary))),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.event_available, color: DyKalTheme.secondary, size: 16),
+                const SizedBox(width: 6),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              ]),
+              const SizedBox(height: 4),
+              Text(subtitle, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+            ])),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _birthday() {
+    final coupleId = AuthService().coupleId;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: coupleId == null ? null : FirebaseFirestore.instance.doc('couples/$coupleId').snapshots(),
+      builder: (context, snap) {
+        final d = snap.data?.data() as Map<String, dynamic>?;
+        if (d == null) return const SizedBox.shrink();
+        final now = DateTime.now();
+        final bA = (d['birthdayA'] as Timestamp?)?.toDate();
+        final bB = (d['birthdayB'] as Timestamp?)?.toDate();
+        final nameA = d['displayNameA'] as String? ?? 'Aku';
+        final nameB = d['displayNameB'] as String? ?? 'Ayang';
+        final isBA = bA != null && bA.month == now.month && bA.day == now.day;
+        final isBB = bB != null && bB.month == now.month && bB.day == now.day;
+        if (!isBA && !isBB) return const SizedBox.shrink();
+        final who = isBA ? nameA : nameB;
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: DyKalTheme.loveGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: DyKalTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+          ),
+          child: Row(children: [
+            Image.asset('assets/illustrations/webp/birthday.webp', width: 70, height: 70, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.cake, color: Colors.white, size: 40)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: const [Icon(Icons.cake, color: Colors.white, size: 18), SizedBox(width: 6), Text("Selamat Ulang Tahun", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))]),
+              const SizedBox(height: 4),
+              Text("Hari ini ulang tahun $who. Kirim surat cinta yuk 💌", style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
+            ])),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _stats() {
+    final coupleId = AuthService().coupleId;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(children: [
+        _stat(Icons.chat, () => _countStream('chats/$coupleId/messages'), "Chat"),
+        const SizedBox(width: 12),
+        _stat(Icons.collections, () => _countStream('couples/$coupleId/album'), "Foto"),
+        const SizedBox(width: 12),
+        _stat(Icons.mail, () => _countStream('couples/$coupleId/letters'), "Surat"),
+      ]),
+    );
+  }
+
+  // Stream jumlah dokumen sebuah path
+  Stream<int> _countStream(String path) => FirebaseFirestore.instance.collection(path).snapshots().map((s) => s.docs.length);
+
+  Widget _stat(IconData icon, Stream<int> Function() stream, String label) {
     return Expanded(child: Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
       child: Column(children: [
         Icon(icon, color: DyKalTheme.primary, size: 22),
-        SizedBox(height: 8),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        const SizedBox(height: 8),
+        StreamBuilder<int>(
+          stream: stream(),
+          builder: (_, s) => Text('${s.data ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        ),
         Text(label, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
       ]),
     ));
   }
+}
+
+/// Header section kecil
+class SliverToBoxHeader extends StatelessWidget {
+  final String label;
+  const SliverToBoxHeader({super.key, required this.label});
+  @override
+  Widget build(BuildContext context) => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(children: [
+            Icon(Icons.auto_awesome, size: 16, color: DyKalTheme.primary),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          ]),
+        ),
+      );
 }

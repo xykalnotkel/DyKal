@@ -1,40 +1,50 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/theme.dart';
 import 'widgets/seamless_scaffold.dart';
 import 'widgets/dykal_bottom_nav.dart';
 import 'screens/home/home_screen.dart';
-import 'screens/chat/chat_screen.dart';
 import 'screens/album/album_screen.dart';
 import 'screens/letter/letter_screen.dart';
-import 'screens/call/audio_call_screen.dart';
+import 'screens/profile/profile_screen.dart';
+import 'screens/auth/auth_screen.dart';
+import 'screens/pairing/pairing_screen.dart';
+import 'screens/chat/chat_screen.dart';
 import 'screens/call/video_call_screen.dart';
+import 'screens/call/audio_call_screen.dart';
+import 'screens/call/incoming_call_screen.dart';
+import 'services/auth_service.dart';
 import 'services/birthday_service.dart';
+import 'services/fcm_service.dart';
 
-void main() async {
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Support High Refresh Rate 60/90/120Hz
   try {
-    await FlutterDisplayMode.setHighRefreshRate();
-    final modes = await FlutterDisplayMode.supported;
-    final active = await FlutterDisplayMode.active;
-    // Pilih mode dengan refreshRate tertinggi
-    final highMode = modes.reduce((a, b) => a.refreshRate > b.refreshRate ? a : b);
-    await FlutterDisplayMode.setPreferredMode(highMode);
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (_) {}
 
-  // Firebase init (tanpa Storage, jadi Spark free no CC tetap jalan)
-  await Firebase.initializeApp(
-    // options: DefaultFirebaseOptions.currentPlatform, // generate via flutterfire configure
-  );
+  // High refresh rate 60/90/120Hz
+  try {
+    final modes = await FlutterDisplayMode.supported;
+    final high = modes.reduce((a, b) => a.refreshRate > b.refreshRate ? a : b);
+    await FlutterDisplayMode.setPreferredMode(high);
+  } catch (_) {}
 
   await BirthdayService().init();
 
-  // Status bar seamless - transparan nyatu
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
@@ -53,18 +63,54 @@ class DyKalApp extends StatelessWidget {
       title: 'DyKal',
       debugShowCheckedModeBanner: false,
       theme: DyKalTheme.lightTheme,
-      // Support DPI: MediaQuery auto handle, kita pakai Responsive scaling
-      builder: (context, child) {
-        // Pastikan text tidak pecah di No DPI / high DPI
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
-          child: child!,
-        );
-      },
-      home: MainNav(),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
+        child: child!,
+      ),
+      home: AuthGate(),
       routes: {
-        '/audioCall': (_) => AudioCallScreen(),
+        '/chat': (_) => ChatScreen(),
         '/videoCall': (_) => VideoCallScreen(),
+        '/audioCall': (_) => AudioCallScreen(),
+        '/incomingCall': (_) => IncomingCallScreen(),
+      },
+    );
+  }
+}
+
+/// Splash kecil
+Widget _splash() => Scaffold(
+      backgroundColor: DyKalTheme.background,
+      body: Center(child: CircularProgressIndicator(color: DyKalTheme.primary)),
+    );
+
+/// Gerbang routing otomatis:
+/// belum login -> AuthScreen | login tapi belum couple -> PairingScreen | sudah couple -> MainNav
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: AuthService().authState,
+      builder: (context, authSnap) {
+        if (authSnap.connectionState != ConnectionState.active) return _splash();
+        final user = authSnap.data;
+        if (user == null) return AuthScreen();
+
+        // Inisialisasi FCM sekali per login
+        FCMService().ensureInit();
+
+        return StreamBuilder<String?>(
+          stream: AuthService().coupleIdStream(),
+          builder: (context, cSnap) {
+            if (cSnap.connectionState != ConnectionState.active) return _splash();
+            final cid = cSnap.data;
+            if (cid == null) return PairingScreen();
+            AuthService().coupleId = cid; // pastikan ter-cache untuk semua screen
+            return MainNav();
+          },
+        );
       },
     );
   }
@@ -78,15 +124,47 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int idx = 0;
-  final pages = [HomeScreen(), ChatScreen(), AlbumScreen(), LetterScreen()];
+  StreamSubscription? _callSub;
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService().refresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _listenIncomingCalls());
+  }
+
+  void _listenIncomingCalls() {
+    final coupleId = AuthService().coupleId;
+    final myId = AuthService().myId;
+    if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
+    bool handled = false;
+    _callSub = FirebaseFirestore.instance.doc('calls/$coupleId').snapshots().listen((doc) {
+      if (!mounted) return;
+      final data = doc.data();
+      if (data == null) { handled = false; return; }
+      final callerId = data['callerId'] as String?;
+      final status = data['status'] as String?;
+      if (callerId != myId && status == 'ringing' && !handled) {
+        handled = true;
+        final type = (data['type'] as String?) ?? 'video';
+        Navigator.of(context).pushNamed('/incomingCall', arguments: type);
+      }
+      if (status == 'ended') handled = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _callSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = [HomeScreen(), AlbumScreen(), LetterScreen(), ProfileScreen()];
     return SeamlessScaffold(
-      // SEAMLESS: extendBody true + TopBar background sama dengan body = tanpa garis pemisah
       extendBody: true,
       body: SafeArea(
-        // Hapus top padding untuk seamless, tapi bottom tetap untuk nav
         top: false,
         bottom: false,
         child: IndexedStack(index: idx, children: pages),

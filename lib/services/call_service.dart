@@ -1,192 +1,247 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_constants.dart';
+import 'auth_service.dart';
 
-/// Service Call Audio/Video Lengkap DyKal
-/// Fitur: Atur Volume, Switch Audio<->Video, Filter, Screen Share
-class DyKalCallService {
+/// Service WebRTC dengan signaling via Firestore (top-level doc calls/{coupleId}).
+/// - Caller: startOutgoing -> offer + status 'ringing'
+/// - Callee: acceptIncoming -> answer + status 'answered'
+/// - ICE ditukar via subkoleksi offerCandidates / answerCandidates
+class DyKalCallService extends ChangeNotifier {
+  final _db = FirebaseFirestore.instance;
   RTCPeerConnection? _pc;
-  MediaStream? _localStream;
-  MediaStream? _remoteStream;
-  final _firestore = FirebaseFirestore.instance;
+  MediaStream? localStream;
+  MediaStream? remoteStream;
 
-  // Untuk UI
-  bool isAudioMuted = false;
-  bool isVideoEnabled = true;
-  bool isSpeakerOn = true;
-  bool isScreenSharing = false;
-  double volume = 1.0;
+  String callType = 'video'; // 'audio' | 'video'
+  bool muted = false;
+  bool videoOn = true;
+  bool speakerOn = true;
+  bool screenSharing = false;
+  bool connected = false;
 
-  /// Inisialisasi PeerConnection dengan TURN Gratis
-  Future<RTCPeerConnection> initPeerConnection() async {
-    final config = {
+  StreamSubscription? _ansSub;       // answerCandidates (dipakai caller)
+  StreamSubscription? _offerCandSub; // offerCandidates (dipakai callee)
+  StreamSubscription? _docSub;       // dokumen call (answer / status)
+  bool _remoteDescriptionSet = false;
+
+  String get coupleId => AuthService().coupleId ?? '';
+  String get myId => AuthService().myId;
+  String get partnerId => AuthService().partnerId ?? '';
+
+  // ---------- Inisialisasi koneksi ----------
+  Future<void> _createPc() async {
+    _pc = await createPeerConnection({
       'iceServers': AppConstants.iceServers,
       'sdpSemantics': 'unified-plan',
+    });
+
+    _pc!.onTrack = (e) {
+      if (e.streams.isNotEmpty) {
+        remoteStream = e.streams[0];
+        notifyListeners();
+      }
     };
-    _pc = await createPeerConnection(config);
-    return _pc!;
+    _pc!.onIceCandidate = (c) async {
+      await _db.collection('calls/$coupleId/${_myCandCol()}').add(c.toMap());
+    };
+    _pc!.onConnectionState = (s) {
+      connected = s == RTCPeerConnectionState.RTCPeerConnectionStateConnected;
+      notifyListeners();
+    };
   }
 
-  /// Start Call Audio saja
-  Future<MediaStream> startAudioCall() async {
-    _localStream = await navigator.mediaDevices.getUserMedia({
+  String _myCandCol() {
+    // caller menulis ke offerCandidates, callee ke answerCandidates
+    return _amCaller ? 'offerCandidates' : 'answerCandidates';
+  }
+
+  String _peerCandCol() => _amCaller ? 'answerCandidates' : 'offerCandidates';
+
+  bool get _amCaller => _callerFlag;
+  bool _callerFlag = true;
+
+  Future<void> _addLocalTracks() async {
+    if (localStream == null) return;
+    for (final t in localStream!.getTracks()) {
+      await _pc!.addTrack(t, localStream!);
+    }
+  }
+
+  // ---------- Media lokal ----------
+  Future<void> _openMedia(bool video) async {
+    callType = video ? 'video' : 'audio';
+    final stream = await navigator.mediaDevices.getUserMedia({
       'audio': {
         'echoCancellation': true,
         'noiseSuppression': true,
         'autoGainControl': true,
       },
-      'video': false,
+      'video': video
+          ? {'facingMode': 'user', 'width': {'ideal': 1280}, 'height': {'ideal': 720}, 'frameRate': {'ideal': 30}}
+          : false,
     });
-    isVideoEnabled = false;
-    return _localStream!;
+    localStream = stream;
+    notifyListeners();
   }
 
-  /// Start Video Call
-  Future<MediaStream> startVideoCall({bool withFilter = false}) async {
-    _localStream = await navigator.mediaDevices.getUserMedia({
-      'audio': true,
-      'video': {
-        'facingMode': 'user',
-        'width': {'ideal': 1280},
-        'height': {'ideal': 720},
-        'frameRate': {'ideal': 30},
-      },
+  // ---------- CALLER ----------
+  Future<void> startOutgoing(String type) async {
+    _callerFlag = true;
+    await _openMedia(type == 'video');
+    await _createPc();
+    await _addLocalTracks();
+
+    final offer = await _pc!.createOffer({});
+    await _pc!.setLocalDescription(offer);
+
+    await _db.doc('calls/$coupleId').set({
+      'callerId': myId,
+      'callerName': AuthService().myName,
+      'type': callType,
+      'status': 'ringing',
+      'offer': {'sdp': offer.sdp, 'type': offer.type},
+      'createdAt': FieldValue.serverTimestamp(),
     });
-    isVideoEnabled = true;
-    // Filter akan di-apply di Video Renderer via Shader / GPUImage
-    // Untuk MVP: pakai ColorFilter di Flutter widget
-    return _localStream!;
-  }
 
-  /// Switch Audio -> Video saat call berlangsung (kayak WA)
-  Future<void> switchToVideo() async {
-    if (_localStream == null || _pc == null) return;
-    // Tambah video track baru
-    final videoStream = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': false});
-    final videoTrack = videoStream.getVideoTracks().first;
-    final senders = await _pc!.getSenders();
-    // Cari sender audio, tambah video
-    await _pc!.addTrack(videoTrack, _localStream!);
-    _localStream!.addTrack(videoTrack);
-    isVideoEnabled = true;
-    
-    // Trigger renegotiation via Firestore signaling
-    await _renegotiate();
-  }
-
-  Future<void> switchToAudioOnly() async {
-    if (_localStream == null) return;
-    for (var track in _localStream!.getVideoTracks()) {
-      track.enabled = false;
-      await track.stop();
-      _localStream!.removeTrack(track);
-    }
-    isVideoEnabled = false;
-    await _renegotiate();
-  }
-
-  Future<void> _renegotiate() async {
-    // Buat offer baru dan kirim via Firestore
-    // Implementasi signaling sederhana: koleksi calls/{callId}
-  }
-
-  /// Atur Volume Output (0.0 - 1.0)
-  Future<void> setVolume(double vol) async {
-    volume = vol.clamp(0.0, 1.0);
-    if (_remoteStream != null) {
-      for (var track in _remoteStream!.getAudioTracks()) {
-        // WebRTC tidak ada setVolume native, kita atur via audio element
-        // Di Flutter, atur via RTCVideoRenderer + AudioGain
+    // Dengar jawaban & ICE lawan
+    _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
+      final data = doc.data();
+      if (data == null) return;
+      if (data['status'] == 'ended') { await _cleanup(); return; }
+      final answer = data['answer'];
+      if (answer != null && !_remoteDescriptionSet) {
+        _remoteDescriptionSet = true;
+        await _pc?.setRemoteDescription(RTCSessionDescription(answer['sdp'] as String, answer['type'] as String));
       }
-    }
-    // Untuk speaker/earpiece
-    await Helper.setSpeakerphoneOn(isSpeakerOn);
+    });
+    _ansSub = _db.collection('calls/$coupleId/answerCandidates').snapshots().listen((qs) async {
+      for (final d in qs.docChanges) {
+        if (d.type == DocumentChangeType.added) {
+          await _pc?.addCandidate(RTCIceCandidate.fromMap(d.doc.data()!));
+        }
+      }
+    });
   }
 
-  /// Toggle Speaker / Earpiece
-  Future<void> toggleSpeaker() async {
-    isSpeakerOn = !isSpeakerOn;
-    await Helper.setSpeakerphoneOn(isSpeakerOn);
+  // ---------- CALLEE ----------
+  Future<void> acceptIncoming() async {
+    _callerFlag = false;
+    final docSnap = await _db.doc('calls/$coupleId').get();
+    final data = docSnap.data() as Map<String, dynamic>?;
+    if (data == null) throw Exception('Panggilan sudah berakhir');
+    callType = (data['type'] as String?) ?? 'video';
+
+    await _openMedia(callType == 'video');
+    await _createPc();
+    await _addLocalTracks();
+
+    // Terapkan offer dari lawan
+    final offer = data['offer'] as Map<String, dynamic>?;
+    await _pc!.setRemoteDescription(RTCSessionDescription(offer!['sdp'] as String, offer!['type'] as String));
+
+    final answer = await _pc!.createAnswer({});
+    await _pc!.setLocalDescription(answer);
+    await _db.doc('calls/$coupleId').update({
+      'answer': {'sdp': answer.sdp, 'type': answer.type},
+      'status': 'answered',
+    });
+
+    // Terima ICE lawan (offerCandidates)
+    _offerCandSub = _db.collection('calls/$coupleId/offerCandidates').snapshots().listen((qs) async {
+      for (final d in qs.docChanges) {
+        if (d.type == DocumentChangeType.added) {
+          await _pc?.addCandidate(RTCIceCandidate.fromMap(d.doc.data()!));
+        }
+      }
+    });
+    _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
+      final d = doc.data();
+      if (d == null || d['status'] == 'ended') await _cleanup();
+    });
   }
 
-  /// Mute/Unmute Mic
+  // ---------- Kontrol ----------
   void toggleMute() {
-    isAudioMuted = !isAudioMuted;
-    _localStream?.getAudioTracks().forEach((t) => t.enabled = !isAudioMuted);
+    muted = !muted;
+    for (final t in localStream?.getAudioTracks() ?? <MediaStreamTrack>[]) {
+      t.enabled = !muted;
+    }
+    notifyListeners();
   }
 
-  /// On/Off Kamera
-  void toggleCamera() {
-    isVideoEnabled = !isVideoEnabled;
-    _localStream?.getVideoTracks().forEach((t) => t.enabled = isVideoEnabled);
+  void toggleVideo() {
+    videoOn = !videoOn;
+    for (final t in localStream?.getVideoTracks() ?? <MediaStreamTrack>[]) {
+      t.enabled = videoOn;
+    }
+    notifyListeners();
   }
 
-  /// Switch Kamera Depan/Belakang
-  Future<void> switchCamera() async {
-    await Helper.switchCamera(_localStream!.getVideoTracks().first);
+  Future<void> toggleSpeaker() async {
+    speakerOn = !speakerOn;
+    try { await Helper.setSpeakerphoneOn(speakerOn); } catch (_) {}
+    notifyListeners();
   }
 
-  /// Screen Share kayak WhatsApp (Bagi Layar)
-  Future<void> startScreenShare() async {
-    if (isScreenSharing) return;
+  Future<void> toggleScreenShare() async {
+    if (_pc == null) return;
     try {
-      // Di Android butuh permission foreground + MediaProjection
-      final screenStream = await navigator.mediaDevices.getDisplayMedia({
-        'video': true,
-        'audio': true,
-      });
-      final screenTrack = screenStream.getVideoTracks().first;
-      
-      // Ganti video track di peer connection
-      final senders = await _pc!.getSenders();
-      final videoSender = senders.firstWhere((s) => s.track?.kind == 'video');
-      await videoSender.replaceTrack(screenTrack);
-      
-      isScreenSharing = true;
-      screenTrack.onEnded = () => stopScreenShare();
+      if (!screenSharing) {
+        final screen = await navigator.mediaDevices.getDisplayMedia({'video': true, 'audio': true});
+        final screenTrack = screen.getVideoTracks().first;
+        final sender = (await _pc!.getSenders()).firstWhere((s) => s.track?.kind == 'video');
+        await sender.replaceTrack(screenTrack);
+        screenSharing = true;
+        screenTrack.onEnded = () => toggleScreenShare();
+      } else {
+        final cam = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': false});
+        final camTrack = cam.getVideoTracks().first;
+        final sender = (await _pc!.getSenders()).firstWhere((s) => s.track?.kind == 'video');
+        await sender.replaceTrack(camTrack);
+        screenSharing = false;
+      }
+      notifyListeners();
     } catch (e) {
-      print('Screen share error: $e');
+      if (kDebugMode) print('screen share error: $e');
     }
   }
 
-  Future<void> stopScreenShare() async {
-    if (!isScreenSharing) return;
-    final camStream = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': false});
-    final camTrack = camStream.getVideoTracks().first;
-    final senders = await _pc!.getSenders();
-    final sender = senders.firstWhere((s) => s.track?.kind == 'video');
-    await sender.replaceTrack(camTrack);
-    isScreenSharing = false;
+  // ---------- Akhir panggilan ----------
+  Future<void> hangUp() async {
+    try {
+      await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()});
+    } catch (_) {}
+    await _cleanup();
   }
 
-  /// Filter/Efek Video - Di Flutter kita pakai Widget overlay + ColorFilter
-  /// Untuk filter beneran (beauty, dll) bisa integrasi Banuba atau GPUImage
-  /// Return filter name untuk UI
-  String currentFilter = 'none'; // none, warm, cool, bw, beauty
-  void setFilter(String filter) {
-    currentFilter = filter;
-    // UI akan rebuild dan apply ColorFiltered di RTCVideoView
+  Future<void> declineIncoming() async {
+    try {
+      await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()});
+    } catch (_) {}
+    await _cleanup();
   }
 
-  ColorFilter? getFilterColor() {
-    switch (currentFilter) {
-      case 'warm': return ColorFilter.mode(Color(0xFFFFE0B2).withOpacity(0.3), BlendMode.overlay);
-      case 'cool': return ColorFilter.mode(Color(0xFFB2EBF2).withOpacity(0.25), BlendMode.overlay);
-      case 'bw': return ColorFilter.matrix(<double>[
-        0.2126,0.7152,0.0722,0,0,
-        0.2126,0.7152,0.0722,0,0,
-        0.2126,0.7152,0.0722,0,0,
-        0,0,0,1,0,
-      ]);
-      case 'beauty': return ColorFilter.mode(Color(0xFFFFCCBC).withOpacity(0.15), BlendMode.softLight);
-      default: return null;
+  Future<void> _cleanup() async {
+    await _ansSub?.cancel();
+    await _offerCandSub?.cancel();
+    await _docSub?.cancel();
+    _ansSub = _offerCandSub = _docSub = null;
+    for (final t in [...?localStream?.getTracks(), ...?remoteStream?.getTracks()]) {
+      try { await t.stop(); } catch (_) {}
     }
+    localStream?.dispose();
+    remoteStream?.dispose();
+    await _pc?.close();
+    _pc = null;
+    localStream = remoteStream = null;
   }
 
+  @override
   void dispose() {
-    _localStream?.dispose();
-    _remoteStream?.dispose();
-    _pc?.close();
+    _cleanup();
+    super.dispose();
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:just_audio/just_audio.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
 
@@ -104,6 +104,13 @@ class MessageBubble extends StatelessWidget {
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (message.type == MessageType.voice && message.voiceUrl != null)
+                    _VoicePlayer(
+                      url: message.voiceUrl!,
+                      duration: message.voiceDuration ?? 0,
+                      accent: isMe ? Colors.white : DyKalTheme.primary,
+                      trackColor: isMe ? Colors.white70 : DyKalTheme.textGrey,
+                    ),
                   if (message.imageUrl != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -168,5 +175,102 @@ class MessageBubble extends StatelessWidget {
         if (isMe) ListTile(leading: Icon(Icons.delete, color: Colors.red), title: Text("Hapus Pesan", style: TextStyle(color: Colors.red)), onTap: (){ Navigator.pop(context); onDelete(); }),
       ]),
     ));
+  }
+}
+
+/// Player voice note sederhana (play/pause + progres + durasi)
+class _VoicePlayer extends StatefulWidget {
+  final String url;
+  final int duration; // detik (estimasi)
+  final Color accent;
+  final Color trackColor;
+  const _VoicePlayer({required this.url, required this.duration, required this.accent, required this.trackColor});
+
+  @override
+  State<_VoicePlayer> createState() => _VoicePlayerState();
+}
+
+class _VoicePlayerState extends State<_VoicePlayer> {
+  late final AudioPlayer _player;
+  bool _loading = false;
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+    _player.playerStateStream.listen((s) {
+      final p = s.playing;
+      final proc = s.processingState;
+      if (proc == ProcessingState.completed) {
+        _player.seek(Duration.zero);
+        _player.pause();
+      }
+      if (mounted) setState(() => _playing = p && proc != ProcessingState.completed);
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    try {
+      if (!_playing) {
+        if (_player.audioSource == null) {
+          setState(() => _loading = true);
+          await _player.setAudioSource(AudioSource.uri(Uri.parse(widget.url)));
+          setState(() => _loading = false);
+        }
+        await _player.seek(Duration.zero);
+        await _player.play();
+      } else {
+        await _player.pause();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString();
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dur = widget.duration > 0 ? Duration(seconds: widget.duration) : const Duration(seconds: 1);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        GestureDetector(
+          onTap: _loading ? null : _toggle,
+          child: Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(color: widget.accent.withOpacity(0.18), shape: BoxShape.circle),
+            child: _loading
+                ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: widget.accent))
+                : Icon(_playing ? Icons.pause : Icons.play_arrow, color: widget.accent, size: 20),
+          ),
+        ),
+        const SizedBox(width: 8),
+        StreamBuilder<Duration?>(
+          stream: _player.positionStream,
+          builder: (_, snap) {
+            final pos = snap.data ?? Duration.zero;
+            return Row(children: [
+              Icon(Icons.graphic_eq, size: 16, color: widget.trackColor),
+              const SizedBox(width: 6),
+              Text(_fmt(pos), style: TextStyle(color: widget.trackColor, fontSize: 12)),
+              const SizedBox(width: 4),
+              Text('/ ${_fmt(dur)}', style: TextStyle(color: widget.trackColor, fontSize: 12)),
+            ]);
+          },
+        ),
+      ]),
+    );
   }
 }

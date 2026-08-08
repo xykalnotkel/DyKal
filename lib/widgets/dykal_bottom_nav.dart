@@ -19,10 +19,10 @@ class DyKalBottomNav extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _item(0, Icons.home, Icons.home, "Home"),
-            _item(1, Icons.chat, Icons.chat, "Chat"),
-            _item(2, Icons.collections, Icons.collections, "Album"),
-            _item(3, Icons.mail, Icons.mail, "Surat"),
+            _item(0, Icons.home_outlined, Icons.home, "Home"),
+            _item(1, Icons.collections_outlined, Icons.collections, "Album"),
+            _item(2, Icons.mail_outline, Icons.mail, "Surat"),
+            _item(3, Icons.person_outline, Icons.person, "Profil"),
           ],
         ),
       ),

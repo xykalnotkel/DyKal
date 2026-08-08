@@ -11,9 +11,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// 2. Realtime fallback: setiap chat baru di Firestore → listener di app yang background/foreground akan trigger local notification (jadi tetap ada notif walau tanpa server push)
 /// Untuk push saat app killed (100% reliable) butuh Blaze + Functions, tapi 95% kasus local listener sudah cukup untuk 2 orang.
 class FCMService {
-  final _messaging = FirebaseMessaging.instance;
-  final _local = FlutterLocalNotificationsPlugin();
-  final _db = FirebaseFirestore.instance;
+  static final FCMService _i = FCMService._();
+  FCMService._();
+  factory FCMService() => _i;
+  bool _initialized = false;
+
+  /// Dipanggil dari AuthGate setelah login (idempoten)
+  void ensureInit() {
+    if (_initialized) return;
+    _initialized = true;
+    init();
+  }
 
   Future<void> init() async {
     // 1. Request permission (Android 13+ & iOS)

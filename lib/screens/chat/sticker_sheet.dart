@@ -42,22 +42,22 @@ class _StickerSheetState extends State<StickerSheet> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: DyKalTheme.borderSoft)),
             child: Row(children: [
-              _tab('Emoji', 0, Icons.emoji_emotions_outlined),
-              _tab('Stiker', 1, Icons.image_outlined),
+              _tabBtn('Emoji', 0, Icons.emoji_emotions_outlined),
+              _tabBtn('Stiker', 1, Icons.image_outlined),
             ]),
           ),
           Expanded(child: _tab == 0 ? _emojiGrid() : _localGrid()),
           // Buat stiker
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: widget.onMake, icon: const Icon(Icons.add_reaction_alt_outlined, size: 18), label: const Text('Buat Stiker (dari Galeri)'))),
+            child: SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: widget.onMake, icon: const Icon(Icons.add_reaction_outlined, size: 18), label: const Text('Buat Stiker (dari Galeri)'))),
           ),
         ]),
       ),
     );
   }
 
-  Widget _tab(String label, int idx, IconData icon) {
+  Widget _tabBtn(String label, int idx, IconData icon) {
     final active = _tab == idx;
     return Expanded(child: GestureDetector(onTap: () => setState(() => _tab = idx), child: Container(padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: active ? DyKalTheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(8)), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 16, color: active ? Colors.white : DyKalTheme.textGrey), const SizedBox(width: 6), Text(label, style: TextStyle(color: active ? Colors.white : DyKalTheme.textGrey, fontWeight: FontWeight.w600, fontSize: 12))]))));
   }

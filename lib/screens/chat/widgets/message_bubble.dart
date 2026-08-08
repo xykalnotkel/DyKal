@@ -60,7 +60,7 @@ class MessageBubble extends StatelessWidget {
       return Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
-          onTap: () { if (!isMe && message.imageUrl != null) _addStikerMenu(); },
+          onTap: () { if (!isMe && message.imageUrl != null) _addStikerMenu(context); },
           onLongPress: () => _showOptions(context),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -259,7 +259,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  void _addStikerMenu() {
+  void _addStikerMenu(BuildContext context) {
     if (message.imageUrl == null) return;
     showDialog(context: context, builder: (ctx) => AlertDialog(
       content: const Text('Tambahkan stiker ini ke koleksimu?'),

@@ -82,8 +82,6 @@ flutter:
 
 flutter_launcher_icons:
   android: "launcher_icon"
-  ios: true
+  ios: false
   image_path: "assets/logo/dykal_launcher.png"
   min_sdk_android: 21
-  web:
-    generate: true

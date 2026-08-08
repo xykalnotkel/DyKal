@@ -76,14 +76,14 @@ jobs:
         run: flutter analyze || true
 
       - name: Build APK universal (tanpa split)
-        run: flutter build apk --release --android-skip-build-dependency-validation
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64 --android-skip-build-dependency-validation
 
       - name: List APK hasil
         run: ls -lh build/app/outputs/flutter-apk/
 
-      - name: Upload APK universal
+      - name: Upload APK arm64
         uses: actions/upload-artifact@v4
         with:
-          name: dykal-apk-universal
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: dykal-apk-arm64
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           retention-days: 14

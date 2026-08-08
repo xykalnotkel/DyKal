@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/dev_logger.dart';
 
 /// Tombol log melayang di pojok kanan atas SEMUA layar.
-/// Tap = buka bottom sheet live log (info/warning/error, bisa copy).
+/// Tap = buka Dialog live log (info/warning/error, bisa copy & select).
 class FloatingDevLog extends StatelessWidget {
   const FloatingDevLog({super.key});
 
@@ -13,113 +13,95 @@ class FloatingDevLog extends StatelessWidget {
       top: (MediaQuery.of(context).padding.top) + 4,
       right: 6,
       child: GestureDetector(
-        onTap: () => _openSheet(context),
+        onTap: () => _openLog(context),
         onLongPress: () => DevLogger.instance.clear(),
         child: Container(
-          width: 34, height: 34,
+          width: 36, height: 36,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.55),
+            color: Colors.black.withOpacity(0.6),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.greenAccent.withOpacity(0.4), width: 1),
           ),
-          child: const Icon(Icons.terminal, color: Colors.greenAccent, size: 16),
+          child: const Icon(Icons.terminal, color: Colors.greenAccent, size: 18),
         ),
       ),
     );
   }
 
-  void _openSheet(BuildContext context) {
-    showModalBottomSheet(
+  void _openLog(BuildContext context) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => const _LogSheet(),
-    );
-  }
-}
-
-class _LogSheet extends StatefulWidget {
-  const _LogSheet();
-
-  @override
-  State<_LogSheet> createState() => _LogSheetState();
-}
-
-class _LogSheetState extends State<_LogSheet> {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.65,
-      child: Column(children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-          child: Row(children: [
-            const Icon(Icons.terminal, color: Colors.greenAccent, size: 20),
-            const SizedBox(width: 8),
-            const Text('Dev Log', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-            const Spacer(),
-            // Auto-scroll toggle (always on)
-            ValueListenableBuilder<int>(
-              valueListenable: DevLogger.instance.update,
-              builder: (_, count, __) {
-                return Text('$count logs', style: const TextStyle(color: Colors.white38, fontSize: 12));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.copy, color: Colors.white54, size: 18),
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: DevLogger.instance.copyText));
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Log disalin ✅')));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-              onPressed: () => DevLogger.instance.clear(),
-            ),
-          ]),
-        ),
-        const Divider(color: Colors.white12, height: 1),
-        // Log list (live)
-        Expanded(
-          child: ValueListenableBuilder<int>(
-            valueListenable: DevLogger.instance.update,
-            builder: (_, __, ___) {
-              final logs = DevLogger.instance.logs;
-              if (logs.isEmpty) {
-                return const Center(child: Text('Belum ada log', style: TextStyle(color: Colors.white38)));
-              }
-              return ListView.builder(
-                reverse: true,
-                padding: const EdgeInsets.all(8),
-                itemCount: logs.length,
-                itemBuilder: (_, i) {
-                  final idx = logs.length - 1 - i;
-                  final e = logs[idx];
-                  Color color;
-                  switch (e.level) {
-                    case LogLevel.error: color = Colors.redAccent; break;
-                    case LogLevel.warning: color = Colors.amberAccent; break;
-                    case LogLevel.info: color = Colors.white70; break;
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
-                    child: RichText(
-                      text: TextSpan(style: const TextStyle(fontSize: 10, fontFamily: 'monospace'), children: [
-                        TextSpan(text: '${e.time.toIso8601String().substring(11, 19)} ', style: const TextStyle(color: Colors.white24)),
-                        TextSpan(text: '${e.level.name.toUpperCase().padRight(5)} ', style: TextStyle(color: color, fontWeight: FontWeight.w700)),
-                        TextSpan(text: '[${e.tag}] ', style: const TextStyle(color: Colors.blueAccent)),
-                        TextSpan(text: e.msg, style: TextStyle(color: color)),
-                      ]),
-                    ),
-                  );
-                },
-              );
-            },
+      barrierColor: Colors.black54,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 30),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+            child: Row(children: [
+              const Icon(Icons.terminal, color: Colors.greenAccent, size: 20),
+              const SizedBox(width: 8),
+              const Text('Dev Log (Live)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.close, color: Colors.white54), onPressed: () => Navigator.pop(ctx)),
+            ]),
           ),
-        ),
-      ]),
+          // Toolbar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(children: [
+              ValueListenableBuilder<int>(
+                valueListenable: DevLogger.instance.update,
+                builder: (_, c, __) => Text('$c entries', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.copy, color: Colors.greenAccent, size: 18),
+                tooltip: 'Copy all',
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: DevLogger.instance.copyText));
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Log disalin'), duration: Duration(seconds: 1)));
+                },
+              ),
+              IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18), onPressed: () => DevLogger.instance.clear()),
+            ]),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          // Log list
+          SizedBox(
+            height: MediaQuery.of(ctx).size.height * 0.55,
+            child: ValueListenableBuilder<int>(
+              valueListenable: DevLogger.instance.update,
+              builder: (_, __, ___) {
+                final logs = DevLogger.instance.logs;
+                if (logs.isEmpty) return const Center(child: Text('Belum ada log', style: TextStyle(color: Colors.white38)));
+                return ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.all(8),
+                  itemCount: logs.length,
+                  itemBuilder: (_, i) {
+                    final e = logs[logs.length - 1 - i];
+                    Color color;
+                    switch (e.level) {
+                      case LogLevel.error: color = Colors.redAccent; break;
+                      case LogLevel.warning: color = Colors.amberAccent; break;
+                      case LogLevel.info: color = Colors.white70; break;
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 1),
+                      child: SelectableText(
+                        '${e.time.toIso8601String().substring(11, 19)} ${e.level.name.toUpperCase().padRight(5)} [${e.tag}] ${e.msg}',
+                        style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: color),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }

@@ -161,6 +161,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             _btn(Icons.mic_off, call.muted, call.toggleMute),
             _btn(Icons.videocam_off, !call.videoOn, call.toggleVideo),
             _btn(Icons.swap_horiz, _swapped, () => setState(() => _swapped = !_swapped)),
+            _btn(Icons.screen_share, call.screenSharing, () => call.toggleScreenShare()),
             _btn(Icons.volume_up, call.speakerOn, () => call.toggleSpeaker()),
           ]),
           const SizedBox(height: 22),

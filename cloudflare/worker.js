@@ -33,7 +33,7 @@ export default {
         data: normalizeData(data),
         android: {
           priority: 'high',
-          notification: { channel_id: isCall ? 'dykal_call' : 'dykal_chat', priority: isCall ? 'max' : 'high', sound: 'default' },
+          notification: { channel_id: isCall ? 'dykal_call' : 'dykal_chat', priority: isCall ? 'max' : 'high', sound: 'default', visibility: 'PRIVATE', default_sound: true },
         },
         apns: { payload: { aps: { sound: 'default' } } },
       };

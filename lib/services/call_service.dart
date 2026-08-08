@@ -82,7 +82,7 @@ class DyKalCallService extends ChangeNotifier {
         'autoGainControl': true,
       },
       'video': video
-          ? {'facingMode': 'user', 'width': {'ideal': 1280}, 'height': {'ideal': 720}, 'frameRate': {'ideal': 30}}
+          ? {'facingMode': 'user', 'width': {'ideal': 640}, 'height': {'ideal': 480}, 'frameRate': {'ideal': 24}}
           : false,
     });
     localStream = stream;

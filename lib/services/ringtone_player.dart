@@ -9,7 +9,7 @@ class RingtonePlayer {
     if (_on) return;
     _on = true;
     try {
-      await _p.setReleaseMode(ReleaseMode.loop);
+      await _p.setLoopMode(LoopMode.one);
       await _p.setVolume(0.9);
       await _p.setAsset('assets/sounds/ringtone.wav');
       await _p.play();

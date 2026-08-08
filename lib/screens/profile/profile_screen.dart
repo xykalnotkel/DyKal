@@ -9,6 +9,8 @@ import '../../services/auth_service.dart';
 import '../../services/birthday_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/theme_controller.dart';
+import '../settings/settings_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});

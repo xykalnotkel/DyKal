@@ -10,6 +10,7 @@ import 'package:cross_file/cross_file.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../widgets/gallery_picker.dart';
 import '../../services/media_saver.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
@@ -26,12 +27,12 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   CollectionReference get _photos => FirebaseFirestore.instance.collection('couples/$_coupleId/albums/${widget.albumId}/photos');
 
   Future<void> _upload() async {
-    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
-    if (x == null) return;
+    final file = await Navigator.push<File>(context, MaterialPageRoute(builder: (_) => const GalleryPickerScreen(allowVideo: true)));
+    if (file == null) return;
     if (!mounted) return;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B8A))));
     try {
-      final url = await CloudinaryService().uploadImage(File(x.path), folder: 'dykal/album/${widget.albumId}');
+      final url = await CloudinaryService().uploadImage(file, folder: 'dykal/album/${widget.albumId}');
       if (url != null) {
         await _photos.add({'url': url, 'fromId': AuthService().myId, 'fromName': AuthService().myName, 'createdAt': FieldValue.serverTimestamp()});
         await FirebaseFirestore.instance.doc('couples/$_coupleId/albums/${widget.albumId}').set({'coverUrl': url}, SetOptions(merge: true));

@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../widgets/gallery_picker.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -22,8 +23,8 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _showPass = false;
 
   Future<void> _pickPhoto() async {
-    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (x != null) setState(() => _photo = File(x.path));
+    final file = await Navigator.push<File>(context, MaterialPageRoute(builder: (_) => const GalleryPickerScreen(allowVideo: false)));
+    if (file != null) setState(() => _photo = file);
   }
 
   Future<void> _submit() async {
@@ -106,7 +107,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 // Toggle
                 Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: DyKalTheme.borderSoft)),
+                  decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(14), border: Border.all(color: DyKalTheme.borderOf(context))),
                   child: Row(children: [
                     Expanded(child: _toggle(true, "Masuk")),
                     Expanded(child: _toggle(false, "Daftar")),
@@ -194,7 +195,7 @@ class _AuthScreenState extends State<AuthScreen> {
           icon: Icon(_showPass ? Icons.visibility_off : Icons.visibility, color: DyKalTheme.textGrey),
           onPressed: () => setState(() => _showPass = !_showPass),
         ),
-        filled: true, fillColor: Colors.white,
+        filled: true, fillColor: DyKalTheme.cardOf(context),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       ),
     );
@@ -208,7 +209,7 @@ class _AuthScreenState extends State<AuthScreen> {
       decoration: InputDecoration(
         hintText: label,
         prefixIcon: Icon(icon, color: DyKalTheme.textGrey),
-        filled: true, fillColor: Colors.white,
+        filled: true, fillColor: DyKalTheme.cardOf(context),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       ),
     );

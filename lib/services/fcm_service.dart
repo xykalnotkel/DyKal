@@ -54,6 +54,14 @@ class FCMService {
     );
     await _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(callChannel);
 
+    // FIX FCM: channel CHAT dibuat explicit (biar notif pas app killed muncul) + request POST_NOTIFICATIONS runtime (Android 13+)
+    const chatChannel = AndroidNotificationChannel('dykal_chat', 'DyKal Chat', description: 'Notifikasi chat, surat & media', importance: Importance.high, playSound: true, showBadge: true);
+    final _loc = _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (_loc != null) {
+      await _loc.createNotificationChannel(chatChannel);
+      await _loc.requestNotificationsPermission();
+    }
+
     // 3. Dapatkan & simpan token
     await _saveToken();
     _messaging.onTokenRefresh.listen((token) => _saveToken(token: token));

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart'; // FIX profile: crop foto bulat
+import '../../widgets/gallery_picker.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/birthday_service.dart';
@@ -268,11 +269,11 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 20),
           GestureDetector(
             onTap: () async {
-              final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
-              if (x == null) return;
+              final pickedFile = await Navigator.push<File>(s, MaterialPageRoute(builder: (_) => const GalleryPickerScreen(allowVideo: false)));
+              if (pickedFile == null) return;
               // FIX profile: crop bentuk bulat sebelum preview
               final cropped = await ImageCropper().cropImage(
-                sourcePath: x.path,
+                sourcePath: pickedFile.path,
                 uiSettings: [
                   AndroidUiSettings(toolbarTitle: 'Atur Foto', cropStyle: CropStyle.circle, lockAspectRatio: true, toolbarColor: DyKalTheme.primary, toolbarWidgetColor: Colors.white),
                   IOSUiSettings(title: 'Atur Foto', cropStyle: CropStyle.circle),

@@ -118,15 +118,21 @@ class DyKalTheme {
     ),
   );
 
+  // ===== FIX #6: helper tema-aware biar dark mode konsisten =====
+  static Color cardOf(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? surfaceDark : Colors.white;
+  static Color bgOf(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? backgroundDark : background;
+  static Color textPrimaryOf(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? Colors.white : textDark;
+  static Color borderOf(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? borderSoftDark : borderSoft;
+
   // Gradient khas DyKal
   static const dykalGradient = LinearGradient(
-    colors: [primary, secondary],
+    colors: [primary, primary], // FIX ATURAN: user larang gradient -> solid (1 warna)
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   
   static const loveGradient = LinearGradient(
-    colors: [Color(0xFFFF6B8A), Color(0xFFFF8E9E)],
+    colors: [primary, primary], // FIX ATURAN: solid (no gradient)
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

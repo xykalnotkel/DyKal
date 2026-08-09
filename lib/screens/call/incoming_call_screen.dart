@@ -140,12 +140,6 @@ class _SwipeActionState extends State<_SwipeAction> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      // Petunjuk arah
-      Opacity(
-        opacity: 0.7,
-        child: Icon(Icons.keyboard_arrow_up, color: widget.color, size: 22),
-      ),
-      const SizedBox(height: 4),
       GestureDetector(
         onVerticalDragUpdate: (d) => setState(() => _dy += d.delta.dy),
         onVerticalDragEnd: (_) {
@@ -172,7 +166,6 @@ class _SwipeActionState extends State<_SwipeAction> {
       ),
       const SizedBox(height: 8),
       Text(widget.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-      Text(widget.hint, style: const TextStyle(color: Colors.white54, fontSize: 10)),
     ]);
   }
 }

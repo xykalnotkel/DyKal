@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart'; // kompres avatar kecil
+import 'package:image_cropper/image_cropper.dart'; // FIX profile: crop foto bulat
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/birthday_service.dart';
@@ -110,7 +112,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _dateTile(BuildContext context, IconData icon, String label, DateTime? value, VoidCallback onTap) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Material(
-          color: Colors.white,
+          color: DyKalTheme.cardOf(context),
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
@@ -134,7 +136,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _account(BuildContext context, String name) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(children: [
-          ListTile(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), tileColor: Colors.white,
+          ListTile(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), tileColor: DyKalTheme.cardOf(context),
             leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.person, color: DyKalTheme.primary)),
             title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(FirebaseAuth.instance.currentUser?.email ?? '', style: const TextStyle(fontSize: 12))),
@@ -194,7 +196,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _editProfileTile(BuildContext context) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Material(
-          color: Colors.white,
+          color: DyKalTheme.cardOf(context),
           borderRadius: BorderRadius.circular(16),
           child: ListTile(
             leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.edit, color: DyKalTheme.primary)),
@@ -210,7 +212,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _settingsTile(BuildContext context) => Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Material(
-          color: Colors.white,
+          color: DyKalTheme.cardOf(context),
           borderRadius: BorderRadius.circular(16),
           child: ListTile(
             leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.tune, color: DyKalTheme.primary)),
@@ -238,6 +240,15 @@ class ProfileScreen extends StatelessWidget {
         ),
       );
 
+  Future<File> _compressAvatar(File src) async {
+    try {
+      final out = File('${src.path.replaceAll(RegExp(r'\.[^.]+$'), '')}_av.jpg');
+      final res = await FlutterImageCompressor.compressWithFile(src.path, quality: 70, minWidth: 512, minHeight: 512);
+      if (res != null) { await out.writeAsBytes(res); return out; }
+    } catch (_) {}
+    return src;
+  }
+
   Future<void> _editProfile(BuildContext context) async {
     final auth = AuthService();
     final coupleId = auth.coupleId ?? '';
@@ -245,19 +256,30 @@ class ProfileScreen extends StatelessWidget {
     final nameCtl = TextEditingController(text: auth.myName);
     String? photoUrl = auth.myPhotoUrl;
     File? picked;
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (s) => StatefulBuilder(builder: (s, setS) => Padding(
+    if (!context.mounted) return;
+    await Navigator.push(context, MaterialPageRoute(builder: (s) => Scaffold(
+      backgroundColor: DyKalTheme.background,
+      appBar: AppBar(
+        title: const Text('Edit Profil'),
+        leading: IconButton(onPressed: () => Navigator.pop(s), icon: const Icon(Icons.close)),
+      ),
+      body: SafeArea(child: SingleChildScrollView(child: StatefulBuilder(builder: (s, setS) => Padding(
         padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(s).viewInsets.bottom + 16),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: DyKalTheme.borderSoft, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           GestureDetector(
             onTap: () async {
-              final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-              if (x != null) setS(() => picked = File(x.path));
+              final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+              if (x == null) return;
+              // FIX profile: crop bentuk bulat sebelum preview
+              final cropped = await ImageCropper().cropImage(
+                sourcePath: x.path,
+                uiSettings: [
+                  AndroidUiSettings(toolbarTitle: 'Atur Foto', cropStyle: CropStyle.circle, lockAspectRatio: true, toolbarColor: DyKalTheme.primary, toolbarWidgetColor: Colors.white, activeColor: DyKalTheme.primary),
+                  IOSUiSettings(title: 'Atur Foto', cropStyle: CropStyle.circle),
+                ],
+              );
+              if (cropped != null) setS(() => picked = File(cropped.path));
             },
             child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withOpacity(0.15), backgroundImage: picked != null ? FileImage(picked!) as ImageProvider : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) as ImageProvider : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
           ),
@@ -272,7 +294,10 @@ class ProfileScreen extends StatelessWidget {
               if (newName.isEmpty) return;
               Navigator.pop(s);
               String? newPhoto = photoUrl;
-              if (picked != null) newPhoto = await CloudinaryService().uploadImage(picked!, folder: 'dykal/avatar');
+              if (picked != null) {
+                final comp = await _compressAvatar(picked!);
+                newPhoto = await CloudinaryService().uploadImage(comp ?? picked!, folder: 'dykal/avatar');
+              }
               await FirebaseAuth.instance.currentUser?.updateDisplayName(newName);
               await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto}, SetOptions(merge: true));
               if (coupleId.isNotEmpty) {
@@ -288,8 +313,8 @@ class ProfileScreen extends StatelessWidget {
             icon: const Icon(Icons.save), label: const Text('Simpan'),
           )),
         ]),
-      )),
-    );
+      ))))),
+    ));
   }
 
   Future<DateTime?> _pick(BuildContext context, DateTime? initial) async {

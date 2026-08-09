@@ -35,7 +35,7 @@ export default {
       const message = {
         token,
         notification: { title, body: msgBody || '' },
-        data: normalizeData(data),
+        data: normalizeData({ ...(data || {}), type }),
         android: {
           priority: 'high',
           notification: { icon: 'launcher_icon', channel_id: isCall ? 'dykal_call' : 'dykal_chat', sound: 'default', visibility: 'PRIVATE', notification_count: 1 },

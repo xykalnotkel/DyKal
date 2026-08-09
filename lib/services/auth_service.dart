@@ -21,9 +21,10 @@ class AuthService {
   String? partnerId;
   String? partnerName;
   String? myPhotoUrl;
+  String? _myName; // FIX: cache nama dari Firestore (Auth displayName sering kosong)
   String? partnerPhotoUrl;
   String get myId => _auth.currentUser?.uid ?? '';
-  String get myName => _auth.currentUser?.displayName ?? '';
+  String get myName => _myName ?? _auth.currentUser?.displayName ?? '';
 
   Stream<User?> get authState => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -62,6 +63,8 @@ class AuthService {
     final uid = _auth.currentUser!.uid;
     final coupleId = 'couple_${uid}_${DateTime.now().millisecondsSinceEpoch}';
     final code = _generateCode();
+    final meSnap = await _db.doc('users/$uid').get();
+    final myNm = meSnap.data()?['displayName'] as String? ?? '';
 
     await _db.doc('couples/$coupleId').set({
       'coupleId': coupleId,
@@ -72,7 +75,7 @@ class AuthService {
       'birthdayA': null,
       'birthdayB': null,
       'inviteCode': code,
-      'displayNameA': _auth.currentUser?.displayName ?? '',
+      'displayNameA': myNm,
       'displayNameB': null,
       'photoA': myPhotoUrl,
       'photoB': null,
@@ -107,6 +110,8 @@ class AuthService {
     final coupleSnap = await coupleRef.get();
     if (!coupleSnap.exists) throw Exception('Couple tidak ditemukan');
     final members = List<String>.from(coupleSnap.data()!['members'] ?? []);
+    final meSnapJ = await _db.doc('users/$uid').get();
+    final myNmJ = meSnapJ.data()?['displayName'] as String? ?? '';
 
     if (members.contains(uid)) throw Exception('Kamu sudah bergabung di couple ini');
     if (members.length >= 2) throw Exception('Couple sudah penuh (maks 2 orang)');
@@ -114,7 +119,7 @@ class AuthService {
     await coupleRef.update({
       'members': FieldValue.arrayUnion([uid]),
       'pairedAt': FieldValue.serverTimestamp(),
-      'displayNameB': _auth.currentUser?.displayName ?? '',
+      'displayNameB': myNmJ,
       'photoB': myPhotoUrl,
     });
 
@@ -136,6 +141,7 @@ class AuthService {
       final meSnap = await _db.doc('users/$uid').get();
       coupleId = meSnap.data()?['coupleId'] as String?;
       myPhotoUrl = meSnap.data()?['photoUrl'] as String?;
+      _myName = meSnap.data()?['displayName'] as String?;
       if (coupleId != null) {
         final cSnap = await _db.doc('couples/$coupleId').get();
         final members = List<String>.from(cSnap.data()?['members'] ?? []);

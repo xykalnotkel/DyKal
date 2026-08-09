@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../config/theme.dart';
 
-enum PhotoShape { love, bulat, abstrak, bunga }
+enum PhotoShape { love, bulat, abstrak, bunga, hexagon, diamond, star, heart2 }
 
 extension PhotoShapeX on PhotoShape {
   String get label => const {
@@ -11,6 +11,10 @@ extension PhotoShapeX on PhotoShape {
         PhotoShape.bulat: 'Bulat',
         PhotoShape.abstrak: 'Abstrak',
         PhotoShape.bunga: 'Bunga',
+        PhotoShape.hexagon: 'Hexagon',
+        PhotoShape.diamond: 'Diamond',
+        PhotoShape.star: 'Bintang',
+        PhotoShape.heart2: 'Hati',
       }[this]!;
   String get badgeAsset => 'assets/icons/badge_$name.png';
   IconData get icon => const {
@@ -18,6 +22,10 @@ extension PhotoShapeX on PhotoShape {
         PhotoShape.bulat: Icons.circle,
         PhotoShape.abstrak: Icons.bubble_chart,
         PhotoShape.bunga: Icons.local_florist,
+        PhotoShape.hexagon: Icons.extension,
+        PhotoShape.diamond: Icons.change_history,
+        PhotoShape.star: Icons.star,
+        PhotoShape.heart2: Icons.favorite_border,
       }[this]!;
 }
 
@@ -33,6 +41,10 @@ CustomClipper<Path> photoShapeClipper(PhotoShape s) {
     case PhotoShape.abstrak: return const _BlobClipper();
     case PhotoShape.bunga: return const _FlowerClipper();
     case PhotoShape.bulat: return const _CircleClipper();
+    case PhotoShape.hexagon: return const _HexagonClipper();
+    case PhotoShape.diamond: return const _DiamondClipper();
+    case PhotoShape.star: return const _StarClipper();
+    case PhotoShape.heart2: return const _Heart2Clipper();
   }
 }
 
@@ -91,6 +103,14 @@ class ShapedPhoto extends StatelessWidget {
         return const _FlowerClipper();
       case PhotoShape.bulat:
         return const _CircleClipper();
+      case PhotoShape.hexagon:
+        return const _HexagonClipper();
+      case PhotoShape.diamond:
+        return const _DiamondClipper();
+      case PhotoShape.star:
+        return const _StarClipper();
+      case PhotoShape.heart2:
+        return const _Heart2Clipper();
     }
   }
 }
@@ -167,6 +187,79 @@ class _FlowerClipper extends CustomClipper<Path> {
     return p;
   }
 
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+// ===== FIX #17: 4 bentuk tambahan =====
+class _HexagonClipper extends CustomClipper<Path> {
+  const _HexagonClipper();
+  @override
+  Path getClip(Size size) {
+    final cx = size.width / 2, cy = size.height / 2, r = size.shortestSide / 2;
+    final p = Path();
+    for (int i = 0; i < 6; i++) {
+      final a = math.pi / 3 * i - math.pi / 2;
+      final x = cx + r * math.cos(a), y = cy + r * math.sin(a);
+      if (i == 0) p.moveTo(x, y); else p.lineTo(x, y);
+    }
+    p.close();
+    return p;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _DiamondClipper extends CustomClipper<Path> {
+  const _DiamondClipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    return Path()
+      ..moveTo(w / 2, 0)
+      ..lineTo(w, h / 2)
+      ..lineTo(w / 2, h)
+      ..lineTo(0, h / 2)
+      ..close();
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _StarClipper extends CustomClipper<Path> {
+  const _StarClipper();
+  @override
+  Path getClip(Size size) {
+    final cx = size.width / 2, cy = size.height / 2, R = size.shortestSide / 2, r = R * 0.45;
+    const points = 5;
+    final p = Path();
+    for (int i = 0; i < points * 2; i++) {
+      final rad = i.isEven ? R : r;
+      final a = math.pi / points * i - math.pi / 2;
+      final x = cx + rad * math.cos(a), y = cy + rad * math.sin(a);
+      if (i == 0) p.moveTo(x, y); else p.lineTo(x, y);
+    }
+    p.close();
+    return p;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _Heart2Clipper extends CustomClipper<Path> {
+  const _Heart2Clipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    final p = Path();
+    p.moveTo(w * 0.5, h * 0.12);
+    p.cubicTo(w * 0.5, h * 0.04, w * 0.8, h * 0.0, w * 0.92, h * 0.22);
+    p.cubicTo(w, h * 0.42, w * 0.76, h * 0.68, w * 0.5, h * 0.96);
+    p.cubicTo(w * 0.24, h * 0.68, w * 0.0, h * 0.42, w * 0.08, h * 0.22);
+    p.cubicTo(w * 0.2, h * 0.0, w * 0.5, h * 0.04, w * 0.5, h * 0.12);
+    p.close();
+    return p;
+  }
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

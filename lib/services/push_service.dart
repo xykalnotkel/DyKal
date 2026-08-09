@@ -18,14 +18,21 @@ class PushService {
     required String title,
     required String body,
     String type = 'chat',
+    String? callerName,
+    String? callType,
   }) async {
     if (!_enabled) return;
     final partnerId = AuthService().partnerId ?? '';
     if (partnerId.isEmpty) return;
     try {
       final snap = await FirebaseFirestore.instance.doc('users/$partnerId').get();
-      final token = snap.data()?['fcmToken'] as String?;
+      final data = snap.data();
+      final token = data?['fcmToken'] as String?;
       if (token == null || token.isEmpty) return;
+      // FIX #12: hormati preferensi notifikasi pasangan (kalau dimatikan, skip push)
+      final prefs = data?['notifPrefs'] as Map<String, dynamic>?;
+      final key = type == 'call' ? 'call' : (type == 'letter' ? 'letter' : 'chat');
+      if (prefs != null && prefs[key] == false) return;
       await http.post(
         Uri.parse(workerUrl),
         headers: {'Content-Type': 'application/json'},
@@ -34,7 +41,12 @@ class PushService {
           'title': title,
           'body': body,
           'type': type,
-          'data': {'coupleId': AuthService().coupleId ?? ''},
+          'data': {
+            'coupleId': AuthService().coupleId ?? '',
+            'type': type,
+            if (callerName != null) 'callerName': callerName,
+            if (callType != null) 'callType': callType,
+          },
         }),
       );
     } catch (_) {}

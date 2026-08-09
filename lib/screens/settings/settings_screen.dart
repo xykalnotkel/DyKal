@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../config/theme.dart';
 import '../../services/theme_controller.dart';
@@ -34,6 +36,28 @@ bool _notifVibrate = true;
     super.initState();
     _loadAudioPaths();
     _loadBubbleStyle();
+    _loadNotifPrefs(); // FIX #12: pusat notifikasi beneran persist + dipakai PushService
+  }
+
+  Future<void> _loadNotifPrefs() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final snap = await FirebaseFirestore.instance.doc('users/$uid').get();
+      final p = (snap.data()?['notifPrefs'] as Map<String, dynamic>?) ?? {};
+      if (mounted) setState(() {
+        _notifChat = p['chat'] ?? true;
+        _notifCall = p['call'] ?? true;
+        _notifLetter = p['letter'] ?? true;
+        _notifBirthday = p['birthday'] ?? true;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveNotifPref(String key, bool v) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try { await FirebaseFirestore.instance.doc('users/$uid').set({'notifPrefs': {key: v}}, SetOptions(merge: true)); } catch (_) {}
   }
 
 Future<void> _loadBubbleStyle() async {
@@ -86,10 +110,10 @@ Future<void> _loadBubbleStyle() async {
       appBar: AppBar(title: const Text('Pengaturan')),
       body: ListView(children: [
         _sectionHeader('Pusat Notifikasi'),
-        _toggle(Icons.chat, 'Notifikasi Chat', _notifChat),
-        _toggle(Icons.call, 'Notifikasi Telepon', _notifCall),
-        _toggle(Icons.mail, 'Notifikasi Surat', _notifLetter),
-        _toggle(Icons.cake, 'Ultah & Anniversary', _notifBirthday),
+        _toggle(Icons.chat, 'Notifikasi Chat', _notifChat, (v) { setState(() => _notifChat = v); _saveNotifPref('chat', v); }),
+        _toggle(Icons.call, 'Notifikasi Telepon', _notifCall, (v) { setState(() => _notifCall = v); _saveNotifPref('call', v); }),
+        _toggle(Icons.mail, 'Notifikasi Surat', _notifLetter, (v) { setState(() => _notifLetter = v); _saveNotifPref('letter', v); }),
+        _toggle(Icons.cake, 'Ultah & Anniversary', _notifBirthday, (v) { setState(() => _notifBirthday = v); _saveNotifPref('birthday', v); }),
         const Divider(),
         _sectionHeader('Nada Dering & Suara'),
         Padding(
@@ -170,11 +194,15 @@ Future<void> _loadBubbleStyle() async {
     child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFFFF6B8A))),
   );
 
-  Widget _toggle(IconData icon, String title, bool value) {
+  Widget _toggle(IconData icon, String title, bool value, ValueChanged<bool>? onChanged) {
     return ListTile(
       leading: Icon(icon, color: DyKalTheme.textGrey),
       title: Text(title, style: const TextStyle(fontSize: 14)),
-      trailing: Switch(value: value, onChanged: (v) => setState(() {}), activeColor: DyKalTheme.primary),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged ?? (v) {},
+        activeColor: DyKalTheme.primary,
+      ),
     );
   }
 

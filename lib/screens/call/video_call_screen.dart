@@ -135,11 +135,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           ])),
 
         // Picture-in-picture (ketuk untuk tukar posisi)
-        Positioned(top: 48, right: 16, child: GestureDetector(
+        Positioned(top: 60, right: 16, child: GestureDetector(
           onTap: () => setState(() => _swapped = !_swapped),
           child: Container(
             width: 110, height: 160,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white54, width: 2)),
+            decoration: const BoxDecoration(color: Colors.black), // FIX: kotak polos, no round, no border (perintah owner)
             clipBehavior: Clip.antiAlias,
             child: pipFc == null
               ? RTCVideoView(pipRenderer, mirror: !bigIsLocal, objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
@@ -147,8 +147,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           ),
         )),
 
-        // Filter chips
-        Positioned(left: 0, right: 0, bottom: 140, child: SingleChildScrollView(
+        // Filter chips (DI ATAS - perintah owner: filter paling atas)
+        Positioned(left: 0, right: 0, top: 14, child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(children: [
@@ -173,7 +173,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             _btn(Icons.mic_off, call.muted, call.toggleMute),
             _btn(Icons.videocam_off, !call.videoOn, call.toggleVideo),
             _btn(Icons.swap_horiz, _swapped, () => setState(() => _swapped = !_swapped)),
-            _btn(Icons.screen_share, call.screenSharing, () => call.toggleScreenShare()),
+            _btn(Icons.screen_share, call.screenSharing, () async {
+              final ok = await call.toggleScreenShare();
+              if (!mounted) return;
+              if (!ok && call.lastError != null) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(call.lastError!)));
+              }
+            }),
             _btn(Icons.volume_up, call.speakerOn, () => call.toggleSpeaker()),
           ]),
           const SizedBox(height: 22),

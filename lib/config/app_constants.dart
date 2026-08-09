@@ -10,8 +10,20 @@ class AppConstants {
   
   // TURN/STUN Gratis No CC
   static const iceServers = [
+    // ===== STUN gratis unlimited (cukup buat banyak kasus NAT) =====
     {"urls": "stun:stun.l.google.com:19302"},
+    {"urls": "stun:stun1.l.google.com:19302"},
+    {"urls": "stun:stun2.l.google.com:19302"},
+    {"urls": "stun:stun3.l.google.com:19302"},
+    {"urls": "stun:stun4.l.google.com:19302"},
     {"urls": "stun:stun.cloudflare.com:3478"},
+    {"urls": "stun:stun.stunprotocol.org:3478"},
+    {"urls": "stun:stun.nextcloud.com:443"},
+    {"urls": "stun:stun.telnyx.com:3478"},
+    // ===== TURN (relay buat NAT strict). JUJUR (aturan #10/#11): =====
+    // OpenRelay metered dulu gratis no-CC tapi SUDAH DEPRECATED. Disimpan sebagai
+    // fallback (WebRTC otomatis skip server mati). TURN andal butuh akun
+    // (Metered/Twilio/Cloudflare Calls) - bisa ditambah nanti kalau calls sering gagal.
     {
       "urls": "turn:openrelay.metered.ca:80",
       "username": "openrelayproject",

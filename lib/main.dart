@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
+import 'package:connectivity_plus/connectivity_plus.dart'; // FIX #5: deteksi offline real
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/theme.dart';
 import 'widgets/seamless_scaffold.dart';
@@ -31,6 +32,9 @@ import 'widgets/floating_devlog.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 }
+
+// FIX #1: key navigator global biar aksi notif (accept/decline/tap) bisa navigasi
+final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   DevLogger.instance.info('app', 'Starting DyKal...');
@@ -60,6 +64,7 @@ Future<void> main() async {
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
 
+  FCMService.navKey = _navKey;
   runApp(ProviderScope(child: DyKalApp()));
 }
 
@@ -70,6 +75,7 @@ class DyKalApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: ThemeController.instance,
       builder: (context, _) => MaterialApp(
+        navigatorKey: _navKey,
         title: 'DyKal',
         debugShowCheckedModeBanner: false,
         themeMode: ThemeController.instance.mode,
@@ -159,18 +165,44 @@ class MainNav extends StatefulWidget {
   State<MainNav> createState() => _MainNavState();
 }
 
-class _MainNavState extends State<MainNav> {
+class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
   int idx = 0;
   StreamSubscription? _callSub;
+  StreamSubscription? _connSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // FIX #5: lifecycle app
     AuthService().refresh();
+    _setPresenceOnline(true);
+    _connSub = Connectivity().onConnectivityChanged.listen((res) {
+      final offline = res.isEmpty || res.every((e) => e == ConnectivityResult.none);
+      _setPresenceOnline(!offline);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenIncomingCalls();
       _listenDelivered();
     });
+  }
+
+  // FIX #5: offline = app keluar/data mati ; online = app jalan & ada koneksi
+  void _setPresenceOnline(bool online) {
+    final uid = AuthService().myId;
+    if (uid.isEmpty) return;
+    FirebaseFirestore.instance.doc('presence/$uid').set({
+      'isOnline': online,
+      if (!online) 'lastSeen': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _setPresenceOnline(true);
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached || state == AppLifecycleState.hidden) {
+      _setPresenceOnline(false); // keluar app -> offline + lastSeen
+    }
   }
 
   void _listenDelivered() {
@@ -207,7 +239,10 @@ class _MainNavState extends State<MainNav> {
 
   @override
   void dispose() {
+    _setPresenceOnline(false);
+    _connSub?.cancel();
     _callSub?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 

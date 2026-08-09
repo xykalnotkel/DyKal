@@ -128,7 +128,7 @@ class MessageBubble extends StatelessWidget {
               Container(
                 constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                 margin: EdgeInsets.symmetric(vertical: 4),
-                padding: EdgeInsets.all(message.type == MessageType.image ? 3 : 9),
+                padding: message.type == MessageType.image ? const EdgeInsets.all(3) : const EdgeInsets.symmetric(horizontal: 12, vertical: 7), // FIX #9: bubble tipis (jangan terlalu tinggi)
                 decoration: BoxDecoration(
                   color: isMe ? DyKalTheme.primary : Colors.white,
                   borderRadius: BorderRadius.only(

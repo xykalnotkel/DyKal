@@ -28,16 +28,8 @@ class SeamlessScaffold extends StatelessWidget {
       backgroundColor: dark ? DyKalTheme.backgroundDark : DyKalTheme.background,
       appBar: appBar,
       body: Container(
-        decoration: BoxDecoration(
-          // Background gradient halus biar ga flat (light & dark)
-          gradient: LinearGradient(
-            colors: dark
-                ? const [DyKalTheme.backgroundDark, Color(0xFF0E1014)]
-                : const [DyKalTheme.background, Color(0xFFFFF0F2)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        // FIX ATURAN: user larang gradient -> background solid (tema-aware)
+        color: dark ? DyKalTheme.backgroundDark : DyKalTheme.background,
         child: body,
       ),
       // Bottom nav TANPA background solid (transparan, nyatu)

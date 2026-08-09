@@ -37,35 +37,56 @@ class LetterScreen extends StatelessWidget {
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LetterDetailScreen(text: text, fromName: fromName, createdAt: created))),
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        CircleAvatar(radius: 16, backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.mail, size: 16, color: DyKalTheme.primary)),
-                        const SizedBox(width: 8),
-                        Text("Dari $fromName", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () {
-                            docs[i].reference.update({'isLoved': !isLoved});
-                            if (!isLoved && data['fromId'] != AuthService().myId) {
-                              PushService.notifyPartner(title: AuthService().myName, body: '❤️ menyukai suratmu', type: 'letter');
-                            }
-                          },
-                          child: Icon(Icons.favorite, size: 18, color: isLoved ? DyKalTheme.primary : DyKalTheme.textGrey.withOpacity(0.4)),
+                    decoration: BoxDecoration(
+                      color: DyKalTheme.cardOf(context),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: DyKalTheme.borderOf(context)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3))],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        // Header amplop: pengirim + tanggal + segel love
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          color: DyKalTheme.primary.withOpacity(0.07),
+                          child: Row(children: [
+                            CircleAvatar(radius: 15, backgroundColor: DyKalTheme.primary, child: Text(fromName.isNotEmpty ? fromName[0] : "?", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+                            const SizedBox(width: 8),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text("Surat dari $fromName", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                              if (created != null) Text(_fmt(created), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 10)),
+                            ])),
+                            GestureDetector(
+                              onTap: () {
+                                docs[i].reference.update({'isLoved': !isLoved});
+                                if (!isLoved && data['fromId'] != AuthService().myId) {
+                                  PushService.notifyPartner(title: AuthService().myName, body: '❤️ menyukai suratmu', type: 'letter');
+                                }
+                              },
+                              child: Container(
+                                width: 34, height: 34,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: isLoved ? DyKalTheme.primary : Colors.transparent, border: Border.all(color: isLoved ? DyKalTheme.primary : DyKalTheme.borderOf(context))),
+                                child: Icon(Icons.favorite, size: 16, color: isLoved ? Colors.white : DyKalTheme.textGrey),
+                              ),
+                            ),
+                          ]),
+                        ),
+                        // Body stationery (preview)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(text, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, height: 1.6, color: DyKalTheme.textPrimaryOf(context))),
+                            const SizedBox(height: 10),
+                            Row(children: [
+                              Icon(Icons.auto_awesome, size: 12, color: DyKalTheme.primary),
+                              const SizedBox(width: 4),
+                              Text("Ketuk untuk membuka surat", style: TextStyle(color: DyKalTheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                            ]),
+                          ]),
                         ),
                       ]),
-                      const SizedBox(height: 10),
-                      Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.5)),
-                      const SizedBox(height: 8),
-                      Row(children: [
-                        const Icon(Icons.touch_app, size: 12, color: Color(0xFFFF6B8A)),
-                        const SizedBox(width: 4),
-                        Text("Ketuk untuk membuka surat", style: TextStyle(color: DyKalTheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
-                        const Spacer(),
-                        if (created != null) Text(_fmt(created), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11, fontStyle: FontStyle.italic)),
-                      ]),
-                    ]),
+                    ),
                   ),
                 );
               },
@@ -80,7 +101,7 @@ class LetterScreen extends StatelessWidget {
   Widget _intro() => Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
+        decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
         child: Row(children: [
           Image.asset('assets/illustrations/webp/letter.webp', width: 80, height: 80, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.mail, size: 48, color: Color(0xFFFF6B8A))),
           const SizedBox(width: 12),

@@ -117,10 +117,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 if (!isLogin) ...[
                   _avatarPicker(),
                   const SizedBox(height: 16),
-                  _field(_name, "Nama Panggilan", Icons.person, false),
+                  _field(_name, "Nama Panggilan", Icons.person, false, validator: (v) => (v != null && v.trim().length >= 2 && v.trim().length <= 20) ? null : "Nama 2-20 karakter"),
                   const SizedBox(height: 12),
                 ],
-                _field(_email, "Email", Icons.email, false, validator: (v) => (v != null && v.contains('@')) ? null : 'Email tidak valid'),
+                _field(_email, "Email", Icons.email, false, validator: (v) { final e = (v ?? '').trim(); final a = e.indexOf('@'); return (a > 0 && e.indexOf('.', a) > a) ? null : 'Email tidak valid'; }),
                 const SizedBox(height: 12),
                 _passwordField(),
                 const SizedBox(height: 24),

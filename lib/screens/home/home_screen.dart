@@ -49,6 +49,10 @@ class HomeScreen extends StatelessWidget {
 
         // HERO + tombol Chat
         SliverToBoxAdapter(child: _hero(context)),
+        // FIX home kurang kosong: status partner + tombol telepon cepat
+        SliverToBoxAdapter(child: _partnerStatus()),
+        SliverToBoxAdapter(child: _quickCall(context)),
+        SliverToBoxHeader(label: "Cerita Album"),
         // CERITA ALBUM (story)
         SliverToBoxAdapter(child: _storiesRow(context)),
         // ANNIVERSARY
@@ -60,6 +64,58 @@ class HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(child: _stats()),
         SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
+    );
+  }
+
+  // FIX home: status online/last-seen partner
+  Widget _partnerStatus() {
+    final partnerId = AuthService().partnerId ?? '';
+    if (partnerId.isEmpty) return const SizedBox.shrink();
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.doc('presence/$partnerId').snapshots(),
+      builder: (context, snap) {
+        final d = snap.data?.data() as Map<String, dynamic>?;
+        final online = d?['isOnline'] ?? false;
+        final lastSeen = d?['lastSeen'];
+        String sub = online ? 'Sedang online' : 'Offline';
+        if (!online && lastSeen is Timestamp) {
+          final dt = lastSeen.toDate();
+          sub = 'Terakhir dilihat ${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+        }
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(color: (online ? DyKalTheme.online : DyKalTheme.textGrey).withOpacity(0.08), borderRadius: BorderRadius.circular(14)),
+          child: Row(children: [
+            Icon(Icons.circle, size: 10, color: online ? DyKalTheme.online : DyKalTheme.textGrey),
+            const SizedBox(width: 8),
+            Expanded(child: Text(sub, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: online ? DyKalTheme.online : DyKalTheme.textGrey))),
+          ]),
+        );
+      },
+    );
+  }
+
+  // FIX home: tombol telepon cepat
+  Widget _quickCall(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(children: [
+        Expanded(child: _qaBtn(context, Icons.call, 'Telepon Suara', DyKalTheme.online, () => Navigator.pushNamed(context, '/audioCall', arguments: {'isCaller': true, 'type': 'audio'}))),
+        const SizedBox(width: 10),
+        Expanded(child: _qaBtn(context, Icons.videocam, 'Telepon Video', DyKalTheme.primary, () => Navigator.pushNamed(context, '/videoCall', arguments: {'isCaller': true, 'type': 'video'}))),
+      ]),
+    );
+  }
+
+  Widget _qaBtn(BuildContext context, IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+        child: Column(children: [Icon(icon, color: Colors.white, size: 24), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))]),
+      ),
     );
   }
 
@@ -135,7 +191,7 @@ class HomeScreen extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: DyKalTheme.cardOf(context),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: DyKalTheme.borderSoft),
       ),
@@ -263,7 +319,7 @@ class HomeScreen extends StatelessWidget {
   Widget _stat(IconData icon, Stream<int> Function() stream, String label) {
     return Expanded(child: Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderSoft)),
+      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderOf(context))),
       child: Column(children: [
         Icon(icon, color: DyKalTheme.primary, size: 22),
         const SizedBox(height: 8),

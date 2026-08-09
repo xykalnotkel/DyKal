@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.0.4+1   # FIX: versi akhirnya dinaikin (sebelumnya stuck 1.0.0 walau release v1.0.1-1.0.3). App version = tag release.
+version: 1.0.5+1   # v1.0.5: batch 2-10 (FCM call, presence, crop, splash, letter, theme, dll)
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -60,6 +60,7 @@ dependencies:
   shared_preferences: ^2.2.2 # simpan preferensi tema (dark/light)
   file_picker: ^8.0.0 # REAL package (sebelumnya dipake tapi gak ada di pubspec -> compile error di settings)
   package_info_plus: ^8.0.0 # baca versi app ASLI dari APK (biar user bisa verify versi di dalam app)
+  image_cropper: ^8.0.0 # FIX profile: crop foto (shape bulat) sebelum upload
   connectivity_plus: ^6.0.5 # cek koneksi (popup no internet saat kirim)
   share_plus: ^10.0.0 # share foto dari album
   photo_manager: ^3.2.0 # custom gallery picker (album + image/video)

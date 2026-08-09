@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'auth_service.dart';
 
 /// FCM Service DyKal — Gratis Spark (Tanpa Cloud Functions)
 /// Karena Spark tidak bisa pakai Cloud Functions untuk kirim push otomatis,
@@ -18,6 +20,9 @@ class FCMService {
   final _messaging = FirebaseMessaging.instance;
   final _local = FlutterLocalNotificationsPlugin();
   final _db = FirebaseFirestore.instance;
+  static GlobalKey<NavigatorState>? navKey; // di-set dari main.dart -> navigasi dari aksi notif
+  String? _callType;     // 'audio'/'video' notif call terakhir
+  String? _callCoupleId;
 
   /// Dipanggil dari AuthGate setelah login (idempoten)
   void ensureInit() {
@@ -37,6 +42,17 @@ class FCMService {
       InitializationSettings(android: android, iOS: ios),
       onDidReceiveNotificationResponse: _onNotifResponse,
     );
+
+    // FIX #1: channel panggilan (high priority + fullScreenIntent + badge + sound)
+    const callChannel = AndroidNotificationChannel(
+      'dykal_call', 'Panggilan DyKal',
+      description: 'Notifikasi panggilan masuk',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+    await _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(callChannel);
 
     // 3. Dapatkan & simpan token
     await _saveToken();
@@ -77,9 +93,10 @@ class FCMService {
   }
 
   void _handleForegroundMessage(RemoteMessage msg) async {
+    // FIX #1: panggilan -> notif khusus (accept/decline + fullScreenIntent + nama)
+    if (msg.data['type'] == 'call') { _handleCallMessage(msg); return; }
     final notif = msg.notification;
     if (notif == null) return;
-    // Tampilkan sebagai local notification biar ada heads-up
     final androidDetails = AndroidNotificationDetails(
       'dykal_chat',
       'DyKal Chat',
@@ -100,10 +117,57 @@ class FCMService {
     );
   }
 
+  void _handleCallMessage(RemoteMessage msg) async {
+    final callerName = msg.data['callerName'] ?? msg.notification?.title ?? 'DyKal';
+    final callType = msg.data['callType'] ?? 'video';
+    _callType = callType;
+    _callCoupleId = msg.data['coupleId'];
+    final androidDetails = AndroidNotificationDetails(
+      'dykal_call', 'Panggilan DyKal',
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.call,
+      visibility: NotificationVisibility.public,
+      ongoing: true,
+      actions: [
+        AndroidNotificationAction('decline_call', 'Tolak', showsUserInterface: true, cancelNotification: true),
+        AndroidNotificationAction('accept_call', 'Angkat', showsUserInterface: true, cancelNotification: true),
+      ],
+    );
+    await _local.show(
+      7777,
+      '📞 $callerName',
+      callType == 'video' ? 'Panggilan video masuk' : 'Panggilan suara masuk',
+      NotificationDetails(android: androidDetails),
+      payload: callType,
+    );
+  }
+
   /// Handler aksi notifikasi (Quick Reply dari notif)
   Future<void> _onNotifResponse(NotificationResponse r) async {
     if (r.actionId == 'reply' && r.input != null && r.input!.trim().isNotEmpty) {
       await _sendReply(r.input!.trim());
+    } else if (r.actionId == 'accept_call') {
+      _acceptCall(r.payload ?? _callType ?? 'video');
+    } else if (r.actionId == 'decline_call') {
+      await _declineCall();
+    }
+  }
+
+  void _acceptCall(String callType) {
+    _local.cancel(7777);
+    final route = callType == 'audio' ? '/audioCall' : '/videoCall';
+    navKey?.currentState?.pushNamed(route, arguments: {'isCaller': false, 'type': callType});
+  }
+
+  Future<void> _declineCall() async {
+    _local.cancel(7777);
+    final coupleId = AuthService().coupleId ?? _callCoupleId ?? '';
+    if (coupleId.isNotEmpty) {
+      try { await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()}); } catch (_) {}
     }
   }
 
@@ -128,11 +192,13 @@ class FCMService {
   }
 
   void _handleTap(RemoteMessage msg) {
-    // Navigasi ke chat jika data.type == chat
+    // FIX #1: tap notif -> buka layar sesuai jenis (call -> incoming call, chat -> chat)
     final type = msg.data['type'];
-    if (type == 'chat') {
-      // Navigator.pushNamed(context, '/chat')
-      print('Tapped chat notif: ${msg.data}');
+    if (type == 'call') {
+      final callType = msg.data['callType'] ?? 'video';
+      navKey?.currentState?.pushNamed('/incomingCall', arguments: callType);
+    } else if (type == 'chat') {
+      navKey?.currentState?.pushNamed('/chat');
     }
   }
 

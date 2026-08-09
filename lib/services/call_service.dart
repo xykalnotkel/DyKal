@@ -21,6 +21,7 @@ class DyKalCallService extends ChangeNotifier {
   bool videoOn = true;
   bool speakerOn = true;
   bool screenSharing = false;
+  String? lastError; // FIX: pesan error screen-share dll, biar UI bisa tampilkan (bukan silent crash)
   bool connected = false;
   String peerFilter = 'none';
 
@@ -113,6 +114,8 @@ class DyKalCallService extends ChangeNotifier {
       title: '📞 Panggilan ${callType == 'video' ? 'Video' : 'Suara'} Masuk',
       body: '${AuthService().myName} menelpon kamu',
       type: 'call',
+      callerName: AuthService().myName,
+      callType: callType,
     );
 
     // Dengar jawaban & ICE lawan
@@ -207,26 +210,32 @@ class DyKalCallService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> toggleScreenShare() async {
-    if (_pc == null) return;
+  Future<bool> toggleScreenShare() async {
+    if (_pc == null) { lastError = 'Koneksi panggilan belum siap'; notifyListeners(); return false; }
     try {
+      final senders = await _pc!.getSenders();
+      final vSenders = senders.where((s) => s.track?.kind == 'video').toList();
+      if (vSenders.isEmpty) { lastError = 'Tidak ada track video untuk dibagikan'; notifyListeners(); return false; }
       if (!screenSharing) {
-        final screen = await navigator.mediaDevices.getDisplayMedia({'video': true, 'audio': true});
+        final screen = await navigator.mediaDevices.getDisplayMedia({'video': true, 'audio': false});
         final screenTrack = screen.getVideoTracks().first;
-        final sender = (await _pc!.getSenders()).firstWhere((s) => s.track?.kind == 'video');
-        await sender.replaceTrack(screenTrack);
+        await vSenders.first.replaceTrack(screenTrack);
         screenSharing = true;
         screenTrack.onEnded = () => toggleScreenShare();
       } else {
         final cam = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': false});
         final camTrack = cam.getVideoTracks().first;
-        final sender = (await _pc!.getSenders()).firstWhere((s) => s.track?.kind == 'video');
-        await sender.replaceTrack(camTrack);
+        await vSenders.first.replaceTrack(camTrack);
         screenSharing = false;
       }
+      lastError = null;
       notifyListeners();
+      return true;
     } catch (e) {
-      if (kDebugMode) print('screen share error: $e');
+      lastError = 'Screen share gagal: $e';
+      screenSharing = false;
+      notifyListeners();
+      return false;
     }
   }
 

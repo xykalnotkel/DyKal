@@ -98,7 +98,7 @@ class _PairingScreenState extends State<PairingScreen> {
           Row(children: [Icon(Icons.hourglass_top, size: 16, color: DyKalTheme.secondary), const SizedBox(width: 8), Expanded(child: Text("Menunggu pasangan bergabung…", style: TextStyle(color: DyKalTheme.secondary, fontSize: 13, fontWeight: FontWeight.w600)))]),
         ] else ...[
           // Toggle
-          Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: DyKalTheme.borderSoft)), child: Row(children: [_toggle(true, Icons.share, "Buat Kode"), _toggle(false, Icons.login, "Masuk Kode")])),
+          Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(14), border: Border.all(color: DyKalTheme.borderOf(context))), child: Row(children: [_toggle(true, Icons.share, "Buat Kode"), _toggle(false, Icons.login, "Masuk Kode")])),
           const SizedBox(height: 20),
           if (isCreating) _createPanel() else _joinPanel(),
         ],
@@ -109,7 +109,7 @@ class _PairingScreenState extends State<PairingScreen> {
   Widget _codeCard(String code) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
+      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderOf(context))),
       child: Column(children: [
         Row(children: [Icon(Icons.qr_code_2, color: DyKalTheme.primary, size: 18), const SizedBox(width: 8), const Text("Kode Pairing Kamu", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const Spacer(), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: DyKalTheme.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.history, size: 12, color: DyKalTheme.success), const SizedBox(width: 4), Text("Aktif 24 jam", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DyKalTheme.success))]))]),
         const SizedBox(height: 14),
@@ -128,7 +128,7 @@ class _PairingScreenState extends State<PairingScreen> {
   Widget _createPanel() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
+      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderOf(context))),
       child: Column(children: [
         const Text("Klik tombol di bawah untuk membuat kode pairing unik buat kalian berdua.", textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Color(0xFF8E9099))),
         const SizedBox(height: 16),
@@ -140,7 +140,7 @@ class _PairingScreenState extends State<PairingScreen> {
   Widget _joinPanel() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),
+      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderOf(context))),
       child: Column(children: [
         const Text("Masukkan 4 huruf kodenya", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         const SizedBox(height: 12),

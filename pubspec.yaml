@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.0.12+1   # v1.0.12: fix permanen minSdk Gradle comment (## ->//) + screen share + ringtone
+version: 1.0.12+1   # v1.0.12: fix Gradle minSdk comment + screen share (flutter_foreground_task) + ringtone native
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

@@ -51,7 +51,7 @@ android {
 
     defaultConfig {
         applicationId "com.dykal.app"
-        minSdk 24   # Android 7+ (owner request)
+        minSdk 24   // Android 7+ (owner request)
         targetSdk 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

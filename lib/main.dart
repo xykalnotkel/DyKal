@@ -6,7 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
-import 'package:connectivity_plus/connectivity_plus.dart'; // FIX #5: deteksi offline real
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart'; // FIX #5: deteksi offline real
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/theme.dart';
 import 'widgets/seamless_scaffold.dart';
@@ -37,6 +38,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
+  FlutterForegroundTask.initCommunicationPort(); // FIX screen share Android 14+
   DevLogger.instance.info('app', 'Starting DyKal...');
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -71,6 +73,11 @@ Future<void> main() async {
     AppLogger.error('flutter_error', details.exception, details.stack);
   };
   runZonedGuarded(() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(channelId: 'screen_share', channelName: 'DyKal Screen Share', channelDescription: 'Saat berbagi layar', onlyAlertOnce: true),
+      iosNotificationOptions: const IOSNotificationOptions(),
+      foregroundTaskOptions: const ForegroundTaskOptions(eventAction: ForegroundTaskEventAction.nothing()),
+    );
     runApp(ProviderScope(child: DyKalApp()));
   }, (e, st) => AppLogger.error('zone_error', e, st));
 }

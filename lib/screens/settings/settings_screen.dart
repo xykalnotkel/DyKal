@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../services/floating_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../services/ringtone_service.dart';
 // CATATAN: 'system_ringtone_picker' DIHAPUS — package itu TIDAK ADA di pub.dev (404). Dipake sebelumnya bikin compile error.
 
 class SettingsScreen extends StatefulWidget {
@@ -116,10 +117,8 @@ Future<void> _loadBubbleStyle() async {
         _toggle(Icons.cake, 'Ultah & Anniversary', _notifBirthday, (v) { setState(() => _notifBirthday = v); _saveNotifPref('birthday', v); }),
         const Divider(),
         _sectionHeader('Nada Dering & Suara'),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Text('Catatan: pemilih nada dering sistem sedang diperbaiki (package yang dipakai sebelumnya ternyata tidak ada di pub.dev). Untuk sementara pakai nada default sistem.', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
-        ),
+        _tile(Icons.notifications_active, 'Nada Notifikasi', _notifRingtone, () => _pickRingtone(2, 'notif_ringtone_uri', 'notif_ringtone_title', (t) => setState(() => _notifRingtone = t))),
+        _tile(Icons.phone_in_talk, 'Nada Telepon', _callRingtone, () => _pickRingtone(1, 'call_ringtone_uri', 'call_ringtone_title', (t) => setState(() => _callRingtone = t))),
         _toggle(Icons.volume_up, 'Suara Notifikasi', _notifSound, null),
         _toggle(Icons.vibration, 'Getaran', _notifVibrate, null),
         const Divider(),
@@ -187,6 +186,33 @@ Future<void> _loadBubbleStyle() async {
         const SizedBox(height: 40),
       ]),
     );
+  }
+
+  Future<void> _pickRingtone(int type, String uriKey, String titleKey, ValueChanged<String> onPick) async {
+    final list = await RingtoneService.getRingtones(type: type);
+    if (!mounted || list.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak bisa ambil nada sistem')));
+      return;
+    }
+    String? selectedUri;
+    await showDialog(context: context, builder: (d) => AlertDialog(
+      title: const Text('Pilih Nada', style: TextStyle(fontSize: 16)),
+      content: SizedBox(width: double.maxFinite, child: ListView.builder(shrinkWrap: true, itemCount: list.length, itemBuilder: (_, i) {
+        final r = list[i];
+        final title = (r['title'] as String?) ?? '';
+        final uri = (r['uri'] as String?) ?? '';
+        return ListTile(dense: true, title: Text(title, style: const TextStyle(fontSize: 13)), trailing: IconButton(icon: const Icon(Icons.play_arrow, size: 20), onPressed: () => RingtoneService.play(uri)), onTap: () { selectedUri = uri; Navigator.pop(d); });
+      })),
+    ));
+    await RingtoneService.stop();
+    if (selectedUri != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final picked = list.firstWhere((r) => r['uri'] == selectedUri, orElse: () => <String, dynamic>{});
+      final title = (picked['title'] as String?) ?? 'Default';
+      await prefs.setString(uriKey, selectedUri!);
+      await prefs.setString(titleKey, title);
+      onPick(title);
+    }
   }
 
   Widget _sectionHeader(String title) => Padding(

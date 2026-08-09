@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import '../services/screen_share_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_constants.dart';
 import 'auth_service.dart';
@@ -217,12 +219,15 @@ class DyKalCallService extends ChangeNotifier {
       final vSenders = senders.where((s) => s.track?.kind == 'video').toList();
       if (vSenders.isEmpty) { lastError = 'Tidak ada track video untuk dibagikan'; notifyListeners(); return false; }
       if (!screenSharing) {
+        // FIX Android 14+: start mediaProjection FGS DULU sebelum getDisplayMedia
+        try { await FlutterForegroundTask.startService(notificationText: 'DyKal berbagi layar', callback: startScreenShareCallback); } catch (_) {}
         final screen = await navigator.mediaDevices.getDisplayMedia({'video': true, 'audio': false});
         final screenTrack = screen.getVideoTracks().first;
         await vSenders.first.replaceTrack(screenTrack);
         screenSharing = true;
         screenTrack.onEnded = () => toggleScreenShare();
       } else {
+        try { await FlutterForegroundTask.stopService(); } catch (_) {}
         final cam = await navigator.mediaDevices.getUserMedia({'video': true, 'audio': false});
         final camTrack = cam.getVideoTracks().first;
         await vSenders.first.replaceTrack(camTrack);

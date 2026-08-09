@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.0.9+1   # v1.0.9: minSdk Android7 (Gradle comment fix), devlog removed+autolog, theme dark textDark fix, media auto-save lokal
+version: 1.0.10+1   # v1.0.10: screen share fix (flutter_foreground_task) + ringtone picker native
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -61,6 +61,7 @@ dependencies:
   file_picker: ^8.0.0 # REAL package (sebelumnya dipake tapi gak ada di pubspec -> compile error di settings)
   package_info_plus: ^8.0.0 # baca versi app ASLI dari APK (biar user bisa verify versi di dalam app)
   image_cropper: ^8.0.0 # FIX profile: crop foto (shape bulat) sebelum upload
+  flutter_foreground_task: ^10.0.0 # FIX screen share crash Android 14+ (mediaProjection FGS)
   connectivity_plus: ^6.0.5 # cek koneksi (popup no internet saat kirim)
   share_plus: ^10.0.0 # share foto dari album
   photo_manager: ^3.2.0 # custom gallery picker (album + image/video)

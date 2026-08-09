@@ -220,7 +220,7 @@ class DyKalCallService extends ChangeNotifier {
       if (vSenders.isEmpty) { lastError = 'Tidak ada track video untuk dibagikan'; notifyListeners(); return false; }
       if (!screenSharing) {
         // FIX Android 14+: start mediaProjection FGS DULU sebelum getDisplayMedia
-        try { await FlutterForegroundTask.startService(notificationText: 'DyKal berbagi layar', callback: startScreenShareCallback); } catch (_) {}
+        try { await FlutterForegroundTask.startService(notificationTitle: 'DyKal', notificationText: 'Berbagi layar aktif', callback: startScreenShareCallback); } catch (_) {}
         final screen = await navigator.mediaDevices.getDisplayMedia({'video': true, 'audio': false});
         final screenTrack = screen.getVideoTracks().first;
         await vSenders.first.replaceTrack(screenTrack);

@@ -76,7 +76,7 @@ Future<void> main() async {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(channelId: 'screen_share', channelName: 'DyKal Screen Share', channelDescription: 'Saat berbagi layar', onlyAlertOnce: true),
       iosNotificationOptions: const IOSNotificationOptions(),
-      foregroundTaskOptions: const ForegroundTaskOptions(eventAction: ForegroundTaskEventAction.nothing()),
+      foregroundTaskOptions: ForegroundTaskOptions(eventAction: ForegroundTaskEventAction.nothing()),
     );
     runApp(ProviderScope(child: DyKalApp()));
   }, (e, st) => AppLogger.error('zone_error', e, st));

@@ -294,19 +294,25 @@ class ProfileScreen extends StatelessWidget {
               Navigator.pop(s);
               String? newPhoto = photoUrl;
               if (picked != null) {
-                final comp = await _compressAvatar(picked!);
-                newPhoto = await CloudinaryService().uploadImage(comp ?? picked!, folder: 'dykal/avatar');
+                try { newPhoto = await CloudinaryService().uploadAvatar(picked!); } catch (_) {}
               }
-              await FirebaseAuth.instance.currentUser?.updateDisplayName(newName);
-              await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto}, SetOptions(merge: true));
+              // FIX: TULIS users doc DULU (nama WAJIB kesimpen walau foto gagal)
+              try {
+                await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto}, SetOptions(merge: true));
+              } catch (e) {
+                if (s.mounted) ScaffoldMessenger.of(s).showSnackBar(SnackBar(content: Text('Gagal simpan profil: $e')));
+              }
               if (coupleId.isNotEmpty) {
-                final cSnap = await FirebaseFirestore.instance.doc('couples/$coupleId').get();
-                final amA = cSnap.data()?['createdBy'] == myId;
-                await FirebaseFirestore.instance.doc('couples/$coupleId').update({
-                  amA ? 'displayNameA' : 'displayNameB': newName,
-                  amA ? 'photoA' : 'photoB': newPhoto,
-                });
+                try {
+                  final cSnap = await FirebaseFirestore.instance.doc('couples/$coupleId').get();
+                  final amA = cSnap.data()?['createdBy'] == myId;
+                  await FirebaseFirestore.instance.doc('couples/$coupleId').update({
+                    amA ? 'displayNameA' : 'displayNameB': newName,
+                    amA ? 'photoA' : 'photoB': newPhoto,
+                  });
+                } catch (_) {}
               }
+              try { await FirebaseAuth.instance.currentUser?.updateDisplayName(newName); } catch (_) {}
               await AuthService().refresh();
             },
             icon: const Icon(Icons.save), label: const Text('Simpan'),

@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.0.5+1   # v1.0.5: batch 2-10 (FCM call, presence, crop, splash, letter, theme, dll)
+version: 1.0.6+1   # v1.0.6: FIX registrasi (nama/foto persist) + VN responsiv + avatar upload reliable
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

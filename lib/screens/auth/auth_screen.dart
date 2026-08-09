@@ -36,7 +36,7 @@ class _AuthScreenState extends State<AuthScreen> {
       } else {
         String? photoUrl;
         if (_photo != null) {
-          photoUrl = await CloudinaryService().uploadImage(_photo!, folder: 'dykal/avatar');
+          photoUrl = await CloudinaryService().uploadAvatar(_photo!);
         }
         await auth.register(
           email: _email.text.trim(),

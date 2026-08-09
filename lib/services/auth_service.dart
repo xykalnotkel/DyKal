@@ -38,17 +38,21 @@ class AuthService {
 
   Future<UserCredential> register({required String email, required String password, required String displayName, String? photoUrl}) async {
     final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-    await cred.user!.updateDisplayName(displayName);
-    myPhotoUrl = photoUrl;
-    await _db.doc('users/${cred.user!.uid}').set({
-      'uid': cred.user!.uid,
+    final uid = cred.user!.uid;
+    // FIX REGISTRASI: tulis users doc DULU (paling penting - nama wajib kesimpen)
+    await _db.doc('users/$uid').set({
+      'uid': uid,
       'displayName': displayName,
       'email': email,
       'photoUrl': photoUrl,
       'coupleId': null,
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    await _saveFcmToken(cred.user!.uid);
+    _myName = displayName;   // cache langsung
+    myPhotoUrl = photoUrl;
+    // updateDisplayName Auth non-kritis (jangan block registrasi kalau gagal)
+    try { await cred.user!.updateDisplayName(displayName); } catch (_) {}
+    await _saveFcmToken(uid);
     return cred;
   }
 

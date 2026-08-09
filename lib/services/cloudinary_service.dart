@@ -62,6 +62,21 @@ class CloudinaryService {
     return null;
   }
 
+  /// Upload Avatar (foto profil) - LANGSUNG tanpa compress 1080 (lebih reliable buat hasil crop kecil)
+  Future<String?> uploadAvatar(File file) async {
+    try {
+      final mimeType = lookupMimeType(file.path) ?? 'image/jpeg';
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(file.path, filename: 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg', contentType: MediaType.parse(mimeType)),
+        'upload_preset': uploadPreset,
+        'folder': 'dykal/avatar',
+      });
+      final res = await _dio.post('https://api.cloudinary.com/v1_1/$cloudName/image/upload', data: formData);
+      if (res.statusCode == 200) return res.data['secure_url'] as String?;
+    } catch (e) { print('avatar upload error: $e'); }
+    return null;
+  }
+
   /// Upload Voice Note (audio/m4a, mp3, aac)
   Future<String?> uploadVoiceNote(File file) async {
     try {

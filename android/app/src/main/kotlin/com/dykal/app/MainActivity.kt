@@ -26,12 +26,15 @@ class MainActivity : FlutterActivity() {
                             rm.setType(type)
                             val cursor = rm.cursor
                             val list = mutableListOf<Map<String, String>>()
-                            val titleCol = cursor.getColumnIndex(RingtoneManager.TITLE_COLUMN_NAME)
                             if (cursor.moveToFirst()) {
                                 do {
-                                    val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "" else ""
-                                    val uri = rm.getRingtoneUri(cursor.position).toString()
-                                    list.add(mapOf("title" to title, "uri" to uri))
+                                    val uri = rm.getRingtoneUri(cursor.position)
+                                    var title = ""
+                                    try {
+                                        val r = RingtoneManager.getRingtone(this, uri)
+                                        title = r.getTitle(this)
+                                    } catch (_: Exception) {}
+                                    list.add(mapOf("title" to title, "uri" to uri.toString()))
                                 } while (cursor.moveToNext())
                             }
                             result.success(list)

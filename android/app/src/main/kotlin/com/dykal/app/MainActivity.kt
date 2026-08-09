@@ -26,15 +26,12 @@ class MainActivity : FlutterActivity() {
                             rm.setType(type)
                             val cursor = rm.cursor
                             val list = mutableListOf<Map<String, String>>()
+                            val titleCol = cursor.getColumnIndex(RingtoneManager.TITLE_COLUMN_NAME)
                             if (cursor.moveToFirst()) {
                                 do {
-                                    val pos = cursor.position
-                                    list.add(
-                                        mapOf(
-                                            "title" to (rm.getRingtoneTitle(pos) ?: ""),
-                                            "uri" to rm.getRingtoneUri(pos).toString()
-                                        )
-                                    )
+                                    val title = if (titleCol >= 0) cursor.getString(titleCol) ?: "" else ""
+                                    val uri = rm.getRingtoneUri(cursor.position).toString()
+                                    list.add(mapOf("title" to title, "uri" to uri))
                                 } while (cursor.moveToNext())
                             }
                             result.success(list)

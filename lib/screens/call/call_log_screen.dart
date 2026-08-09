@@ -48,7 +48,7 @@ class CallLogScreen extends StatelessWidget {
               return ListTile(
                 leading: CircleAvatar(backgroundColor: isMissed ? Colors.red.withOpacity(0.1) : DyKalTheme.primary.withOpacity(0.1),
                   child: Icon(isMissed ? Icons.call_missed : (isVideo ? Icons.videocam : Icons.call), color: isMissed ? Colors.red : DyKalTheme.primary)),
-                title: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isMissed ? Colors.red : DyKalTheme.textDark)),
+                title: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isMissed ? Colors.red : DyKalTheme.textPrimaryOf(context))),
                 subtitle: Text(timeStr, style: const TextStyle(fontSize: 11)),
               );
             },

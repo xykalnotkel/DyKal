@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
           ]),
           actions: [
             _chatButton(context),
-            IconButton(onPressed: () => Navigator.pushNamed(context, '/profile'), icon: Icon(Icons.settings, color: DyKalTheme.textDark)),
+            IconButton(onPressed: () => Navigator.pushNamed(context, '/profile'), icon: Icon(Icons.settings, color: DyKalTheme.textPrimaryOf(context))),
             const SizedBox(width: 4),
           ],
         ),
@@ -177,7 +177,7 @@ class HomeScreen extends StatelessWidget {
         return IconButton(
           onPressed: () => Navigator.pushNamed(context, '/chat'),
           icon: Stack(clipBehavior: Clip.none, children: [
-            Icon(Icons.chat_bubble_outline, color: DyKalTheme.textDark),
+            Icon(Icons.chat_bubble_outline, color: DyKalTheme.textPrimaryOf(context)),
             if (unread > 0)
               Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.all(3.5), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)))),
           ]),

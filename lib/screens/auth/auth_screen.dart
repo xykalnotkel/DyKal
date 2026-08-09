@@ -99,7 +99,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text("DyKal", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: DyKalTheme.textDark)),
+                Text("DyKal", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: DyKalTheme.textPrimaryOf(context))),
                 const SizedBox(height: 4),
                 Text(isLogin ? "Masuk untuk lanjut" : "Buat akun baru", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 14)),
                 const SizedBox(height: 28),

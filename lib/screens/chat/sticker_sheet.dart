@@ -40,7 +40,7 @@ class _StickerSheetState extends State<StickerSheet> {
           Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: DyKalTheme.borderSoft)),
+            decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: DyKalTheme.borderSoft)),
             child: Row(children: [
               _tabBtn('Emoji', 0, Icons.emoji_emotions_outlined),
               _tabBtn('Stiker', 1, Icons.image_outlined),

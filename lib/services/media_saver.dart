@@ -8,7 +8,14 @@ class MediaSaver {
 
   /// Buat & kembalikan path folder tujuan (type: 'Foto' / 'Audio' / 'Video' / 'Stiker')
   static Future<String> _dir(String type) async {
-    final root = Directory('/storage/emulated/0/Android/media/$_pkg/Dykal/$type');
+    final folder = const {
+      'foto': 'Dykal Images',
+      'video': 'DyKal Video',
+      'audio': 'Dykal Audio',
+      'stiker': 'Dykal Stiker',
+      'document': 'DyKal Documents',
+    }[type] ?? 'Dykal Images';
+    final root = Directory('/storage/emulated/0/Android/media/$_pkg/Dykal/$folder');
     try {
       if (!await root.exists()) await root.create(recursive: true);
       return root.path;
@@ -23,7 +30,7 @@ class MediaSaver {
   static Future<String?> save(String url, {String type = 'foto'}) async {
     try {
       final dir = await _dir(type);
-      final ext = type == 'audio' ? 'm4a' : (type == 'video' ? 'mp4' : 'jpg');
+      final ext = type == 'audio' ? 'm4a' : (type == 'video' ? 'mp4' : (type == 'stiker' ? 'stkr' : 'jpg'));
       final name = 'dykal_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final path = '$dir/$name';
       await Dio().download(url, path);

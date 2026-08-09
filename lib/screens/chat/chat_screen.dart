@@ -45,6 +45,8 @@ class _ChatScreenState extends State<ChatScreen> {
   int _recSecs = 0;
   String? _recPath;
   int? _lastMsgCount;
+  final Set<String> _savedMedia = {}; // dedup auto-save media masuk
+  StreamSubscription? _mediaSub;
 
   String get _coupleId => AuthService().coupleId ?? '';
   String get _myId => AuthService().myId;
@@ -55,12 +57,32 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _setOnline(true);
+    _listenMedia(); // auto-save media masuk ke folder lokal
+  }
+
+  void _listenMedia() {
+    if (_coupleId.isEmpty) return;
+    _mediaSub = FirebaseFirestore.instance.collection('chats/$_coupleId/messages').snapshots().listen((qs) {
+      for (final d in qs.docChanges) {
+        if (d.type != DocumentChangeType.added) continue;
+        final m = d.doc.data() as Map<String, dynamic>;
+        if (m['fromId'] == _myId) continue;
+        final id = d.doc.id;
+        if (_savedMedia.contains(id)) continue;
+        final voice = m['voiceUrl'] as String?;
+        final img = m['imageUrl'] as String?;
+        final mt = m['type'] as String?;
+        if (voice != null) { _savedMedia.add(id); MediaSaver.save(voice, type: 'audio'); }
+        else if (img != null) { _savedMedia.add(id); MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto'); }
+      }
+    });
   }
 
   @override
   void dispose() {
     _setTyping(false);
     // FIX #5: JANGAN set offline di sini — offline cuma pas keluar app (lifecycle MainNav). Keluar chat != offline.
+    _mediaSub?.cancel();
     _msgController.dispose();
     _recorder.dispose();
     super.dispose();
@@ -95,6 +117,8 @@ class _ChatScreenState extends State<ChatScreen> {
       status: MessageStatus.sending,
       createdAt: Timestamp.now(),
     );
+    if (imageUrl != null) MediaSaver.save(imageUrl); // auto-save foto terkirim ke Dykal Images
+    if (voiceUrl != null) MediaSaver.save(voiceUrl, type: 'audio');
     final ref = FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id);
     // Tulis (offline-persist: pesan muncul dgn icon jam). Saat sync -> 'sent' + push.
     ref.set(msg.toMap()).then((_) {
@@ -370,7 +394,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(onPressed: () => Navigator.pushNamed(context, '/audioCall', arguments: {'isCaller': true, 'type': 'audio'}), icon: Icon(Icons.phone, color: DyKalTheme.primary, size: 22)),
           IconButton(onPressed: () => Navigator.pushNamed(context, '/videoCall', arguments: {'isCaller': true, 'type': 'video'}), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: DyKalTheme.primary, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.videocam, color: Colors.white, size: 18))),
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: DyKalTheme.textDark),
+            icon: Icon(Icons.more_vert, color: DyKalTheme.textPrimaryOf(context)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'log', child: ListTile(leading: Icon(Icons.history), title: Text('Log Panggilan'), dense: true, contentPadding: EdgeInsets.zero)),

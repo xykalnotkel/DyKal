@@ -170,7 +170,7 @@ class MessageBubble extends StatelessWidget {
                   if (message.text.isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(top: message.imageUrl != null ? 8 : 0),
-                      child: Text(message.text, style: TextStyle(color: isMe ? Colors.white : DyKalTheme.textDark, fontSize: 14)),
+                      child: Text(message.text, style: TextStyle(color: isMe ? Colors.white : DyKalTheme.textPrimaryOf(context), fontSize: 14)),
                     ),
                   SizedBox(height: 4),
                   Row(mainAxisSize: MainAxisSize.min, children: [

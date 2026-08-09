@@ -24,9 +24,9 @@ import 'screens/call/incoming_call_screen.dart';
 import 'services/auth_service.dart';
 import 'services/birthday_service.dart';
 import 'services/dev_logger.dart';
+import 'services/app_logger.dart'; // FIX: auto-record error ke logs
 import 'services/fcm_service.dart';
 import 'services/theme_controller.dart';
-import 'widgets/floating_devlog.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -65,7 +65,14 @@ Future<void> main() async {
   ));
 
   FCMService.navKey = _navKey;
-  runApp(ProviderScope(child: DyKalApp()));
+  // FIX: auto-record error ke Android/media/com.dykal.app/logs/app.log (devlog button dihapus)
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    AppLogger.error('flutter_error', details.exception, details.stack);
+  };
+  runZonedGuarded(() {
+    runApp(ProviderScope(child: DyKalApp()));
+  }, (e, st) => AppLogger.error('zone_error', e, st));
 }
 
 class DyKalApp extends StatelessWidget {
@@ -83,10 +90,7 @@ class DyKalApp extends StatelessWidget {
         darkTheme: DyKalTheme.darkTheme,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
-          child: Stack(children: [
-            child!,
-            const FloatingDevLog(),
-          ]),
+          child: child!,
         ),
         home: AuthGate(),
         routes: {

@@ -15,7 +15,7 @@ class LetterScreen extends StatelessWidget {
       slivers: [
         SliverAppBar(
           backgroundColor: Colors.transparent, elevation: 0, floating: true,
-          title: Row(children: [Icon(Icons.mail, size: 20, color: DyKalTheme.textDark), const SizedBox(width: 8), const Text("Surat Cinta")]),
+          title: Row(children: [Icon(Icons.mail, size: 20, color: DyKalTheme.textPrimaryOf(context)), const SizedBox(width: 8), const Text("Surat Cinta")]),
           actions: [IconButton(onPressed: () => _compose(context), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.edit, color: Colors.white, size: 18)))],
         ),
         SliverToBoxAdapter(child: _intro(context)),

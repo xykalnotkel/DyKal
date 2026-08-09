@@ -497,7 +497,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Container(width: 44, height: 44, decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle), child: const Icon(Icons.send, color: Colors.white, size: 18)))
               : GestureDetector(
                   onLongPressStart: (_) => _startRec(),
-                  onLongPressMoveUpdate: (_, d) { if (d.offsetFromOrigin.dy < -50 && !_locked) setState(() => _locked = true); },
+                  onLongPressMoveUpdate: (d) { if (d.offsetFromOrigin.dy < -50 && !_locked) setState(() => _locked = true); },
                   onLongPressEnd: (_) { if (!_locked) _stopRec(send: true); }, // FIX #15: lepas = kirim
                   child: Container(width: 44, height: 44, decoration: BoxDecoration(color: _isRecording ? Colors.red : DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(_locked ? Icons.lock : Icons.mic, color: _isRecording ? Colors.white : DyKalTheme.primary, size: 20)),
                 ),

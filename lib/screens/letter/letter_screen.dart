@@ -18,7 +18,7 @@ class LetterScreen extends StatelessWidget {
           title: Row(children: [Icon(Icons.mail, size: 20, color: DyKalTheme.textDark), const SizedBox(width: 8), const Text("Surat Cinta")]),
           actions: [IconButton(onPressed: () => _compose(context), icon: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.edit, color: Colors.white, size: 18)))],
         ),
-        SliverToBoxAdapter(child: _intro()),
+        SliverToBoxAdapter(child: _intro(context)),
         StreamBuilder<QuerySnapshot>(
           stream: coupleId == null ? null : FirebaseFirestore.instance.collection('couples/$coupleId/letters').snapshots(),
           builder: (context, snap) {
@@ -27,7 +27,7 @@ class LetterScreen extends StatelessWidget {
             if (docs.isEmpty) return SliverFillRemaining(child: _empty());
             return SliverList.builder(
               itemCount: docs.length,
-              itemBuilder: (_, i) {
+              itemBuilder: (context, i) {
                 final data = docs[i].data() as Map<String, dynamic>;
                 final fromName = data['fromName'] as String? ?? '';
                 final isLoved = data['isLoved'] as bool? ?? false;
@@ -98,7 +98,7 @@ class LetterScreen extends StatelessWidget {
     );
   }
 
-  Widget _intro() => Container(
+  Widget _intro(BuildContext context) => Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderSoft)),

@@ -120,8 +120,8 @@ Future<void> _loadBubbleStyle() async {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
           child: Text('Catatan: pemilih nada dering sistem sedang diperbaiki (package yang dipakai sebelumnya ternyata tidak ada di pub.dev). Untuk sementara pakai nada default sistem.', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
         ),
-        _toggle(Icons.volume_up, 'Suara Notifikasi', _notifSound),
-        _toggle(Icons.vibration, 'Getaran', _notifVibrate),
+        _toggle(Icons.volume_up, 'Suara Notifikasi', _notifSound, null),
+        _toggle(Icons.vibration, 'Getaran', _notifVibrate, null),
         const Divider(),
         _sectionHeader('Izin Overlay (Floating Bubble)'),
         FutureBuilder<bool>(

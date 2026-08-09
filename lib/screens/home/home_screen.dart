@@ -61,7 +61,7 @@ class HomeScreen extends StatelessWidget {
         SliverToBoxAdapter(child: _birthday()),
         // STATISTIK
         SliverToBoxHeader(label: "Statistik Kalian"),
-        SliverToBoxAdapter(child: _stats()),
+        SliverToBoxAdapter(child: _stats(context)),
         SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
     );
@@ -299,16 +299,16 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _stats() {
+  Widget _stats(BuildContext context) {
     final coupleId = AuthService().coupleId;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(children: [
-        _stat(Icons.chat, () => _countStream('chats/$coupleId/messages'), "Chat"),
+        _stat(context, Icons.chat, () => _countStream('chats/$coupleId/messages'), "Chat"),
         const SizedBox(width: 12),
-        _stat(Icons.collections, () => _countStream('couples/$coupleId/albums'), "Album"),
+        _stat(context, Icons.collections, () => _countStream('couples/$coupleId/albums'), "Album"),
         const SizedBox(width: 12),
-        _stat(Icons.mail, () => _countStream('couples/$coupleId/letters'), "Surat"),
+        _stat(context, Icons.mail, () => _countStream('couples/$coupleId/letters'), "Surat"),
       ]),
     );
   }
@@ -316,7 +316,7 @@ class HomeScreen extends StatelessWidget {
   // Stream jumlah dokumen sebuah path
   Stream<int> _countStream(String path) => FirebaseFirestore.instance.collection(path).snapshots().map((s) => s.docs.length);
 
-  Widget _stat(IconData icon, Stream<int> Function() stream, String label) {
+  Widget _stat(BuildContext context, IconData icon, Stream<int> Function() stream, String label) {
     return Expanded(child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderOf(context))),

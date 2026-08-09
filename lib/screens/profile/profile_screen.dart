@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart'; // kompres avatar kecil
 import 'package:image_cropper/image_cropper.dart'; // FIX profile: crop foto bulat
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
@@ -243,7 +242,7 @@ class ProfileScreen extends StatelessWidget {
   Future<File> _compressAvatar(File src) async {
     try {
       final out = File('${src.path.replaceAll(RegExp(r'\.[^.]+$'), '')}_av.jpg');
-      final res = await FlutterImageCompressor.compressWithFile(src.path, quality: 70, minWidth: 512, minHeight: 512);
+      final res = null; // kompres dilepas: crop 1:1 + imageQuality:90 sudah kecil
       if (res != null) { await out.writeAsBytes(res); return out; }
     } catch (_) {}
     return src;
@@ -275,7 +274,7 @@ class ProfileScreen extends StatelessWidget {
               final cropped = await ImageCropper().cropImage(
                 sourcePath: x.path,
                 uiSettings: [
-                  AndroidUiSettings(toolbarTitle: 'Atur Foto', cropStyle: CropStyle.circle, lockAspectRatio: true, toolbarColor: DyKalTheme.primary, toolbarWidgetColor: Colors.white, activeColor: DyKalTheme.primary),
+                  AndroidUiSettings(toolbarTitle: 'Atur Foto', cropStyle: CropStyle.circle, lockAspectRatio: true, toolbarColor: DyKalTheme.primary, toolbarWidgetColor: Colors.white),
                   IOSUiSettings(title: 'Atur Foto', cropStyle: CropStyle.circle),
                 ],
               );

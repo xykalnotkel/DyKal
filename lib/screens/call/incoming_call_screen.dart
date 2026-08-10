@@ -94,7 +94,16 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
     return Scaffold(
       backgroundColor: DyKalTheme.backgroundDark,
       body: SafeArea(
-        child: Column(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/backgrounds/call_bg_dark.webp',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+            Container(color: Colors.black.withValues(alpha: 0.4)),
+            Column(
           children: [
             const Spacer(flex: 2),
             ScaleTransition(
@@ -160,6 +169,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
                 ],
               ),
             ),
+          ],
+        ),
           ],
         ),
       ),

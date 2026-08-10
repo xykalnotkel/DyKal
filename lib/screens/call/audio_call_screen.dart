@@ -92,8 +92,18 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     return Scaffold(
       backgroundColor: DyKalTheme.backgroundDark,
       body: SafeArea(
-        child: Column(
+        child: Stack(
+          fit: StackFit.expand,
           children: [
+            // Background panggilan dari aset (tema gelap)
+            Image.asset(
+              'assets/backgrounds/call_bg_dark.webp',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+            Container(color: Colors.black.withValues(alpha: 0.35)),
+            Column(
+              children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -229,6 +239,8 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                   ),
                 ],
               ),
+            ),
+              ],
             ),
           ],
         ),

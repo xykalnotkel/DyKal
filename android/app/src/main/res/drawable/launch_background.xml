@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+    <!-- Splash native dengan background custom (tema launcher DyKal) -->
+    <item android:drawable="@drawable/launch_bg" />
 </layer-list>

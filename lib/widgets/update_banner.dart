@@ -206,11 +206,26 @@ class _UpdateBannerState extends State<UpdateBanner> {
       builder: (ctx) => ListenableBuilder(
         listenable: svc,
         builder: (ctx, _) => AlertDialog(
-          title: Row(
+          title: Column(
             children: [
-              const Icon(Icons.new_releases, color: DyKalTheme.primary),
-              const SizedBox(width: 8),
-              const Text('Ada Update Nih!'),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  'assets/banners/app_update_card.webp',
+                  height: 110,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Row(
+                children: [
+                  Icon(Icons.new_releases, color: DyKalTheme.primary),
+                  SizedBox(width: 8),
+                  Text('Ada Update Nih!'),
+                ],
+              ),
             ],
           ),
           content: SingleChildScrollView(

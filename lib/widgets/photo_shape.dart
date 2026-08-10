@@ -27,7 +27,13 @@ extension PhotoShapeX on PhotoShape {
         PhotoShape.perisai: 'Perisai',
         PhotoShape.daun: 'Daun',
       }[this]!;
-  String get badgeAsset => 'assets/icons/badge_$name.webp';
+  /// Badge aset per shape — memakai badge baru dari pack DyKal.
+  String get badgeAsset => const {
+        PhotoShape.love: 'assets/badges/badge_love_morph.webp',
+        PhotoShape.abstrak: 'assets/badges/badge_morph_fluid.webp',
+        PhotoShape.star: 'assets/badges/badge_star_morph.webp',
+        PhotoShape.hexagon: 'assets/badges/badge_geometric_shape.webp',
+      }[this] ?? 'assets/icons/badge_$name.webp';
   IconData get icon => const {
         PhotoShape.love: Icons.favorite,
         PhotoShape.bulat: Icons.circle,

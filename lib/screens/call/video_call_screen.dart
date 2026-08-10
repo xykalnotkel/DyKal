@@ -244,6 +244,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                       _btn(Icons.mic_off, call.muted, call.toggleMute),
                       _btn(Icons.videocam_off, !call.videoOn, call.toggleVideo),
                       _btn(Icons.swap_horiz, _swapped, () => setState(() => _swapped = !_swapped)),
+                      _btn(Icons.cameraswitch, false, () => call.flipCamera()),
                       _btn(Icons.screen_share, call.screenSharing, () async {
                         final ok = await call.toggleScreenShare();
                         if (!mounted) return;

@@ -35,8 +35,8 @@ class MessageBubble extends StatelessWidget {
       return Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark
                 ? DyKalTheme.surfaceDark
@@ -67,8 +67,8 @@ class MessageBubble extends StatelessWidget {
       return Align(
         alignment: Alignment.center,
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
             color: DyKalTheme.textSecondaryOf(context).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
@@ -111,6 +111,19 @@ class MessageBubble extends StatelessWidget {
                       child: Center(
                         child: CircularProgressIndicator(strokeWidth: 2, color: DyKalTheme.primary),
                       ),
+                    ),
+                  )
+                else if (message.status == MessageStatus.sending)
+                  // Sedang upload stiker (ikon jam, tanpa spinner memblokir)
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: isMe ? Colors.white.withValues(alpha: 0.15) : DyKalTheme.borderOf(context),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.schedule, color: DyKalTheme.primary, size: 28),
                     ),
                   )
                 else
@@ -163,8 +176,8 @@ class MessageBubble extends StatelessWidget {
             }
           },
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: isMe
                   ? (isOpened ? Colors.grey.shade700 : DyKalTheme.primary)
@@ -248,11 +261,11 @@ class MessageBubble extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Container(
-                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-                margin: const EdgeInsets.symmetric(vertical: 4),
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                margin: const EdgeInsets.symmetric(vertical: 2),
                 padding: message.type == MessageType.image
-                    ? const EdgeInsets.all(4)
-                    : const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ? const EdgeInsets.all(3)
+                    : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: isMe ? DyKalTheme.primary : DyKalTheme.cardOf(context),
                   borderRadius: BorderRadius.only(
@@ -308,12 +321,54 @@ class MessageBubble extends StatelessWidget {
                           ],
                         ),
                       ),
+                    if (message.type == MessageType.voice && message.voiceUrl == null)
+                      // Voice note sedang di-upload: tampil dengan ikon jam
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.mic_none,
+                              size: 20,
+                              color: isMe ? Colors.white70 : DyKalTheme.textSecondaryOf(context),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Voice note',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isMe ? Colors.white : DyKalTheme.textPrimaryOf(context),
+                              ),
+                            ),
+                            if (message.status == MessageStatus.sending) ...[
+                              const SizedBox(width: 8),
+                              const Icon(Icons.schedule, size: 14, color: DyKalTheme.primary),
+                            ],
+                          ],
+                        ),
+                      ),
                     if (message.type == MessageType.voice && message.voiceUrl != null)
                       _VoicePlayer(
                         url: message.voiceUrl!,
                         duration: message.voiceDuration ?? 0,
                         accent: isMe ? Colors.white : DyKalTheme.primary,
                         trackColor: isMe ? Colors.white70 : DyKalTheme.textSecondaryOf(context),
+                      ),
+                    if (message.imageUrl == null &&
+                        message.status == MessageStatus.sending &&
+                        (message.type == MessageType.image))
+                      // Foto sedang di-upload: placeholder ikon jam
+                      Container(
+                        width: 150,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.white.withValues(alpha: 0.15) : DyKalTheme.borderOf(context),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.schedule, size: 30, color: DyKalTheme.primary),
+                        ),
                       ),
                     if (message.imageUrl != null)
                       GestureDetector(

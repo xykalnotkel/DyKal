@@ -22,7 +22,6 @@ import 'package:file_picker/file_picker.dart';
 import 'camera_screen.dart';
 import '../../widgets/typing_indicator.dart';
 import '../../widgets/gallery_picker.dart';
-import 'image_send_screen.dart';
 import '../profile/view_profile_screen.dart'; // FIX #16: fullscreen partner profile
 import 'sticker_edit_screen.dart';
 import 'sticker_sheet.dart';
@@ -43,12 +42,16 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isTyping = false;
   bool _isRecording = false;
   bool _locked = false; // FIX #15: VN lock saat seret ke atas
-  bool _cancelled = false; // FIX spec: VN swipe-kiri = batal
   int _recSecs = 0;
   String? _recPath;
   int? _lastMsgCount;
   final Set<String> _savedMedia = {}; // dedup auto-save media masuk
   StreamSubscription? _mediaSub;
+
+  // State gesture voice note ala WhatsApp
+  Offset _dragOffset = Offset.zero;
+  bool _dragCancel = false;
+  bool _dragLock = false;
 
   String get _coupleId => AuthService().coupleId ?? '';
   String get _myId => AuthService().myId;
@@ -134,6 +137,70 @@ class _ChatScreenState extends State<ChatScreen> {
     _checkConn();
   }
 
+  /// Kirim media ala WhatsApp: pesan langsung muncul dengan ikon jam (sending),
+  /// upload berjalan di background, lalu status jadi 'sent' + URL terpasang.
+  /// Tidak ada dialog loading yang memblokir layar.
+  Future<void> _sendWithUpload({
+    required String id,
+    required MessageType type,
+    required Future<String?> Function() upload,
+    String? caption,
+    int? voiceDuration,
+    bool viewOnce = false,
+  }) async {
+    final msg = ChatMessage(
+      id: id,
+      fromId: _myId,
+      toId: _partnerId,
+      text: caption ?? '',
+      type: type,
+      imageUrl: null,
+      voiceUrl: null,
+      voiceDuration: voiceDuration,
+      replyToId: _replyTo?.id,
+      replyToText: _replyTo == null ? null : _replyPreviewText(_replyTo!),
+      replyToName: _replyTo == null ? null : (_replyTo!.fromId == _myId ? AuthService().myName : _partnerName),
+      status: MessageStatus.sending,
+      isViewOnce: viewOnce,
+      createdAt: Timestamp.now(),
+    );
+    final ref = FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(id);
+    await ref.set(msg.toMap());
+    setState(() { _replyTo = null; });
+
+    String? url;
+    try {
+      url = await upload();
+    } catch (_) {
+      url = null;
+    }
+    if (url == null) {
+      // Gagal upload -> hapus pesan + kasih tahu user
+      try { await ref.delete(); } catch (_) {}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengirim media. Periksa koneksi.')),
+        );
+      }
+      return;
+    }
+    await ref.update({
+      if (type == MessageType.image || type == MessageType.sticker) 'imageUrl': url,
+      if (type == MessageType.voice) 'voiceUrl': url,
+      'status': 'sent',
+    });
+    // Simpan salinan lokal + push notif ke pasangan
+    if (type == MessageType.voice) {
+      MediaSaver.save(url, type: 'audio');
+    } else if (type == MessageType.image) {
+      MediaSaver.save(url, type: 'foto', isPrivate: viewOnce);
+    }
+    final preview = type == MessageType.voice
+        ? 'Voice note'
+        : (type == MessageType.sticker ? 'Stiker' : (caption?.isNotEmpty == true ? caption! : 'Foto'));
+    PushService.notifyPartner(title: AuthService().myName, body: preview);
+  }
+
   Future<void> _checkConn() async {
     try {
       final r = await Connectivity().checkConnectivity();
@@ -157,13 +224,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _pickImage() async {
-    final file = await Navigator.push<File>(context, MaterialPageRoute(builder: (_) => const GalleryPickerScreen(allowVideo: false)));
-    if (file == null || !mounted) return;
-    final res = await Navigator.push<Map<String, dynamic>>(context, MaterialPageRoute(builder: (_) => ImageSendScreen(image: file)));
-    if (!mounted || res == null) return;
-    _sendMessage(imageUrl: res['url'] as String, viewOnce: res['viewOnce'] as bool, text: (res['caption'] as String?)?.isEmpty == true ? null : res['caption'] as String?);
-  }
+
 
   void _pickSticker() {
     showModalBottomSheet(
@@ -195,15 +256,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendLocalSticker(File f) async {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B8A))));
-    final url = await CloudinaryService().uploadImage(f, folder: 'dykal/stiker');
-    if (!mounted) return;
-    Navigator.pop(context);
-    if (url != null) {
-      _sendMessage(stickerUrl: url);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal upload stiker')));
-    }
+    // Langsung muncul sebagai stiker dengan ikon jam; upload di background.
+    await _sendWithUpload(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: MessageType.sticker,
+      upload: () => CloudinaryService().uploadImage(f, folder: 'dykal/stiker'),
+    );
   }
 
   Future<void> _startRec() async {
@@ -214,7 +272,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final dir = await getTemporaryDirectory();
     _recPath = '${dir.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
     await _recorder.start(RecordConfig(encoder: AudioEncoder.aacLc), path: _recPath!);
-    setState(() { _isRecording = true; _recSecs = 0; _locked = false; _cancelled = false; });
+    setState(() { _isRecording = true; _recSecs = 0; _locked = false; });
     _recTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _recSecs++));
     _setRecording(true);
   }
@@ -223,7 +281,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!_isRecording) return;
     _recTimer?.cancel();
     try { await _recorder.stop(); } catch (_) {}
-    setState(() { _isRecording = false; _locked = false; _cancelled = false; });
+    setState(() { _isRecording = false; _locked = false; });
     _setRecording(false);
   }
 
@@ -241,8 +299,13 @@ class _ChatScreenState extends State<ChatScreen> {
     _setRecording(false);
     if (path == null) return;
     if (send) {
-      final url = await CloudinaryService().uploadVoiceNote(File(path));
-      if (url != null) _sendMessage(voiceUrl: url, voiceDuration: secs);
+      // Voice note langsung muncul (ikon jam), upload di background.
+      await _sendWithUpload(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: MessageType.voice,
+        voiceDuration: secs,
+        upload: () => CloudinaryService().uploadVoiceNote(File(path)),
+      );
     } else {
       _showVoicePreview(path, secs); // FIX #15: preview dulu sebelum kirim
     }
@@ -274,8 +337,12 @@ class _ChatScreenState extends State<ChatScreen> {
         TextButton(onPressed: () { player.dispose(); Navigator.pop(context); }, child: const Text('Buang')),
         FilledButton(onPressed: () async {
           player.dispose(); Navigator.pop(context);
-          final url = await CloudinaryService().uploadVoiceNote(File(path));
-          if (url != null) _sendMessage(voiceUrl: url, voiceDuration: secs);
+          await _sendWithUpload(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            type: MessageType.voice,
+            voiceDuration: secs,
+            upload: () => CloudinaryService().uploadVoiceNote(File(path)),
+          );
         }, child: const Text('Kirim')),
       ],
     ))).then((_) => player.dispose());
@@ -312,7 +379,8 @@ class _ChatScreenState extends State<ChatScreen> {
               _header(),
               Expanded(child: _list()),
               if (_replyTo != null) _replyPreview(),
-              if (_isRecording) _recordingBar(),
+              if (_isRecording && _locked) _recordingBar(),
+              if (_isRecording && !_locked) _recordingOverlay(),
               _input(),
             ],
           ),
@@ -499,6 +567,64 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
+  /// Overlay saat merekam (belum terkunci): target batal di kiri,
+  /// target kunci di kanan, timer + instruksi. Ikon menyala sesuai arah geser.
+  Widget _recordingOverlay() => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: DyKalTheme.primary.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _dragCancel ? Colors.redAccent : Colors.transparent,
+              ),
+              child: Icon(
+                Icons.delete_outline,
+                color: _dragCancel ? Colors.white : Colors.redAccent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Merekam ${_fmtRec(_recSecs)}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    'Lepas = kirim · Geser atas = kunci · Geser kiri = batal',
+                    style: TextStyle(fontSize: 11, color: DyKalTheme.textSecondaryOf(context)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _dragLock ? DyKalTheme.primary : Colors.transparent,
+              ),
+              child: Icon(
+                Icons.lock_outline,
+                color: _dragLock ? Colors.white : DyKalTheme.primary,
+                size: 22,
+              ),
+            ),
+          ],
+        ),
+      );
+
   Widget _recordingBar() => Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -516,13 +642,18 @@ class _ChatScreenState extends State<ChatScreen> {
       context,
       MaterialPageRoute(builder: (_) => const CameraScreen()),
     );
-    if (result != null) {
-      _sendMessage(
-        imageUrl: result['url'],
-        text: result['caption'],
-        viewOnce: result['viewOnce'] ?? false,
-      );
-    }
+    if (result == null || !mounted) return;
+    final viewOnce = result['viewOnce'] as bool? ?? false;
+    await _sendWithUpload(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: MessageType.image,
+      caption: result['caption'] as String?,
+      viewOnce: viewOnce,
+      upload: () => CloudinaryService().uploadImage(
+        File(result['localPath'] as String),
+        folder: viewOnce ? 'dykal/view_once' : 'dykal/chat',
+      ),
+    );
   }
 
   void _openAttachmentMenu() {
@@ -536,10 +667,6 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _attachItem(Icons.photo_library_rounded, 'Galeri', DyKalTheme.primary, () {
-                Navigator.pop(ctx);
-                _pickImage();
-              }),
               _attachItem(Icons.camera_alt_rounded, 'Kamera', const Color(0xFF00D68F), () {
                 Navigator.pop(ctx);
                 _openCamera();
@@ -549,8 +676,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 final res = await FilePicker.platform.pickFiles();
                 if (res != null && res.files.single.path != null) {
                   final file = File(res.files.single.path!);
-                  final url = await CloudinaryService().uploadImage(file, folder: 'dykal/documents');
-                  if (url != null) _sendMessage(imageUrl: url, text: res.files.single.name);
+                  final name = res.files.single.name;
+                  await _sendWithUpload(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    type: MessageType.image,
+                    caption: name,
+                    upload: () => CloudinaryService().uploadImage(file, folder: 'dykal/documents'),
+                  );
                 }
               }),
               _attachItem(Icons.music_note_rounded, 'Audio', const Color(0xFFFFC857), () async {
@@ -558,8 +690,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 final res = await FilePicker.platform.pickFiles(type: FileType.audio);
                 if (res != null && res.files.single.path != null) {
                   final file = File(res.files.single.path!);
-                  final url = await CloudinaryService().uploadVoiceNote(file);
-                  if (url != null) _sendMessage(voiceUrl: url, voiceDuration: 10);
+                  await _sendWithUpload(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    type: MessageType.voice,
+                    upload: () => CloudinaryService().uploadVoiceNote(file),
+                  );
                 }
               }),
             ],
@@ -593,25 +728,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _input() => Container(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-        decoration: BoxDecoration(
-          color: DyKalTheme.cardOf(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))
-          ],
-        ),
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
         child: Row(
           children: [
             IconButton(
               onPressed: _pickSticker,
               icon: Icon(Icons.emoji_emotions_outlined, color: DyKalTheme.primary, size: 24),
               tooltip: 'Stiker & Emoji',
-            ),
-            IconButton(
-              onPressed: _openAttachmentMenu,
-              icon: Icon(Icons.attach_file_rounded, color: DyKalTheme.textSecondaryOf(context), size: 22),
-              tooltip: 'Lampiran',
             ),
             Expanded(
               child: Container(
@@ -637,7 +760,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
+            IconButton(
+              onPressed: _openAttachmentMenu,
+              icon: Icon(Icons.attach_file_rounded, color: DyKalTheme.textSecondaryOf(context), size: 22),
+              tooltip: 'Lampiran',
+            ),
             IconButton(
               onPressed: _openCamera,
               icon: Icon(Icons.camera_alt_rounded, color: DyKalTheme.primary, size: 22),
@@ -655,34 +783,83 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
                       ),
                     )
-                  : GestureDetector(
-                      onTap: () {
-                        if (!_isRecording) _startRec();
-                        else _stopRec(send: false);
-                      },
-                      onLongPressStart: (_) => _startRec(),
-                      onLongPressMoveUpdate: (d) {
-                        if (d.offsetFromOrigin.dx < -60 && !_cancelled) setState(() => _cancelled = true);
-                        else if (d.offsetFromOrigin.dy < -50 && !_locked && !_cancelled) setState(() => _locked = true);
-                      },
-                      onLongPressEnd: (_) {
-                        if (_cancelled) {
+                  : Transform.translate(
+                      offset: _dragOffset,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (!_isRecording) {
+                            _startRec();
+                          } else {
+                            _stopRec(send: false);
+                          }
+                        },
+                        // Gesture ala WhatsApp: tahan=lupa → lepas=kirim,
+                        // geser ke atas=mengunci, geser ke kiri=membatalkan.
+                        onLongPressStart: (_) {
+                          setState(() {
+                            _dragOffset = Offset.zero;
+                            _dragCancel = false;
+                            _dragLock = false;
+                          });
+                          _startRec();
+                        },
+                        onLongPressMoveUpdate: (d) {
+                          if (!_isRecording) return;
+                          final dx = d.offsetFromOrigin.dx;
+                          final dy = d.offsetFromOrigin.dy;
+                          setState(() {
+                            _dragOffset = Offset(dx.clamp(-90.0, 0.0), dy.clamp(-150.0, 0.0));
+                            _dragCancel = dx < -70 && !_dragLock;
+                            _dragLock = dy < -60 && !_dragCancel;
+                          });
+                        },
+                        onLongPressEnd: (_) {
+                          if (!_isRecording) return;
+                          if (_dragCancel) {
+                            _discardRec();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Voice note dibatalkan')),
+                              );
+                            }
+                          } else if (_dragLock) {
+                            setState(() {
+                              _locked = true;
+                              _dragOffset = Offset.zero;
+                              _dragCancel = false;
+                              _dragLock = false;
+                            });
+                          } else {
+                            _stopRec(send: true);
+                          }
+                          setState(() {
+                            _dragOffset = Offset.zero;
+                            _dragCancel = false;
+                            _dragLock = false;
+                          });
+                        },
+                        onLongPressCancel: () {
                           _discardRec();
-                        } else if (!_locked) {
-                          _stopRec(send: true);
-                        }
-                      },
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: _isRecording ? Colors.red : DyKalTheme.primary.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _isRecording ? Icons.stop : Icons.mic_rounded,
-                          color: _isRecording ? Colors.white : DyKalTheme.primary,
-                          size: 20,
+                          setState(() {
+                            _dragOffset = Offset.zero;
+                            _dragCancel = false;
+                            _dragLock = false;
+                          });
+                        },
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: _isRecording
+                                ? (_dragCancel ? Colors.redAccent : (_dragLock ? DyKalTheme.primary : Colors.red))
+                                : DyKalTheme.primary.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _isRecording ? Icons.stop : Icons.mic_rounded,
+                            color: _isRecording ? Colors.white : DyKalTheme.primary,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),

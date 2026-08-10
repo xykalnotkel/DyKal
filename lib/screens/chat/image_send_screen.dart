@@ -5,7 +5,6 @@ import 'package:flutter/rendering.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../config/theme.dart';
-import '../../services/cloudinary_service.dart';
 
 class ImageSendScreen extends StatefulWidget {
   final File image;
@@ -139,25 +138,13 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
   Future<void> _send() async {
     setState(() => _isSending = true);
     final finalFile = await _renderFinalImage();
-
-    final targetFolder = _isViewOnce ? 'dykal/view_once' : 'dykal/chat';
-    final url = await CloudinaryService().uploadImage(
-      finalFile,
-      folder: targetFolder,
-    );
-
     if (!mounted) return;
 
-    if (url == null) {
-      setState(() => _isSending = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal mengupload media. Periksa koneksi internet.')),
-      );
-      return;
-    }
-
+    // Upload TIDAK dilakukan di sini (agar tidak ada spinner blocking).
+    // Kembalikan file lokal; chat_screen menulis pesan dgn ikon jam lalu
+    // mengunggah di background (ala WhatsApp).
     Navigator.pop(context, {
-      'url': url,
+      'localPath': finalFile.path,
       'caption': _caption.text.trim(),
       'viewOnce': _isViewOnce,
       'isHd': _isHd,

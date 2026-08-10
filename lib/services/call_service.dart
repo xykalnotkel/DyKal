@@ -204,6 +204,39 @@ class DyKalCallService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _frontCamera = true;
+
+  /// Ganti kamera depan/belakang saat panggilan berlangsung (live replace track).
+  Future<void> flipCamera() async {
+    _frontCamera = !_frontCamera;
+    try {
+      final stream = await navigator.mediaDevices.getUserMedia({
+        'audio': false,
+        'video': {
+          'facingMode': _frontCamera ? 'user' : 'environment',
+          'width': {'ideal': 640},
+          'height': {'ideal': 480},
+          'frameRate': {'ideal': 24},
+        },
+      });
+      final newTrack = stream.getVideoTracks().first;
+      final senders = await _pc?.getSenders() ?? [];
+      for (final s in senders) {
+        if (s.track?.kind == 'video') {
+          await s.replaceTrack(newTrack);
+          break;
+        }
+      }
+      // Hentikan track video lama & ganti di localStream
+      for (final t in [...?localStream?.getVideoTracks()]) {
+        localStream?.removeTrack(t);
+        await t.stop();
+      }
+      localStream?.addTrack(newTrack);
+      notifyListeners();
+    } catch (_) {}
+  }
+
   /// Tulis filter pilihanku ke call doc -> lawan lihat aku ter-filter (filter di-display sisi penerima)
   Future<void> setMyFilter(String f) async {
     final field = _amCaller ? 'callerFilter' : 'calleeFilter';

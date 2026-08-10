@@ -17,6 +17,7 @@ import 'screens/letter/letter_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/pairing/pairing_screen.dart';
+import 'screens/splash/splash_screen.dart';
 import 'screens/chat/chat_screen.dart';
 import 'screens/call/video_call_screen.dart';
 import 'screens/call/audio_call_screen.dart';
@@ -105,7 +106,7 @@ class DyKalApp extends StatelessWidget {
           data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),
           child: child!,
         ),
-        home: const AuthGate(),
+        home: const SplashGate(),
         routes: {
           '/chat': (_) => const ChatScreen(),
           '/videoCall': (_) => const VideoCallScreen(),
@@ -121,6 +122,26 @@ class DyKalApp extends StatelessWidget {
 Widget _splash() => const Scaffold(
       body: Center(child: CircularProgressIndicator(color: DyKalTheme.primary)),
     );
+
+/// Menampilkan splash screen beranimasi (logo + love) lalu masuk ke AuthGate.
+class SplashGate extends StatefulWidget {
+  const SplashGate({super.key});
+
+  @override
+  State<SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<SplashGate> {
+  bool _done = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_done) {
+      return SplashScreen(onComplete: () => setState(() => _done = true));
+    }
+    return const AuthGate();
+  }
+}
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});

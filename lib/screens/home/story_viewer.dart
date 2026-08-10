@@ -104,14 +104,18 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
+  bool _paused = false;
+
   void _pause() {
     _animController.stop();
     _audioPlayer.pause();
+    if (mounted) setState(() => _paused = true);
   }
 
   void _resume() {
     _animController.forward();
     _audioPlayer.play();
+    if (mounted) setState(() => _paused = false);
   }
 
   @override
@@ -158,7 +162,10 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       body: GestureDetector(
         onLongPressStart: (_) => _pause(),
         onLongPressEnd: (_) => _resume(),
-        onTapDown: (details) {
+        onLongPressCancel: () => _resume(),
+        // Pakai onTapUp (bukan onTapDown) agar menahan jari tidak langsung
+        // memindah story — sentuhan diam = pause (long press).
+        onTapUp: (details) {
           final width = MediaQuery.of(context).size.width;
           if (details.globalPosition.dx < width / 3) {
             _prevStory();
@@ -181,6 +188,16 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                 ),
               ),
             ),
+
+            // Indikator pause saat ditahan
+            if (_paused)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                  child: const Icon(Icons.pause, color: Colors.white, size: 32),
+                ),
+              ),
 
             // Top Segmented Progress Bars
             SafeArea(

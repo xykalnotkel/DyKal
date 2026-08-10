@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Splash native dengan background custom (tema launcher DyKal) -->
-    <item android:drawable="@drawable/launch_bg" />
+    <!-- Default sistem: background putih polos. Android 12+ otomatis
+         menampilkan ikon launcher di tengah dengan warna ini. -->
+    <item android:drawable="@android:color/white" />
 </layer-list>

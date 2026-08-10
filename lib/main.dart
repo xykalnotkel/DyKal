@@ -105,7 +105,7 @@ Future<void> _initFirebase() async {
       appInitStatus = AppInitStatus.ready;
       return;
     }
-    await Firebase.initializeApp().timeout(const Duration(seconds: 20));
+    await Firebase.initializeApp().timeout(const Duration(seconds: 15));
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     appInitStatus = AppInitStatus.ready;
     DevLogger.instance.info('firebase', 'InitializeApp SUCCESS');
@@ -178,49 +178,62 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  Timer? _timeout;
+  Timer? _bootTimer;
+  bool _bootFailed = false;
+  bool _reachedContent = false;
 
   @override
   void initState() {
     super.initState();
-    // Kalau Firebase belum siap dalam 20 detik, tampilkan layar peringatan
-    // + tombol Coba Lagi — bukan spinner yang menggantung selamanya.
-    _timeout = Timer(const Duration(seconds: 20), () {
-      if (mounted) setState(() {});
+    _startBootTimer();
+  }
+
+  /// Jika dalam 12 detik aplikasi belum sampai ke layar konten (auth/pairing/
+  /// main), tampilkan layar "Gagal menghubungi server" + Coba Lagi —
+  /// TIDAK ada spinner yang menggantung selamanya.
+  void _startBootTimer() {
+    _bootFailed = false;
+    _reachedContent = false;
+    _bootTimer?.cancel();
+    _bootTimer = Timer(const Duration(seconds: 12), () {
+      if (mounted && !_reachedContent) setState(() => _bootFailed = true);
     });
   }
 
   @override
   void dispose() {
-    _timeout?.cancel();
+    _bootTimer?.cancel();
     super.dispose();
   }
 
   void _retry() {
-    setState(() => appInitStatus = AppInitStatus.pending);
-    unawaited(_initFirebase());
-    _timeout = Timer(const Duration(seconds: 20), () {
-      if (mounted) setState(() {});
+    setState(() {
+      appInitStatus = AppInitStatus.pending;
+      _bootFailed = false;
     });
+    unawaited(_initFirebase());
+    _startBootTimer();
   }
+
+  bool get _showError => _bootFailed || appInitStatus == AppInitStatus.failed;
 
   @override
   Widget build(BuildContext context) {
-    final timedOut = _timeout?.isActive == false;
-    if (appInitStatus == AppInitStatus.failed ||
-        (appInitStatus == AppInitStatus.pending && timedOut)) {
-      return _InitErrorScreen(onRetry: _retry);
-    }
-    if (appInitStatus != AppInitStatus.ready) {
-      return _splash();
-    }
+    if (_showError) return _InitErrorScreen(onRetry: _retry);
+    if (appInitStatus != AppInitStatus.ready) return _splash();
+
     return StreamBuilder<User?>(
       stream: AuthService().authState,
       builder: (context, authSnap) {
+        // Stream error (mis. Firestore ditolak / jaringan) -> layar error, bukan spinner
+        if (authSnap.hasError || _bootFailed) {
+          return _InitErrorScreen(onRetry: _retry);
+        }
         if (authSnap.connectionState != ConnectionState.active) return _splash();
         final user = authSnap.data;
         if (user == null) {
           DevLogger.instance.info('auth', 'No user -> AuthScreen');
+          _reachedContent = true;
           return const AuthScreen();
         }
         DevLogger.instance.info('auth', 'User logged in: ${user.uid}');
@@ -230,10 +243,14 @@ class _AuthGateState extends State<AuthGate> {
         return StreamBuilder<String?>(
           stream: AuthService().coupleIdStream(),
           builder: (context, cSnap) {
+            if (cSnap.hasError || _bootFailed) {
+              return _InitErrorScreen(onRetry: _retry);
+            }
             if (cSnap.connectionState != ConnectionState.active) return _splash();
             final cid = cSnap.data;
             if (cid == null) {
               DevLogger.instance.info('auth', 'coupleId null -> PairingScreen');
+              _reachedContent = true;
               return const PairingScreen();
             }
             DevLogger.instance.info('auth', 'coupleId: $cid');
@@ -243,10 +260,14 @@ class _AuthGateState extends State<AuthGate> {
             return StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance.doc('couples/$cid').snapshots(),
               builder: (context, cs) {
+                if (cs.hasError || _bootFailed) {
+                  return _InitErrorScreen(onRetry: _retry);
+                }
                 if (!cs.hasData) return _splash();
                 final d = cs.data!.data() as Map<String, dynamic>?;
                 final members = List<String>.from(d?['members'] ?? []);
                 DevLogger.instance.info('auth', 'couple members: ${members.length}');
+                _reachedContent = true;
                 return members.length >= 2 ? const MainNav() : const PairingScreen();
               },
             );

@@ -34,9 +34,9 @@ class AppConstants {
   // dipakai pihak lain. Untuk aplikasi pribadi 2 orang ini tidak masalah;
   // untuk lebih aman bisa dipakai kredensial berumur pendek via REST API
   // (bisa ditambahkan nanti).
-  static const String turnUrl = '';          // mis: 'turn:free.expressturn.com:3478?transport=udp'
-  static const String turnUsername = '';     // username dari provider
-  static const String turnCredential = '';   // password dari provider
+  static const String turnUrl = 'turn:free.expressturn.com:3478?transport=udp';
+  static const String turnUsername = '000000002101739639';
+  static const String turnCredential = '6Zu9oT8nwW083jfwdvjCB4KAqJA=';
 
   static List<Map<String, dynamic>> get iceServers {
     final servers = <Map<String, dynamic>>[
@@ -58,6 +58,12 @@ class AppConstants {
     if (hasTurn) {
       servers.add({
         "urls": turnUrl,
+        "username": turnUsername,
+        "credential": turnCredential,
+      });
+      // Varian TCP (port 3478) sebagai cadangan di jaringan yang memblokir UDP
+      servers.add({
+        "urls": "turn:free.expressturn.com:3478?transport=tcp",
         "username": turnUsername,
         "credential": turnCredential,
       });

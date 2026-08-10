@@ -98,6 +98,7 @@ jobs:
             ## Changelog
             ${{ steps.changelog.outputs.notes }}
           generate_release_notes: true
+          update_release: true
           files: |
             DyKal-arm64.apk
             DyKal-armeabi-v7a.apk

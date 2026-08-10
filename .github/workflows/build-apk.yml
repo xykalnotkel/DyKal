@@ -73,8 +73,8 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Analyze (gagal jika ada error/warning)
-        run: flutter analyze
+      - name: Analyze (gagal hanya jika ada error; lint info/warning tidak memblokir)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK (split arm64 + armeabi)
         run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation

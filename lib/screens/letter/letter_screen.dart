@@ -133,7 +133,7 @@ class LetterScreen extends StatelessWidget {
           const SizedBox(height: 16),
           const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text("Tulis Surat Cinta", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))]),
           const SizedBox(height: 12),
-          TextField(controller: c, maxLines: 6, decoration: InputDecoration(hintText: "Tulis isi hatimu disini...", filled: true, fillColor: DyKalTheme.background, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none))),
+          TextField(controller: c, maxLines: 6, decoration: InputDecoration(hintText: "Tulis isi hatimu disini...", filled: true, fillColor: DyKalTheme.cardOf(context), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none))),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: FilledButton.icon(
             onPressed: () async {

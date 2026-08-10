@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../album/album_detail_screen.dart';
+import '../call/call_log_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -42,7 +43,7 @@ class HomeScreen extends StatelessWidget {
           ]),
           actions: [
             _chatButton(context),
-            IconButton(onPressed: () => Navigator.pushNamed(context, '/profile'), icon: Icon(Icons.settings, color: DyKalTheme.textPrimaryOf(context))),
+            IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallLogScreen())), tooltip: 'Log Panggilan', icon: Icon(Icons.phone_in_talk_outlined, color: DyKalTheme.textPrimaryOf(context))),
             const SizedBox(width: 4),
           ],
         ),
@@ -147,7 +148,7 @@ class HomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle),
                       child: Container(
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.background, image: cover != null ? DecorationImage(image: CachedNetworkImageProvider(cover), fit: BoxFit.cover) : null),
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.cardOf(context), image: cover != null ? DecorationImage(image: CachedNetworkImageProvider(cover), fit: BoxFit.cover) : null),
                         child: cover == null ? Center(child: Icon(Icons.photo_library, color: DyKalTheme.primary)) : null,
                       ),
                     ),

@@ -42,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isTyping = false;
   bool _isRecording = false;
   bool _locked = false; // FIX #15: VN lock saat seret ke atas
+  bool _cancelled = false; // FIX spec: VN swipe-kiri = batal
   int _recSecs = 0;
   String? _recPath;
   int? _lastMsgCount;
@@ -160,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
-      backgroundColor: DyKalTheme.background,
+      
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
         CircleAvatar(radius: 50, backgroundColor: DyKalTheme.primary, backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.w800)) : null),
@@ -191,7 +192,7 @@ class _ChatScreenState extends State<ChatScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: DyKalTheme.background,
+      
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StickerSheet(
         emojis: emojis,
@@ -228,9 +229,17 @@ class _ChatScreenState extends State<ChatScreen> {
     final dir = await getTemporaryDirectory();
     _recPath = '${dir.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
     await _recorder.start(RecordConfig(encoder: AudioEncoder.aacLc), path: _recPath!);
-    setState(() { _isRecording = true; _recSecs = 0; _locked = false; });
+    setState(() { _isRecording = true; _recSecs = 0; _locked = false; _cancelled = false; });
     _recTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _recSecs++));
     _setRecording(true);
+  }
+
+  Future<void> _discardRec() async {
+    if (!_isRecording) return;
+    _recTimer?.cancel();
+    try { await _recorder.stop(); } catch (_) {}
+    setState(() { _isRecording = false; _locked = false; _cancelled = false; });
+    _setRecording(false);
   }
 
   void _setRecording(bool v) {
@@ -301,7 +310,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return Scaffold(body: Center(child: Text('Belum terhubung', style: TextStyle(color: DyKalTheme.textGrey))));
     }
     return Scaffold(
-      backgroundColor: DyKalTheme.background,
+      
       body: SafeArea(child: Column(children: [
         _header(),
         Expanded(child: _list()),
@@ -495,7 +504,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Row(children: [
           Icon(_locked ? Icons.lock : Icons.fiber_manual_record, color: DyKalTheme.primary, size: 16),
           const SizedBox(width: 8),
-          Expanded(child: Text(_locked ? 'Terkunci ${_fmtRec(_recSecs)} — tap STOP untuk preview' : 'Merekam ${_fmtRec(_recSecs)} — lepas=kirim, geser atas=kunci', style: TextStyle(color: DyKalTheme.primary, fontWeight: FontWeight.w600, fontSize: 12))),
+          Expanded(child: Text(_locked ? 'Terkunci ${_fmtRec(_recSecs)} — tap STOP untuk preview' : 'Merekam ${_fmtRec(_recSecs)} — lepas=kirim · geser kiri=batal · atas=kunci', style: TextStyle(color: DyKalTheme.primary, fontWeight: FontWeight.w600, fontSize: 12))),
           if (_locked) GestureDetector(onTap: () => _stopRec(send: false), child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.stop_circle, color: Colors.red, size: 22))),
         ]),
       );
@@ -508,7 +517,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(onPressed: _pickSticker, icon: Icon(Icons.emoji_emotions_outlined, color: DyKalTheme.primary, size: 22), tooltip: 'Stiker'),
           Expanded(child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(color: DyKalTheme.background, borderRadius: BorderRadius.circular(24)),
+            decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(24)),
             child: TextField(controller: _msgController, onChanged: _onChanged, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Tulis pesan...', border: InputBorder.none)),
           )),
           const SizedBox(width: 8),
@@ -521,8 +530,11 @@ class _ChatScreenState extends State<ChatScreen> {
               : GestureDetector(
                   onTap: () { if (!_isRecording) _startRec(); else _stopRec(send: false); }, // FIX VN responsiv: tap = mulai/berhenti+preview
                   onLongPressStart: (_) => _startRec(),
-                  onLongPressMoveUpdate: (d) { if (d.offsetFromOrigin.dy < -50 && !_locked) setState(() => _locked = true); },
-                  onLongPressEnd: (_) { if (!_locked) _stopRec(send: true); }, // FIX #15: lepas = kirim
+                  onLongPressMoveUpdate: (d) {
+                    if (d.offsetFromOrigin.dx < -60 && !_cancelled) setState(() => _cancelled = true);
+                    else if (d.offsetFromOrigin.dy < -50 && !_locked && !_cancelled) setState(() => _locked = true);
+                  },
+                  onLongPressEnd: (_) { if (_cancelled) { _discardRec(); } else if (!_locked) { _stopRec(send: true); } }, // FIX #15: lepas = kirim
                   child: Container(width: 44, height: 44, decoration: BoxDecoration(color: _isRecording ? Colors.red : DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(_isRecording ? Icons.stop : Icons.mic, color: _isRecording ? Colors.white : DyKalTheme.primary, size: 20)),
                 ),
           ),

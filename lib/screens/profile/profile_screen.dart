@@ -258,8 +258,7 @@ class ProfileScreen extends StatelessWidget {
     File? picked;
     if (!context.mounted) return;
     await Navigator.push(context, MaterialPageRoute(builder: (s) => Scaffold(
-      backgroundColor: DyKalTheme.background,
-      appBar: AppBar(
+            appBar: AppBar(
         title: const Text('Edit Profil'),
         leading: IconButton(onPressed: () => Navigator.pop(s), icon: const Icon(Icons.close)),
       ),

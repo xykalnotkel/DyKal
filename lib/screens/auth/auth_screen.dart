@@ -78,7 +78,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DyKalTheme.background,
+      
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

@@ -33,8 +33,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DyKalTheme.background,
-      body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Image.asset('assets/logo/dykal_logo_hd.png', width: 100, height: 100, errorBuilder: (_, __, ___) => Icon(Icons.favorite, size: 80, color: DyKalTheme.primary)),
         const SizedBox(height: 24),
         const Text('DyKal', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),

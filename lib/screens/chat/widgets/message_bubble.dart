@@ -130,14 +130,14 @@ class MessageBubble extends StatelessWidget {
                 margin: EdgeInsets.symmetric(vertical: 4),
                 padding: message.type == MessageType.image ? const EdgeInsets.all(3) : const EdgeInsets.symmetric(horizontal: 12, vertical: 7), // FIX #9: bubble tipis (jangan terlalu tinggi)
                 decoration: BoxDecoration(
-                  color: isMe ? DyKalTheme.primary : Colors.white,
+                  color: isMe ? DyKalTheme.primary : DyKalTheme.cardOf(context),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(18),
                     topRight: Radius.circular(18),
                     bottomLeft: Radius.circular(isMe ? 18 : 4),
                     bottomRight: Radius.circular(isMe ? 4 : 18),
                   ),
-                  border: isMe ? null : Border.all(color: DyKalTheme.borderSoft),
+                  border: isMe ? null : Border.all(color: DyKalTheme.borderOf(context)),
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

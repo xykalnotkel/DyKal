@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/sticker_store.dart';
@@ -77,7 +78,13 @@ class _StickerSheetState extends State<StickerSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4),
       itemCount: _locals.length,
-      itemBuilder: (_, i) => GestureDetector(onTap: () => widget.onSendLocal(_locals[i]), child: Padding(padding: const EdgeInsets.all(4), child: Image.file(_locals[i], fit: BoxFit.contain))),
+      itemBuilder: (_, i) => GestureDetector(
+        onTap: () async { final tmp = await StickerStore.tempDecryptedFile(_locals[i]); if (tmp != null) widget.onSendLocal(tmp); },
+        child: Padding(padding: const EdgeInsets.all(4), child: FutureBuilder<Uint8List?>(
+          future: StickerStore.readDecrypted(_locals[i]),
+          builder: (_, snap) => (snap.data != null) ? Image.memory(snap.data!, fit: BoxFit.contain) : const SizedBox(width: 40, height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B8A)))),
+        )),
+      ),
     );
   }
 }

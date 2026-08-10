@@ -59,11 +59,12 @@ Future<void> main() async {
   await ThemeController.instance.load();
   await BirthdayService().init();
 
+  final darkBars = ThemeController.instance.mode == ThemeMode.dark;
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: DyKalTheme.background,
-    systemNavigationBarIconBrightness: Brightness.dark,
+    statusBarIconBrightness: darkBars ? Brightness.light : Brightness.dark,
+    systemNavigationBarColor: darkBars ? DyKalTheme.backgroundDark : DyKalTheme.background,
+    systemNavigationBarIconBrightness: darkBars ? Brightness.light : Brightness.dark,
   ));
 
   FCMService.navKey = _navKey;
@@ -114,7 +115,7 @@ class DyKalApp extends StatelessWidget {
 
 /// Splash kecil
 Widget _splash() => Scaffold(
-      backgroundColor: DyKalTheme.background,
+      
       body: Center(child: CircularProgressIndicator(color: DyKalTheme.primary)),
     );
 

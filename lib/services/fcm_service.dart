@@ -115,6 +115,8 @@ class FCMService {
       color: const Color(0xFFFF6B8A),
       actions: [
         AndroidNotificationAction('reply', 'Balas', inputs: [AndroidNotificationActionInput(label: 'Ketik balasan...')], showsUserInterface: false, cancelNotification: false),
+        AndroidNotificationAction('mark_read', 'Tanda Dibaca', showsUserInterface: false, cancelNotification: true),
+        AndroidNotificationAction('mute', 'Bisukan', showsUserInterface: false, cancelNotification: true),
       ],
     );
     await _local.show(
@@ -162,7 +164,32 @@ class FCMService {
       _acceptCall(r.payload ?? _callType ?? 'video');
     } else if (r.actionId == 'decline_call') {
       await _declineCall();
+    } else if (r.actionId == 'mark_read') {
+      await _markChatRead();
+    } else if (r.actionId == 'mute') {
+      await _muteChat();
     }
+  }
+
+  Future<void> _markChatRead() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final coupleId = AuthService().coupleId ?? '';
+      if (coupleId.isEmpty) return;
+      final qs = await _db.collection('chats/$coupleId/messages').where('fromId', isNotEqualTo: uid).get();
+      for (final d in qs.docs) {
+        if ((d.data()['status'] ?? '') != 'read') await d.reference.update({'status': 'read'});
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _muteChat() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      await _db.doc('users/$uid').set({'notifPrefs': {'chat': false}}, SetOptions(merge: true));
+    } catch (_) {}
   }
 
   void _acceptCall(String callType) {

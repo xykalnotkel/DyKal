@@ -55,7 +55,7 @@ class _PairingScreenState extends State<PairingScreen> {
     // Sudah punya couple tapi belum di-join pasangan -> mode nunggu (ambil kode dari couple doc)
     if (_waitingCoupleId != null && myCode == null) {
       return Scaffold(
-        backgroundColor: DyKalTheme.background,
+        
         body: SafeArea(child: StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance.doc('couples/$_waitingCoupleId').snapshots(),
           builder: (context, snap) {
@@ -67,9 +67,9 @@ class _PairingScreenState extends State<PairingScreen> {
       );
     }
     // Baru saja bikin kode di sesi ini
-    if (myCode != null) return Scaffold(backgroundColor: DyKalTheme.background, body: SafeArea(child: _content(myCode!, waiting: true)));
+    if (myCode != null) return Scaffold(body: SafeArea(child: _content(myCode!, waiting: true)));
     // Fresh: create / join
-    return Scaffold(backgroundColor: DyKalTheme.background, body: SafeArea(child: _content(null, waiting: false)));
+    return Scaffold(body: SafeArea(child: _content(null, waiting: false)));
   }
 
   Widget _content(String? code, {required bool waiting}) {

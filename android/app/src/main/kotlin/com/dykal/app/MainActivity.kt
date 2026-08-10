@@ -15,7 +15,6 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        // === Ringtone picker native (RingtoneManager) ===
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, RINGTONE_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -25,18 +24,17 @@ class MainActivity : FlutterActivity() {
                             val rm = RingtoneManager(this)
                             rm.setType(type)
                             val cursor = rm.cursor
+                            // OPTIMASI: ambil title dari cursor column (cepat), bukan getRingtone().getTitle() (lambat)
+                            val titleIdx = cursor.getColumnIndex("title")
                             val list = mutableListOf<Map<String, String>>()
                             if (cursor.moveToFirst()) {
                                 do {
-                                    val uri = rm.getRingtoneUri(cursor.position)
-                                    var title = ""
-                                    try {
-                                        val r = RingtoneManager.getRingtone(this, uri)
-                                        title = r.getTitle(this)
-                                    } catch (_: Exception) {}
-                                    list.add(mapOf("title" to title, "uri" to uri.toString()))
+                                    val title = if (titleIdx >= 0) cursor.getString(titleIdx) ?: "" else ""
+                                    val uri = rm.getRingtoneUri(cursor.position).toString()
+                                    list.add(mapOf("title" to title, "uri" to uri))
                                 } while (cursor.moveToNext())
                             }
+                            cursor.close()
                             result.success(list)
                         } catch (e: Exception) {
                             result.error("RINGTONE_ERR", e.message, null)

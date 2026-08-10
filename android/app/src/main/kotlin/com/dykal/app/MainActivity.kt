@@ -1,20 +1,28 @@
 package com.dykal.app
 
+import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterActivity() {
 
     private val RINGTONE_CHANNEL = "dykal/ringtone"
+    private val FLOATING_CHANNEL = "com.dykal.app/floating"
+    private val INSTALLER_CHANNEL = "dykal/installer"
     private var currentRingtone: Ringtone? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Ringtone Handler
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, RINGTONE_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -24,7 +32,6 @@ class MainActivity : FlutterActivity() {
                             val rm = RingtoneManager(this)
                             rm.setType(type)
                             val cursor = rm.cursor
-                            // OPTIMASI: ambil title dari cursor column (cepat), bukan getRingtone().getTitle() (lambat)
                             val titleIdx = cursor.getColumnIndex("title")
                             val list = mutableListOf<Map<String, String>>()
                             if (cursor.moveToFirst()) {
@@ -59,6 +66,77 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     else -> result.notImplemented()
+                }
+            }
+
+        // Floating Service Handler
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FLOATING_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "hasPermission" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            result.success(Settings.canDrawOverlays(this))
+                        } else {
+                            result.success(true)
+                        }
+                    }
+                    "requestPermission" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            )
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                        }
+                        result.success(null)
+                    }
+                    "showChatBubble" -> {
+                        val intent = Intent(this, FloatingChatService::class.java)
+                        startService(intent)
+                        result.success(null)
+                    }
+                    "hideBubble" -> {
+                        val intent = Intent(this, FloatingChatService::class.java)
+                        stopService(intent)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // APK Installer Handler
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALLER_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "installApk") {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath != null) {
+                        try {
+                            val file = File(filePath)
+                            if (file.exists()) {
+                                val uri = FileProvider.getUriForFile(
+                                    this,
+                                    "$packageName.fileprovider",
+                                    file
+                                )
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, "application/vnd.android.package-archive")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                                result.success(true)
+                            } else {
+                                result.error("FILE_NOT_FOUND", "File APK tidak ditemukan", null)
+                            }
+                        } catch (e: Exception) {
+                            result.error("INSTALL_ERR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_ARGS", "Path kosong", null)
+                    }
+                } else {
+                    result.notImplemented()
                 }
             }
     }

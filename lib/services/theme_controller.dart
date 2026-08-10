@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Controller tema DyKal: default ikut sistem, bisa diubah manual & disimpan.
+enum AppUiStyle {
+  rounded,   // Modern Material 3 (Radius 20-24px, pill shapes)
+  ios,       // Cupertino iOS Style (Radius 12-14px, flat frosted design)
+  sharp,     // Minimalist Sharp (Radius 6-8px, clean brutalist)
+}
+
 class ThemeController extends ChangeNotifier {
   ThemeController._();
   static final ThemeController instance = ThemeController._();
@@ -9,17 +14,51 @@ class ThemeController extends ChangeNotifier {
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
 
-  static const _key = 'dykal_theme_mode';
+  AppUiStyle _style = AppUiStyle.rounded;
+  AppUiStyle get style => _style;
+
+  static const _keyMode = 'dykal_theme_mode';
+  static const _keyStyle = 'dykal_ui_style';
+
+  double get cardRadius {
+    switch (_style) {
+      case AppUiStyle.rounded:
+        return 20.0;
+      case AppUiStyle.ios:
+        return 14.0;
+      case AppUiStyle.sharp:
+        return 8.0;
+    }
+  }
+
+  double get buttonRadius {
+    switch (_style) {
+      case AppUiStyle.rounded:
+        return 16.0;
+      case AppUiStyle.ios:
+        return 12.0;
+      case AppUiStyle.sharp:
+        return 6.0;
+    }
+  }
 
   Future<void> load() async {
     try {
       final p = await SharedPreferences.getInstance();
-      final v = p.getString(_key);
+      final v = p.getString(_keyMode);
       _mode = v == 'light'
           ? ThemeMode.light
           : v == 'dark'
               ? ThemeMode.dark
               : ThemeMode.system;
+
+      final s = p.getString(_keyStyle);
+      _style = s == 'ios'
+          ? AppUiStyle.ios
+          : s == 'sharp'
+              ? AppUiStyle.sharp
+              : AppUiStyle.rounded;
+
       notifyListeners();
     } catch (_) {}
   }
@@ -29,7 +68,16 @@ class ThemeController extends ChangeNotifier {
     notifyListeners();
     try {
       final p = await SharedPreferences.getInstance();
-      await p.setString(_key, m == ThemeMode.light ? 'light' : m == ThemeMode.dark ? 'dark' : 'system');
+      await p.setString(_keyMode, m == ThemeMode.light ? 'light' : m == ThemeMode.dark ? 'dark' : 'system');
+    } catch (_) {}
+  }
+
+  Future<void> setStyle(AppUiStyle s) async {
+    _style = s;
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_keyStyle, s == AppUiStyle.ios ? 'ios' : s == AppUiStyle.sharp ? 'sharp' : 'rounded');
     } catch (_) {}
   }
 }

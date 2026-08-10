@@ -4,42 +4,47 @@ import 'package:dio/dio.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
+import 'media_saver.dart';
 
-/// Penyimpanan stiker lokal: Android/media/com.dykal.app/Dykal/Stiker/
-/// Stiker disimpan sbg webp TER-ENKRIPSI (.webp.crypt15) — AES-256-GCM.
 class StickerStore {
-  static const _pkg = 'com.dykal.app';
-  // Kunci 32 byte (AES-256). Dipakai encrypt+decrypt, konsisten.
-  static final Key _key = Key.fromUtf8('DyKalStickerKey'.padRight(32, 'x'));
+  // Key derivasi konsisten 32 byte (AES-256)
+  static final Key _key = Key.fromUtf8('DyKalSecureStickerVault2026!Key'.padRight(32, '0'));
 
   static Future<Directory> dir() async {
-    final d = Directory('/storage/emulated/0/Android/media/$_pkg/Dykal/Stiker');
-    try {
-      if (!await d.exists()) await d.create(recursive: true);
-    } catch (_) {}
-    return d;
+    final path = await MediaSaver.getDirectory(category: 'stickers');
+    return Directory(path);
   }
 
-  /// List stiker lokal (webp.crypt15 + legacy image).
   static Future<List<File>> list() async {
     try {
       final d = await dir();
       return d.listSync().whereType<File>().where((f) {
         final p = f.path.toLowerCase();
-        return p.endsWith('.webp.crypt15') || p.endsWith('.png') || p.endsWith('.jpg') || p.endsWith('.jpeg') || p.endsWith('.webp') || p.endsWith('.gif');
+        return p.endsWith('.webp.crypt15') ||
+            p.endsWith('.png') ||
+            p.endsWith('.jpg') ||
+            p.endsWith('.jpeg') ||
+            p.endsWith('.webp') ||
+            p.endsWith('.gif');
       }).toList();
     } catch (_) {
       return [];
     }
   }
 
-  /// Convert ke webp -> enkripsi AES-GCM -> simpan .webp.crypt15. return path lokal atau null.
   static Future<String?> add(File src) async {
     try {
       final d = await dir();
       final tmp = await getTemporaryDirectory();
       final webpPath = '${tmp.path}/stk_${DateTime.now().millisecondsSinceEpoch}.webp';
-      final res = await FlutterImageCompress.compressAndGetFile(src.absolute.path, webpPath, quality: 85, format: CompressFormat.webp, minWidth: 512, minHeight: 512);
+      final res = await FlutterImageCompress.compressAndGetFile(
+        src.absolute.path,
+        webpPath,
+        quality: 85,
+        format: CompressFormat.webp,
+        minWidth: 512,
+        minHeight: 512,
+      );
       final webpBytes = (res != null) ? await File(res.path).readAsBytes() : await src.readAsBytes();
       final encrypted = _encrypt(Uint8List.fromList(webpBytes));
       final name = 'stiker_${DateTime.now().millisecondsSinceEpoch}.webp.crypt15';
@@ -51,7 +56,6 @@ class StickerStore {
     }
   }
 
-  /// Enkripsi AES-256-GCM, prepend IV(12 byte).
   static Uint8List _encrypt(Uint8List data) {
     final iv = IV.fromSecureRandom(12);
     final encrypter = Encrypter(AES(_key, mode: AESMode.gcm));
@@ -59,11 +63,11 @@ class StickerStore {
     return Uint8List.fromList(iv.bytes + enc.bytes);
   }
 
-  /// Decrypt stiker .webp.crypt15 -> bytes webp (untuk ditampilkan/dikirim). Legacy file -> bytes apa adanya.
   static Future<Uint8List?> readDecrypted(File f) async {
     try {
       if (!f.path.toLowerCase().endsWith('.crypt15')) return await f.readAsBytes();
       final data = await f.readAsBytes();
+      if (data.length < 13) return null;
       final iv = IV(Uint8List.fromList(data.sublist(0, 12)));
       final ct = Encrypted(Uint8List.fromList(data.sublist(12)));
       final encrypter = Encrypter(AES(_key, mode: AESMode.gcm));
@@ -73,7 +77,6 @@ class StickerStore {
     }
   }
 
-  /// Decrypt ke file webp sementara (untuk dikirim/upload).
   static Future<File?> tempDecryptedFile(File f) async {
     try {
       final bytes = await readDecrypted(f);
@@ -87,7 +90,6 @@ class StickerStore {
     }
   }
 
-  /// Download dari URL (stiker dari pasangan) -> encrypt lokal.
   static Future<String?> addFromUrl(String url) async {
     try {
       final tmp = await getTemporaryDirectory();

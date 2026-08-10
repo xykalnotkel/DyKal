@@ -113,7 +113,7 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> with SingleTick
             child: Container(
               width: 300,
               height: 190,
-              decoration: BoxDecoration(gradient: DyKalTheme.loveGradient, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 8))]),
+              decoration: BoxDecoration(gradient: DyKalTheme.loveGradient, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 8))]),
             ),
           ),
           // Saku depan (bagian bawah)
@@ -152,7 +152,7 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> with SingleTick
                 child: Container(
                   width: 60,
                   height: 60,
-                  decoration: BoxDecoration(color: DyKalTheme.accent, shape: BoxShape.circle, boxShadow: [BoxShadow(color: DyKalTheme.accent.withOpacity(0.5), blurRadius: 12)]),
+                  decoration: BoxDecoration(color: DyKalTheme.accent, shape: BoxShape.circle, boxShadow: [BoxShadow(color: DyKalTheme.accent.withValues(alpha: 0.5), blurRadius: 12)]),
                   child: const Icon(Icons.favorite, color: Colors.white, size: 30),
                 ),
               ),
@@ -167,7 +167,7 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> with SingleTick
     return Container(
       width: 290,
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 24)]),
+      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 24)]),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,7 +184,7 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> with SingleTick
           if (widget.createdAt != null)
             Align(alignment: Alignment.centerRight, child: Text(_fmt(widget.createdAt!), style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11, fontStyle: FontStyle.italic))),
           const SizedBox(height: 8),
-          Align(alignment: Alignment.center, child: Icon(Icons.favorite, color: DyKalTheme.primary.withOpacity(0.4), size: 16)),
+          Align(alignment: Alignment.center, child: Icon(Icons.favorite, color: DyKalTheme.primary.withValues(alpha: 0.4), size: 16)),
         ],
       ),
     );

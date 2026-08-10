@@ -6,6 +6,10 @@ build/
 .idea/
 *.iml
 .DS_Store
+.flutter-plugins*
+**/android/local.properties
+local.properties
+
 # tapi jangan ignore google-services.json agar APK bisa build
 !android/app/google-services.json
 

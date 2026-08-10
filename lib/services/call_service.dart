@@ -63,8 +63,6 @@ class DyKalCallService extends ChangeNotifier {
     return _amCaller ? 'offerCandidates' : 'answerCandidates';
   }
 
-  String _peerCandCol() => _amCaller ? 'answerCandidates' : 'offerCandidates';
-
   bool get _amCaller => _callerFlag;
   bool _callerFlag = true;
 
@@ -136,7 +134,10 @@ class DyKalCallService extends ChangeNotifier {
     _ansSub = _db.collection('calls/$coupleId/answerCandidates').snapshots().listen((qs) async {
       for (final d in qs.docChanges) {
         if (d.type == DocumentChangeType.added) {
-          final _m = d.doc.data() as Map<String,dynamic>; await _pc?.addCandidate(RTCIceCandidate(_m["candidate"] as String?, _m["sdpMid"] as String?, _m["sdpMLineIndex"] as int?));
+          final m = d.doc.data();
+          if (m != null) {
+            await _pc?.addCandidate(RTCIceCandidate(m['candidate'] as String?, m['sdpMid'] as String?, m['sdpMLineIndex'] as int?));
+          }
         }
       }
     });
@@ -146,7 +147,7 @@ class DyKalCallService extends ChangeNotifier {
   Future<void> acceptIncoming() async {
     _callerFlag = false;
     final docSnap = await _db.doc('calls/$coupleId').get();
-    final data = docSnap.data() as Map<String, dynamic>?;
+    final data = docSnap.data();
     if (data == null) throw Exception('Panggilan sudah berakhir');
     callType = (data['type'] as String?) ?? 'video';
 
@@ -156,7 +157,9 @@ class DyKalCallService extends ChangeNotifier {
 
     // Terapkan offer dari lawan
     final offer = data['offer'] as Map<String, dynamic>?;
-    await _pc!.setRemoteDescription(RTCSessionDescription(offer!['sdp'] as String, offer!['type'] as String));
+    if (offer != null) {
+      await _pc!.setRemoteDescription(RTCSessionDescription(offer['sdp'] as String, offer['type'] as String));
+    }
 
     final answer = await _pc!.createAnswer({});
     await _pc!.setLocalDescription(answer);
@@ -169,7 +172,10 @@ class DyKalCallService extends ChangeNotifier {
     _offerCandSub = _db.collection('calls/$coupleId/offerCandidates').snapshots().listen((qs) async {
       for (final d in qs.docChanges) {
         if (d.type == DocumentChangeType.added) {
-          final _m = d.doc.data() as Map<String,dynamic>; await _pc?.addCandidate(RTCIceCandidate(_m["candidate"] as String?, _m["sdpMid"] as String?, _m["sdpMLineIndex"] as int?));
+          final m = d.doc.data();
+          if (m != null) {
+            await _pc?.addCandidate(RTCIceCandidate(m['candidate'] as String?, m['sdpMid'] as String?, m['sdpMLineIndex'] as int?));
+          }
         }
       }
     });

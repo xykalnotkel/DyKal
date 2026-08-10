@@ -18,9 +18,9 @@ class FloatingDevLog extends StatelessWidget {
         child: Container(
           width: 36, height: 36,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.6),
+            color: Colors.black.withValues(alpha: 0.6),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.greenAccent.withOpacity(0.4), width: 1),
+            border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4), width: 1),
           ),
           child: const Icon(Icons.terminal, color: Colors.greenAccent, size: 18),
         ),

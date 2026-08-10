@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart'; // phosphor replaced with Material Icons
 import '../config/theme.dart';
 
-/// BottomNav DyKal - Mutlak tanpa emoji, icons Modern Rounded
-/// Tidak diklik: Border style (Regular/Outline) • Diklik: Full/Fill style
 class DyKalBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -12,52 +9,65 @@ class DyKalBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       child: Container(
-        height: 72,
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        height: 68,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? DyKalTheme.surfaceDark.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? DyKalTheme.borderSoftDark : DyKalTheme.borderSoft),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _item(0, Icons.home_outlined, Icons.home, "Home"),
-            _item(1, Icons.collections_outlined, Icons.collections, "Album"),
-            _item(2, Icons.mail_outline, Icons.mail, "Surat"),
-            _item(3, Icons.person_outline, Icons.person, "Profil"),
+            _item(0, Icons.home_outlined, Icons.home_rounded, 'Home', context),
+            _item(1, Icons.collections_outlined, Icons.collections_rounded, 'Album', context),
+            _item(2, Icons.mail_outline_rounded, Icons.mail_rounded, 'Surat', context),
+            _item(3, Icons.person_outline_rounded, Icons.person_rounded, 'Profil', context),
           ],
         ),
       ),
     );
   }
 
-  Widget _item(int idx, IconData iconBorder, IconData iconFill, String label) {
+  Widget _item(int idx, IconData iconBorder, IconData iconFill, String label, BuildContext context) {
     final isSelected = currentIndex == idx;
     return GestureDetector(
       onTap: () => onTap(idx),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: Duration(milliseconds: 260),
+        duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(horizontal: isSelected ? 18 : 14, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? DyKalTheme.primary.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? DyKalTheme.primary.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Mutlak icons rounded: Border (regular outline) vs Fill (full)
             Icon(
               isSelected ? iconFill : iconBorder,
-              color: isSelected ? DyKalTheme.primary : DyKalTheme.textGrey,
-              size: 24,
+              color: isSelected ? DyKalTheme.primary : DyKalTheme.textSecondaryOf(context),
+              size: 22,
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? DyKalTheme.primary : DyKalTheme.textGrey,
+                color: isSelected ? DyKalTheme.primary : DyKalTheme.textSecondaryOf(context),
                 letterSpacing: 0.2,
               ),
             ),

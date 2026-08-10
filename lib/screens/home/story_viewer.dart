@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../config/theme.dart';
-import '../../services/auth_service.dart';
 
 class StoryViewer extends StatefulWidget {
   final String coupleId;
@@ -16,79 +14,109 @@ class StoryViewer extends StatefulWidget {
   State<StoryViewer> createState() => _StoryViewerState();
 }
 
-class _StoryViewerState extends State<StoryViewer> {
+class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStateMixin {
   final _audioPlayer = AudioPlayer();
   List<String> _photoUrls = [];
   List<String> _audioPaths = [];
   int _currentIndex = 0;
   bool _loading = true;
 
+  late AnimationController _animController;
+
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _nextStory();
+        }
+      });
+
     _loadData();
   }
 
   Future<void> _loadData() async {
-    // Load audio playlist from SharedPreferences (global, permanent)
     final prefs = await SharedPreferences.getInstance();
     _audioPaths = prefs.getStringList('story_audio_playlist') ?? [];
 
-    // Load photos from all albums
     final albumsSnap = await FirebaseFirestore.instance
         .collection('couples/${widget.coupleId}/albums')
         .get();
+
     for (final album in albumsSnap.docs) {
       final photosSnap = await FirebaseFirestore.instance
           .collection('couples/${widget.coupleId}/albums/${album.id}/photos')
-          .limit(5)
+          .limit(6)
           .get();
       for (final p in photosSnap.docs) {
-        final url = (p.data() as Map<String, dynamic>)['url'] as String?;
+        final url = p.data()['url'] as String?;
         if (url != null) _photoUrls.add(url);
       }
     }
 
     if (_photoUrls.isEmpty) {
-      if (mounted) { setState(() => _loading = false); }
+      if (mounted) setState(() => _loading = false);
       return;
     }
 
-    // Shuffle photos for variety
     _photoUrls.shuffle();
 
-    // Play random audio
     if (_audioPaths.isNotEmpty) {
       final randomPath = (_audioPaths..shuffle()).first;
       try {
         await _audioPlayer.setFilePath(randomPath);
-        await _audioPlayer.setLoopMode(LoopMode.all);
+        await _audioPlayer.setVolume(0.7);
         await _audioPlayer.play();
       } catch (_) {}
     }
 
-    // Auto-advance photos every 4 seconds
-    _startAutoAdvance();
-
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+      _animController.forward();
+    }
   }
 
-  Timer? _timer;
-  void _startAutoAdvance() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted) return;
-      if (_currentIndex < _photoUrls.length - 1) {
-        setState(() => _currentIndex++);
-      } else {
-        Navigator.pop(context); // selesai
-      }
-    });
+  void _nextStory() {
+    if (_currentIndex < _photoUrls.length - 1) {
+      setState(() {
+        _currentIndex++;
+        _animController.reset();
+        _animController.forward();
+      });
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  void _prevStory() {
+    if (_currentIndex > 0) {
+      setState(() {
+        _currentIndex--;
+        _animController.reset();
+        _animController.forward();
+      });
+    } else {
+      _animController.reset();
+      _animController.forward();
+    }
+  }
+
+  void _pause() {
+    _animController.stop();
+    _audioPlayer.pause();
+  }
+
+  void _resume() {
+    _animController.forward();
+    _audioPlayer.play();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _animController.dispose();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -96,48 +124,123 @@ class _StoryViewerState extends State<StoryViewer> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(backgroundColor: Colors.black, body: Center(child: CircularProgressIndicator(color: DyKalTheme.primary)));
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: DyKalTheme.primary),
+        ),
+      );
     }
+
     if (_photoUrls.isEmpty) {
-      return Scaffold(backgroundColor: Colors.black, body: Center(child: Text('Belum ada foto untuk story', style: TextStyle(color: Colors.white54))));
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.photo_library_outlined, color: Colors.white54, size: 64),
+              const SizedBox(height: 16),
+              const Text('Belum ada foto di album', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Kembali'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
-        onTap: () {
-          if (_currentIndex < _photoUrls.length - 1) {
-            setState(() => _currentIndex++);
-            _startAutoAdvance();
+        onLongPressStart: (_) => _pause(),
+        onLongPressEnd: (_) => _resume(),
+        onTapDown: (details) {
+          final width = MediaQuery.of(context).size.width;
+          if (details.globalPosition.dx < width / 3) {
+            _prevStory();
           } else {
-            Navigator.pop(context);
+            _nextStory();
           }
         },
-        onLongPress: () => Navigator.pop(context),
-        child: Stack(children: [
-          // Full screen photo
-          Positioned.fill(child: InteractiveViewer(
-            child: Center(child: CachedNetworkImage(imageUrl: _photoUrls[_currentIndex], fit: BoxFit.contain)),
-          )),
-          // Progress bars (seperti IG story)
-          Positioned(top: MediaQuery.of(context).padding.top + 8, left: 8, right: 8,
-            child: Row(children: List.generate(_photoUrls.length, (i) =>
-              Expanded(child: Container(height: 2, margin: const EdgeInsets.symmetric(horizontal: 1),
-                decoration: BoxDecoration(color: i <= _currentIndex ? DyKalTheme.primary : Colors.white24, borderRadius: BorderRadius.circular(2))))),
+        child: Stack(
+          children: [
+            // Center Image
+            Center(
+              child: CachedNetworkImage(
+                imageUrl: _photoUrls[_currentIndex],
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(color: DyKalTheme.primary),
+                ),
+                errorWidget: (_, __, ___) => const Center(
+                  child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                ),
+              ),
             ),
-          ),
-          // Close + audio indicator
-          Positioned(top: MediaQuery.of(context).padding.top + 20, right: 8,
-            child: Row(children: [
-              if (_audioPaths.isNotEmpty)
-                const Padding(padding: EdgeInsets.only(right: 8), child: Icon(Icons.music_note, color: Colors.white54, size: 16)),
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.white)),
-            ]),
-          ),
-          // Counter
-          Positioned(bottom: 40, left: 0, right: 0,
-            child: Center(child: Text('${_currentIndex + 1} / ${_photoUrls.length}', style: const TextStyle(color: Colors.white54, fontSize: 12))),
-          ),
-        ]),
+
+            // Top Segmented Progress Bars
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: List.generate(_photoUrls.length, (index) {
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: AnimatedBuilder(
+                              animation: _animController,
+                              builder: (context, _) {
+                                double progress = 0.0;
+                                if (index < _currentIndex) {
+                                  progress = 1.0;
+                                } else if (index == _currentIndex) {
+                                  progress = _animController.value;
+                                }
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: progress,
+                                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                    minHeight: 3.0,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const SizedBox(width: 6),
+                        const Icon(Icons.favorite, color: DyKalTheme.primary, size: 18),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Cerita Kita',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white, size: 22),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

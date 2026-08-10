@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart'; // FIX #15: preview VN sebelum kirim
@@ -19,6 +18,8 @@ import '../../services/push_service.dart';
 import '../../services/theme_controller.dart';
 import '../call/call_log_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
+import 'camera_screen.dart';
 import '../../widgets/typing_indicator.dart';
 import '../../widgets/gallery_picker.dart';
 import 'image_send_screen.dart';
@@ -150,32 +151,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _showPartnerProfile() async {
     if (_partnerId.isEmpty) return;
-    // FIX #16: buka fullscreen ViewProfileScreen (bukan bottom sheet)
-    Navigator.push(context, MaterialPageRoute(builder: (_) => ViewProfileScreen(partnerId: _partnerId)));
-    return;
-    final snap = await FirebaseFirestore.instance.doc('users/$_partnerId').get();
-    final d = snap.data();
-    final name = d?['displayName'] ?? _partnerName;
-    final email = d?['email'] ?? '';
-    final photo = d?['photoUrl'];
-    if (!mounted) return;
-    showModalBottomSheet(
-      context: context,
-      
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        CircleAvatar(radius: 50, backgroundColor: DyKalTheme.primary, backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.w800)) : null),
-        const SizedBox(height: 12),
-        Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        if (email.toString().isNotEmpty) Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.email, size: 14, color: DyKalTheme.textGrey), const SizedBox(width: 6), Flexible(child: Text(email, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 13), overflow: TextOverflow.ellipsis))]),
-        const SizedBox(height: 12),
-        StreamBuilder<DocumentSnapshot>(stream: FirebaseFirestore.instance.doc('presence/$_partnerId').snapshots(), builder: (_, s) {
-          final data = s.data?.data() as Map<String, dynamic>?;
-          final online = data?['isOnline'] ?? false;
-          return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: (online ? DyKalTheme.online : DyKalTheme.textGrey).withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.circle, size: 8, color: online ? DyKalTheme.online : DyKalTheme.textGrey), const SizedBox(width: 6), Text(online ? 'Online' : 'Offline', style: TextStyle(color: online ? DyKalTheme.online : DyKalTheme.textGrey, fontWeight: FontWeight.w600, fontSize: 12))]));
-        }),
-      ]))),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ViewProfileScreen(partnerId: _partnerId)),
     );
   }
 
@@ -188,17 +166,24 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _pickSticker() {
-    const emojis = ['❤️', '😍', '🥰', '😘', '💕', '💑', '🥺', '😭', '😂', '🤣', '🔥', '✨', '🌹', '💍', '😻', '🤩', '😴', '🤗', '😋', '🙏', '👏', '🫶', '💋', '🎂', '🎁', '🌙', '⭐', '🥳'];
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      
+      backgroundColor: DyKalTheme.surfaceDark,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StickerSheet(
-        emojis: emojis,
-        onEmoji: (e) { Navigator.pop(context); _sendMessage(sticker: e); },
-        onSendLocal: (f) { Navigator.pop(context); _sendLocalSticker(f); },
-        onMake: () { Navigator.pop(context); _buatStiker(); },
+        onEmoji: (e) {
+          Navigator.pop(context);
+          _sendMessage(sticker: e);
+        },
+        onSendLocal: (f) {
+          Navigator.pop(context);
+          _sendLocalSticker(f);
+        },
+        onMake: () {
+          Navigator.pop(context);
+          _buatStiker();
+        },
       ),
     );
   }
@@ -310,14 +295,29 @@ class _ChatScreenState extends State<ChatScreen> {
       return Scaffold(body: Center(child: Text('Belum terhubung', style: TextStyle(color: DyKalTheme.textGrey))));
     }
     return Scaffold(
-      
-      body: SafeArea(child: Column(children: [
-        _header(),
-        Expanded(child: _list()),
-        if (_replyTo != null) _replyPreview(),
-        if (_isRecording) _recordingBar(),
-        _input(),
-      ])),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? DyKalTheme.backgroundDark
+          : DyKalTheme.background,
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: const AssetImage('assets/illustrations/chat_bg.webp'),
+              fit: BoxFit.cover,
+              opacity: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.08,
+            ),
+          ),
+          child: Column(
+            children: [
+              _header(),
+              Expanded(child: _list()),
+              if (_replyTo != null) _replyPreview(),
+              if (_isRecording) _recordingBar(),
+              _input(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -406,13 +406,15 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Icon(Icons.more_vert, color: DyKalTheme.textPrimaryOf(context)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'profile', child: ListTile(leading: Icon(Icons.person_outline), title: Text('Lihat Profil'), dense: true, contentPadding: EdgeInsets.zero)),
               PopupMenuItem(value: 'log', child: ListTile(leading: Icon(Icons.history), title: Text('Log Panggilan'), dense: true, contentPadding: EdgeInsets.zero)),
               PopupMenuItem(value: 'theme', child: ListTile(leading: Icon(Icons.palette_outlined), title: Text('Ubah Tema'), dense: true, contentPadding: EdgeInsets.zero)),
               PopupMenuItem(value: 'bubble', child: ListTile(leading: Icon(Icons.chat_bubble_outline), title: Text('Gaya Bubble'), dense: true, contentPadding: EdgeInsets.zero)),
               PopupMenuItem(value: 'clear', child: ListTile(leading: Icon(Icons.cleaning_services_outlined), title: Text('Bersihkan Chat'), dense: true, contentPadding: EdgeInsets.zero)),
             ],
             onSelected: (v) {
-              if (v == 'log') Navigator.push(context, MaterialPageRoute(builder: (_) => const CallLogScreen()));
+              if (v == 'profile') _showPartnerProfile();
+              else if (v == 'log') Navigator.push(context, MaterialPageRoute(builder: (_) => const CallLogScreen()));
               else if (v == 'theme') _showThemeDialog();
               else if (v == 'bubble') _showBubbleDialog();
               else if (v == 'clear') _confirmClearChat();
@@ -428,11 +430,11 @@ class _ChatScreenState extends State<ChatScreen> {
             DevLogger.instance.error('chat', 'Stream ERROR', snap.error);
             AppLogger.error('chat_stream', snap.error);
             return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.cloud_off, size: 48, color: DyKalTheme.textGrey.withOpacity(0.5)),
+              Icon(Icons.cloud_off, size: 48, color: DyKalTheme.textGrey.withValues(alpha: 0.5)),
               const SizedBox(height: 12),
               const Text('Gagal memuat chat', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.red.withOpacity(0.08), borderRadius: BorderRadius.circular(8)), child: SelectableText('Error: ${snap.error}', style: const TextStyle(fontSize: 11, color: Colors.red), textAlign: TextAlign.center)),
+              Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)), child: SelectableText('Error: ${snap.error}', style: const TextStyle(fontSize: 11, color: Colors.red), textAlign: TextAlign.center)),
               const SizedBox(height: 8),
               Text('Log tersimpan di Android/media/com.dykal.app/logs/app.log', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 10)),
             ])));
@@ -447,7 +449,7 @@ class _ChatScreenState extends State<ChatScreen> {
           });
           final docs = rawDocs;
           if (docs.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.chat_bubble_outline, size: 56, color: DyKalTheme.textGrey.withOpacity(0.4)),
+            Icon(Icons.chat_bubble_outline, size: 56, color: DyKalTheme.textGrey.withValues(alpha: 0.4)),
             const SizedBox(height: 12),
             const Text('Belum ada chat', style: TextStyle(fontWeight: FontWeight.w600)),
             Text('Kirim pesan pertama ke $_partnerName', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
@@ -488,7 +490,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _replyPreview() => Container(
         margin: const EdgeInsets.symmetric(horizontal: 12),
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border(left: BorderSide(color: DyKalTheme.primary, width: 3))),
+        decoration: BoxDecoration(color: DyKalTheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border(left: BorderSide(color: DyKalTheme.primary, width: 3))),
         child: Row(children: [
           Icon(Icons.reply, size: 16, color: DyKalTheme.primary),
           const SizedBox(width: 8),
@@ -500,7 +502,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _recordingBar() => Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(24)),
+        decoration: BoxDecoration(color: DyKalTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24)),
         child: Row(children: [
           Icon(_locked ? Icons.lock : Icons.fiber_manual_record, color: DyKalTheme.primary, size: 16),
           const SizedBox(width: 8),
@@ -509,35 +511,183 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       );
 
-  Widget _input() => Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -2))]),
-        child: Row(children: [
-          IconButton(onPressed: _pickImage, icon: Icon(Icons.image, color: DyKalTheme.primary, size: 22), tooltip: 'Kirim foto'),
-          IconButton(onPressed: _pickSticker, icon: Icon(Icons.emoji_emotions_outlined, color: DyKalTheme.primary, size: 22), tooltip: 'Stiker'),
-          Expanded(child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(24)),
-            child: TextField(controller: _msgController, onChanged: _onChanged, minLines: 1, maxLines: 4, decoration: const InputDecoration(hintText: 'Tulis pesan...', border: InputBorder.none)),
-          )),
-          const SizedBox(width: 8),
-          ValueListenableBuilder(
-            valueListenable: _msgController,
-            builder: (_, v, __) => v.text.trim().isNotEmpty
-              ? GestureDetector(
-                  onTap: () => _sendMessage(),
-                  child: Container(width: 44, height: 44, decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle), child: const Icon(Icons.send, color: Colors.white, size: 18)))
-              : GestureDetector(
-                  onTap: () { if (!_isRecording) _startRec(); else _stopRec(send: false); }, // FIX VN responsiv: tap = mulai/berhenti+preview
-                  onLongPressStart: (_) => _startRec(),
-                  onLongPressMoveUpdate: (d) {
-                    if (d.offsetFromOrigin.dx < -60 && !_cancelled) setState(() => _cancelled = true);
-                    else if (d.offsetFromOrigin.dy < -50 && !_locked && !_cancelled) setState(() => _locked = true);
-                  },
-                  onLongPressEnd: (_) { if (_cancelled) { _discardRec(); } else if (!_locked) { _stopRec(send: true); } }, // FIX #15: lepas = kirim
-                  child: Container(width: 44, height: 44, decoration: BoxDecoration(color: _isRecording ? Colors.red : DyKalTheme.primary.withOpacity(0.12), shape: BoxShape.circle), child: Icon(_isRecording ? Icons.stop : Icons.mic, color: _isRecording ? Colors.white : DyKalTheme.primary, size: 20)),
-                ),
+  Future<void> _openCamera() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const CameraScreen()),
+    );
+    if (result != null) {
+      _sendMessage(
+        imageUrl: result['url'],
+        text: result['caption'],
+        viewOnce: result['viewOnce'] ?? false,
+      );
+    }
+  }
+
+  void _openAttachmentMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DyKalTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _attachItem(Icons.photo_library_rounded, 'Galeri', DyKalTheme.primary, () {
+                Navigator.pop(ctx);
+                _pickImage();
+              }),
+              _attachItem(Icons.camera_alt_rounded, 'Kamera', const Color(0xFF00D68F), () {
+                Navigator.pop(ctx);
+                _openCamera();
+              }),
+              _attachItem(Icons.insert_drive_file_rounded, 'Dokumen', const Color(0xFF7B6CF6), () async {
+                Navigator.pop(ctx);
+                final res = await FilePicker.platform.pickFiles();
+                if (res != null && res.files.single.path != null) {
+                  final file = File(res.files.single.path!);
+                  final url = await CloudinaryService().uploadImage(file, folder: 'dykal/documents');
+                  if (url != null) _sendMessage(imageUrl: url, text: res.files.single.name);
+                }
+              }),
+              _attachItem(Icons.music_note_rounded, 'Audio', const Color(0xFFFFC857), () async {
+                Navigator.pop(ctx);
+                final res = await FilePicker.platform.pickFiles(type: FileType.audio);
+                if (res != null && res.files.single.path != null) {
+                  final file = File(res.files.single.path!);
+                  final url = await CloudinaryService().uploadVoiceNote(file);
+                  if (url != null) _sendMessage(voiceUrl: url, voiceDuration: 10);
+                }
+              }),
+            ],
           ),
-        ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _attachItem(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _input() => Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+        decoration: BoxDecoration(
+          color: DyKalTheme.cardOf(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2))
+          ],
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: _pickSticker,
+              icon: Icon(Icons.emoji_emotions_outlined, color: DyKalTheme.primary, size: 24),
+              tooltip: 'Stiker & Emoji',
+            ),
+            IconButton(
+              onPressed: _openAttachmentMenu,
+              icon: Icon(Icons.attach_file_rounded, color: DyKalTheme.textSecondaryOf(context), size: 22),
+              tooltip: 'Lampiran',
+            ),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? DyKalTheme.backgroundDark
+                      : DyKalTheme.background,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: DyKalTheme.borderOf(context)),
+                ),
+                child: TextField(
+                  controller: _msgController,
+                  onChanged: _onChanged,
+                  minLines: 1,
+                  maxLines: 4,
+                  style: TextStyle(color: DyKalTheme.textPrimaryOf(context)),
+                  decoration: const InputDecoration(
+                    hintText: 'Tulis pesan...',
+                    hintStyle: TextStyle(fontSize: 14),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: _openCamera,
+              icon: Icon(Icons.camera_alt_rounded, color: DyKalTheme.primary, size: 22),
+              tooltip: 'Kamera',
+            ),
+            ValueListenableBuilder(
+              valueListenable: _msgController,
+              builder: (_, v, __) => v.text.trim().isNotEmpty
+                  ? GestureDetector(
+                      onTap: () => _sendMessage(),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle),
+                        child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () {
+                        if (!_isRecording) _startRec();
+                        else _stopRec(send: false);
+                      },
+                      onLongPressStart: (_) => _startRec(),
+                      onLongPressMoveUpdate: (d) {
+                        if (d.offsetFromOrigin.dx < -60 && !_cancelled) setState(() => _cancelled = true);
+                        else if (d.offsetFromOrigin.dy < -50 && !_locked && !_cancelled) setState(() => _locked = true);
+                      },
+                      onLongPressEnd: (_) {
+                        if (_cancelled) {
+                          _discardRec();
+                        } else if (!_locked) {
+                          _stopRec(send: true);
+                        }
+                      },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: _isRecording ? Colors.red : DyKalTheme.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _isRecording ? Icons.stop : Icons.mic_rounded,
+                          color: _isRecording ? Colors.white : DyKalTheme.primary,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
       );
 }

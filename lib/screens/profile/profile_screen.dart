@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart'; // FIX profile: crop foto bulat
 import '../../widgets/gallery_picker.dart';
 import '../../config/theme.dart';
@@ -26,8 +25,6 @@ class ProfileScreen extends StatelessWidget {
         final d = snap.data?.data() as Map<String, dynamic>?;
         final nameA = (d?['displayNameA'] as String?) ?? '';
         final nameB = (d?['displayNameB'] as String?) ?? '';
-        final photoA = d?['photoA'] as String?;
-        final photoB = d?['photoB'] as String?;
         final bA = (d?['birthdayA'] as Timestamp?)?.toDate();
         final bB = (d?['birthdayB'] as Timestamp?)?.toDate();
         final ann = (d?['anniversary'] as Timestamp?)?.toDate();
@@ -77,7 +74,7 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/illustrations/card_bg.png'), fit: BoxFit.cover)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/illustrations/card_bg.webp'), fit: BoxFit.cover)),
       child: Row(children: [
         Expanded(child: _memberCol(myId, '')),
         const Icon(Icons.favorite, color: Colors.white, size: 28),
@@ -89,7 +86,7 @@ class ProfileScreen extends StatelessWidget {
   Widget _memberCol(String uid, String fallback) {
     if (uid.isEmpty) {
       return Column(children: [
-        CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), child: Text(fallback.isNotEmpty ? fallback[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800))),
+        CircleAvatar(radius: 34, backgroundColor: Colors.white.withValues(alpha: 0.25), child: Text(fallback.isNotEmpty ? fallback[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800))),
         const SizedBox(height: 8),
         Text(fallback, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       ]);
@@ -101,7 +98,7 @@ class ProfileScreen extends StatelessWidget {
         final name = (d?['displayName'] as String?) ?? fallback;
         final photo = d?['photoUrl'] as String?;
         return Column(children: [
-          CircleAvatar(radius: 34, backgroundColor: Colors.white.withOpacity(0.25), backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)) : null),
+          CircleAvatar(radius: 34, backgroundColor: Colors.white.withValues(alpha: 0.25), backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)) : null),
           const SizedBox(height: 8),
           Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
         ]);
@@ -120,7 +117,7 @@ class ProfileScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(children: [
-                Container(width: 40, height: 40, decoration: BoxDecoration(color: DyKalTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: DyKalTheme.primary, size: 20)),
+                Container(width: 40, height: 40, decoration: BoxDecoration(color: DyKalTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: DyKalTheme.primary, size: 20)),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -137,7 +134,7 @@ class ProfileScreen extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(children: [
           ListTile(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), tileColor: DyKalTheme.cardOf(context),
-            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.person, color: DyKalTheme.primary)),
+            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withValues(alpha: 0.15), child: Icon(Icons.person, color: DyKalTheme.primary)),
             title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(FirebaseAuth.instance.currentUser?.email ?? '', style: const TextStyle(fontSize: 12))),
           const SizedBox(height: 12),
@@ -199,7 +196,7 @@ class ProfileScreen extends StatelessWidget {
           color: DyKalTheme.cardOf(context),
           borderRadius: BorderRadius.circular(16),
           child: ListTile(
-            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.edit, color: DyKalTheme.primary)),
+            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withValues(alpha: 0.15), child: Icon(Icons.edit, color: DyKalTheme.primary)),
             title: const Text('Edit Nama & Foto', style: TextStyle(fontWeight: FontWeight.w600)),
             subtitle: const Text('Ubah profil kamu (real-time)', style: TextStyle(fontSize: 12)),
             trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
@@ -215,7 +212,7 @@ class ProfileScreen extends StatelessWidget {
           color: DyKalTheme.cardOf(context),
           borderRadius: BorderRadius.circular(16),
           child: ListTile(
-            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withOpacity(0.15), child: Icon(Icons.tune, color: DyKalTheme.primary)),
+            leading: CircleAvatar(backgroundColor: DyKalTheme.primary.withValues(alpha: 0.15), child: Icon(Icons.tune, color: DyKalTheme.primary)),
             title: const Text('Pengaturan Lanjutan', style: TextStyle(fontWeight: FontWeight.w600)),
             subtitle: const Text('Notifikasi, overlay, bubble, story audio', style: TextStyle(fontSize: 12)),
             trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
@@ -239,15 +236,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       );
-
-  Future<File> _compressAvatar(File src) async {
-    try {
-      final out = File('${src.path.replaceAll(RegExp(r'\.[^.]+$'), '')}_av.jpg');
-      final res = null; // kompres dilepas: crop 1:1 + imageQuality:90 sudah kecil
-      if (res != null) { await out.writeAsBytes(res); return out; }
-    } catch (_) {}
-    return src;
-  }
 
   Future<void> _editProfile(BuildContext context) async {
     final auth = AuthService();
@@ -280,7 +268,7 @@ class ProfileScreen extends StatelessWidget {
               );
               if (cropped != null) setS(() => picked = File(cropped.path));
             },
-            child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withOpacity(0.15), backgroundImage: picked != null ? FileImage(picked!) as ImageProvider : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) as ImageProvider : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
+            child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withValues(alpha: 0.15), backgroundImage: picked != null ? FileImage(picked!) as ImageProvider : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) as ImageProvider : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
           ),
           const SizedBox(height: 8),
           Text('Ketuk foto untuk ganti', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),

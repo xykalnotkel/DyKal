@@ -1,80 +1,129 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../../config/theme.dart';
-import '../../services/theme_controller.dart';
-import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
-import '../../services/floating_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import '../../config/theme.dart';
+import '../../services/theme_controller.dart';
+import '../../services/floating_service.dart';
 import '../../services/ringtone_service.dart';
-// CATATAN: 'system_ringtone_picker' DIHAPUS — package itu TIDAK ADA di pub.dev (404). Dipake sebelumnya bikin compile error.
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // Notifikasi
   bool _notifChat = true;
   bool _notifCall = true;
   bool _notifLetter = true;
   bool _notifBirthday = true;
   bool _notifSound = true;
-bool _notifVibrate = true;
-  List<String> _storyAudioPaths = [];
-  String _notifRingtone = 'Default Sistem';
-  String _callRingtone = 'Default Sistem';
-  final _audioPlayer = AudioPlayer();
-  int _bubbleStyle = 0; // FIX: dipake tapi gak pernah dideklarasi -> compile error
+  bool _notifVibrate = true;
+  String _notifRingtone = 'Default DyKal';
+  String _callRingtone = 'Default DyKal';
 
-@override
+  // Audio Player & Story
+  final _audioPlayer = AudioPlayer();
+  List<String> _storyAudioPaths = [];
+  int _bubbleStyle = 0;
+  int _mediaVisibility = 0;
+  String _cacheSize = '0 MB';
+
+  @override
   void initState() {
     super.initState();
-    _loadAudioPaths();
-    _loadBubbleStyle();
-    _loadNotifPrefs(); // FIX #12: pusat notifikasi beneran persist + dipakai PushService
+    _loadAllPreferences();
+    _calculateCacheSize();
   }
 
-  Future<void> _loadNotifPrefs() async {
+  Future<void> _loadAllPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notifSound = prefs.getBool('notif_sound') ?? true;
+      _notifVibrate = prefs.getBool('notif_vibrate') ?? true;
+      _notifRingtone = prefs.getString('notif_ringtone_title') ?? 'Default DyKal';
+      _callRingtone = prefs.getString('call_ringtone_title') ?? 'Default DyKal';
+      _bubbleStyle = prefs.getInt('bubble_style') ?? 0;
+      _mediaVisibility = prefs.getInt('media_visibility_pref') ?? 0;
+      _storyAudioPaths = prefs.getStringList('story_audio_playlist') ?? [];
+    });
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
       final snap = await FirebaseFirestore.instance.doc('users/$uid').get();
       final p = (snap.data()?['notifPrefs'] as Map<String, dynamic>?) ?? {};
-      if (mounted) setState(() {
-        _notifChat = p['chat'] ?? true;
-        _notifCall = p['call'] ?? true;
-        _notifLetter = p['letter'] ?? true;
-        _notifBirthday = p['birthday'] ?? true;
-      });
+      if (mounted) {
+        setState(() {
+          _notifChat = p['chat'] ?? true;
+          _notifCall = p['call'] ?? true;
+          _notifLetter = p['letter'] ?? true;
+          _notifBirthday = p['birthday'] ?? true;
+        });
+      }
     } catch (_) {}
   }
 
   Future<void> _saveNotifPref(String key, bool v) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    try { await FirebaseFirestore.instance.doc('users/$uid').set({'notifPrefs': {key: v}}, SetOptions(merge: true)); } catch (_) {}
+    try {
+      await FirebaseFirestore.instance.doc('users/$uid').set({
+        'notifPrefs': {key: v}
+      }, SetOptions(merge: true));
+    } catch (_) {}
   }
 
-Future<void> _loadBubbleStyle() async {
+  Future<void> _saveLocalPref(String key, dynamic v) async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() => _bubbleStyle = prefs.getInt('bubble_style') ?? 0);
+    if (v is bool) await prefs.setBool(key, v);
+    if (v is String) await prefs.setString(key, v);
+    if (v is int) await prefs.setInt(key, v);
   }
 
-  Future<void> _setBubbleStyle(int style) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('bubble_style', style);
-    setState(() => _bubbleStyle = style);
+  Future<void> _calculateCacheSize() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      int totalBytes = 0;
+      if (await tempDir.exists()) {
+        await for (final file in tempDir.list(recursive: true, followLinks: false)) {
+          if (file is File) {
+            final stat = await file.stat();
+            totalBytes += stat.size;
+          }
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _cacheSize = '${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+        });
+      }
+    } catch (_) {}
   }
 
-  Future<void> _loadAudioPaths() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() => _storyAudioPaths = prefs.getStringList('story_audio_playlist') ?? []);
+  Future<void> _clearCache() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+        await tempDir.create();
+      }
+      await _calculateCacheSize();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Berkas cache aplikasi berhasil dibersihkan')),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _addAudio() async {
@@ -108,178 +157,480 @@ Future<void> _loadBubbleStyle() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan')),
-      body: ListView(children: [
-        _sectionHeader('Pusat Notifikasi'),
-        _toggle(Icons.chat, 'Notifikasi Chat', _notifChat, (v) { setState(() => _notifChat = v); _saveNotifPref('chat', v); }),
-        _toggle(Icons.call, 'Notifikasi Telepon', _notifCall, (v) { setState(() => _notifCall = v); _saveNotifPref('call', v); }),
-        _toggle(Icons.mail, 'Notifikasi Surat', _notifLetter, (v) { setState(() => _notifLetter = v); _saveNotifPref('letter', v); }),
-        _toggle(Icons.cake, 'Ultah & Anniversary', _notifBirthday, (v) { setState(() => _notifBirthday = v); _saveNotifPref('birthday', v); }),
-        const Divider(),
-        _sectionHeader('Nada Dering & Suara'),
-        _tile(Icons.notifications_active, 'Nada Notifikasi', _notifRingtone, () => _pickRingtone(2, 'notif_ringtone_uri', 'notif_ringtone_title', (t) => setState(() => _notifRingtone = t))),
-        _tile(Icons.phone_in_talk, 'Nada Telepon', _callRingtone, () => _pickRingtone(1, 'call_ringtone_uri', 'call_ringtone_title', (t) => setState(() => _callRingtone = t))),
-        _toggle(Icons.volume_up, 'Suara Notifikasi', _notifSound, null),
-        _toggle(Icons.vibration, 'Getaran', _notifVibrate, null),
-        const Divider(),
-        _sectionHeader('Izin Overlay (Floating Bubble)'),
-        FutureBuilder<bool>(
-          future: FloatingService.hasOverlayPermission(),
-          builder: (_, snap) => ListTile(
-            leading: Icon(Icons.picture_in_picture, color: snap.data == true ? DyKalTheme.primary : Colors.red),
-            title: Text(snap.data == true ? 'Izin Overlay: Aktif' : 'Izin Overlay: Belum Aktif', style: const TextStyle(fontSize: 14)),
-            subtitle: const Text('Untuk floating chat & video call di atas app lain', style: TextStyle(fontSize: 11)),
-            trailing: snap.data == true ? const Icon(Icons.check_circle, color: Colors.green) : const Icon(Icons.warning, color: Colors.orange),
-            onTap: () => FloatingService.requestOverlayPermission(),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? DyKalTheme.backgroundDark
+          : DyKalTheme.background,
+      appBar: AppBar(
+        title: const Text('Pengaturan Lanjutan', style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          // 1. NOTIFIKASI & DERAG
+          _sectionCard(
+            title: 'Notifikasi & Dering',
+            icon: Icons.notifications_active_outlined,
+            children: [
+              _tile(
+                Icons.music_note_outlined,
+                'Nada Notifikasi',
+                _notifRingtone,
+                () => _selectRingtoneDialog(
+                  type: 2,
+                  prefKey: 'notif_ringtone_title',
+                  currentVal: _notifRingtone,
+                  onSelect: (v) => setState(() => _notifRingtone = v),
+                ),
+              ),
+              _tile(
+                Icons.phone_in_talk_outlined,
+                'Nada Panggilan',
+                _callRingtone,
+                () => _selectRingtoneDialog(
+                  type: 1,
+                  prefKey: 'call_ringtone_title',
+                  currentVal: _callRingtone,
+                  onSelect: (v) => setState(() => _callRingtone = v),
+                ),
+              ),
+              _toggle(Icons.volume_up_outlined, 'Suara Notifikasi', _notifSound, (v) {
+                setState(() => _notifSound = v);
+                _saveLocalPref('notif_sound', v);
+              }),
+              _toggle(Icons.vibration, 'Getaran', _notifVibrate, (v) {
+                setState(() => _notifVibrate = v);
+                _saveLocalPref('notif_vibrate', v);
+              }),
+              const Divider(height: 1),
+              _toggle(Icons.chat_bubble_outline, 'Notifikasi Chat Masuk', _notifChat, (v) {
+                setState(() => _notifChat = v);
+                _saveNotifPref('chat', v);
+              }),
+              _toggle(Icons.videocam_outlined, 'Notifikasi Panggilan', _notifCall, (v) {
+                setState(() => _notifCall = v);
+                _saveNotifPref('call', v);
+              }),
+              _toggle(Icons.mail_outline, 'Notifikasi Surat Cinta', _notifLetter, (v) {
+                setState(() => _notifLetter = v);
+                _saveNotifPref('letter', v);
+              }),
+              _toggle(Icons.cake_outlined, 'Pengingat Ultah & Anniversary', _notifBirthday, (v) {
+                setState(() => _notifBirthday = v);
+                _saveNotifPref('birthday', v);
+              }),
+              _tile(
+                Icons.settings_suggest_outlined,
+                'Izin Notifikasi Sistem',
+                'Buka pengaturan Android',
+                () => openAppSettings(),
+              ),
+            ],
           ),
-        ),
 
-        const Divider(),
-        _sectionHeader('Izin Notifikasi'),
-        _tile(Icons.settings_applications, 'Buka Pengaturan Notifikasi', 'Kelola izin di sistem'),
-        const Divider(),
-        _sectionHeader('Audio Story Playlist'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('Lagu diputar random saat story dibuka. Tersimpan permanen di HP (gak hilang walau ganti akun).', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
-        ),
-        if (_storyAudioPaths.isEmpty)
-          Padding(padding: const EdgeInsets.all(16), child: Center(child: Text('Belum ada lagu. Tap + untuk tambah.', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12))))
-        else
-          ..._storyAudioPaths.asMap().entries.map((e) => ListTile(
-            leading: const Icon(Icons.music_note, color: Color(0xFFFF6B8A)),
-            title: Text(e.value.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(icon: const Icon(Icons.play_arrow, size: 20), onPressed: () => _previewAudio(e.value)),
-              IconButton(icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red), onPressed: () => _removeAudio(e.key)),
-            ]),
-          )),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: OutlinedButton.icon(onPressed: _addAudio, icon: const Icon(Icons.add), label: const Text('Tambah Lagu dari HP')),
-        ),
-
-        const Divider(),
-        _sectionHeader('Tampilan'),
-        _themeRow(),
-        const SizedBox(height: 8),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Text('Gaya Bubble Chat', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
-          Expanded(child: _bubbleChip(0, 'Bulat', Icons.circle_outlined)),
-          const SizedBox(width: 8),
-          Expanded(child: _bubbleChip(1, 'Kotak', Icons.square_outlined)),
-          const SizedBox(width: 8),
-          Expanded(child: _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline)),
-        ])),
-        const SizedBox(height: 24),
-        FutureBuilder<String>(
-          future: () async {
-            final info = await PackageInfo.fromPlatform();
-            return 'DyKal v' + info.version;
-          }(),
-          builder: (_, ss) => Text(
-            ss.data ?? 'DyKal',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12),
+          // 2. TAMPILAN & GAYA ANTARMUKA
+          _sectionCard(
+            title: 'Tampilan & Gaya Antarmuka',
+            icon: Icons.palette_outlined,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                child: const Text('Mode Tema', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+              _themeRow(),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                child: const Text('Gaya Desain Antarmuka', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+              _uiStyleRow(),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                child: const Text('Bentuk Bubble Chat', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(child: _bubbleChip(0, 'Bulat', Icons.circle_outlined)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _bubbleChip(1, 'Kotak', Icons.square_outlined)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
-        ),
-        const SizedBox(height: 40),
-      ]),
-    );
-  }
 
-  Future<void> _pickRingtone(int type, String uriKey, String titleKey, ValueChanged<String> onPick) async {
-    final list = await RingtoneService.getRingtones(type: type);
-    if (!mounted || list.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak bisa ambil nada sistem')));
-      return;
-    }
-    String? selectedUri;
-    await showDialog(context: context, builder: (d) => AlertDialog(
-      title: const Text('Pilih Nada', style: TextStyle(fontSize: 16)),
-      content: SizedBox(width: double.maxFinite, child: ListView.builder(shrinkWrap: true, itemCount: list.length, itemBuilder: (_, i) {
-        final r = list[i];
-        final title = (r['title'] as String?) ?? '';
-        final uri = (r['uri'] as String?) ?? '';
-        return ListTile(dense: true, title: Text(title, style: const TextStyle(fontSize: 13)), trailing: IconButton(icon: const Icon(Icons.play_arrow, size: 20), onPressed: () => RingtoneService.play(uri)), onTap: () { selectedUri = uri; Navigator.pop(d); });
-      })),
-    ));
-    await RingtoneService.stop();
-    if (selectedUri != null) {
-      final prefs = await SharedPreferences.getInstance();
-      final picked = list.firstWhere((r) => r['uri'] == selectedUri, orElse: () => <String, dynamic>{});
-      final title = (picked['title'] as String?) ?? 'Default';
-      await prefs.setString(uriKey, selectedUri!);
-      await prefs.setString(titleKey, title);
-      onPick(title);
-    }
-  }
+          // 3. PRIVASI & KEAMANAN
+          _sectionCard(
+            title: 'Privasi & Keamanan',
+            icon: Icons.security_outlined,
+            children: [
+              _infoTile(
+                Icons.lock_outline,
+                'Enkripsi Data Media',
+                'AES-256-GCM Hardware Cipher (.webp.crypt15)',
+              ),
+              FutureBuilder<bool>(
+                future: FloatingService.hasOverlayPermission(),
+                builder: (_, snap) => ListTile(
+                  leading: Icon(
+                    Icons.picture_in_picture_alt_outlined,
+                    color: snap.data == true ? DyKalTheme.online : Colors.orange,
+                  ),
+                  title: const Text('Izin Floating Bubble / Overlay', style: TextStyle(fontSize: 14)),
+                  subtitle: Text(
+                    snap.data == true ? 'Aktif (dapat melayang di atas aplikasi lain)' : 'Belum aktif (ketuk untuk izin)',
+                    style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context)),
+                  ),
+                  trailing: Icon(
+                    snap.data == true ? Icons.check_circle : Icons.warning_amber_rounded,
+                    color: snap.data == true ? DyKalTheme.online : Colors.orange,
+                  ),
+                  onTap: () => FloatingService.requestOverlayPermission(),
+                ),
+              ),
+              _tile(
+                Icons.visibility_outlined,
+                'Visibilitas Media di Galeri',
+                _mediaVisibility == 0 ? 'Semua Disimpan' : (_mediaVisibility == 1 ? 'Hanya Foto' : 'Manual (Tidak)'),
+                () => _selectMediaVisibilityDialog(),
+              ),
+            ],
+          ),
 
-  Widget _sectionHeader(String title) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-    child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFFFF6B8A))),
-  );
+          // 4. PENYIMPANAN & DATA
+          _sectionCard(
+            title: 'Penyimpanan & Data',
+            icon: Icons.storage_outlined,
+            children: [
+              _infoTile(
+                Icons.folder_outlined,
+                'Lokasi Scoped Media',
+                'Android/media/com.dykal.app/Dykal/Media/',
+              ),
+              ListTile(
+                leading: const Icon(Icons.cleaning_services_outlined, color: Colors.redAccent),
+                title: const Text('Bersihkan Berkas Sementara', style: TextStyle(fontSize: 14)),
+                subtitle: Text('Ukuran cache saat ini: $_cacheSize', style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context))),
+                trailing: TextButton(
+                  onPressed: _clearCache,
+                  child: const Text('Bersihkan', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
 
-  Widget _toggle(IconData icon, String title, bool value, ValueChanged<bool>? onChanged) {
-    return ListTile(
-      leading: Icon(icon, color: DyKalTheme.textGrey),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged ?? (v) {},
-        activeColor: DyKalTheme.primary,
+          // 5. AKSESIBILITAS & AUDIO CERITA
+          _sectionCard(
+            title: 'Aksesibilitas & Audio Cerita',
+            icon: Icons.graphic_eq_outlined,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                child: Text(
+                  'Playlist Musik Story Album (diputar acak saat melihat cerita):',
+                  style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context)),
+                ),
+              ),
+              if (_storyAudioPaths.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: Text('Belum ada berkas lagu.', style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 12)),
+                  ),
+                )
+              else
+                ..._storyAudioPaths.asMap().entries.map((e) => ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.music_note, color: DyKalTheme.primary),
+                      title: Text(e.value.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(icon: const Icon(Icons.play_arrow, size: 18), onPressed: () => _previewAudio(e.value)),
+                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), onPressed: () => _removeAudio(e.key)),
+                        ],
+                      ),
+                    )),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: OutlinedButton.icon(
+                  onPressed: _addAudio,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Tambah Musik dari HP'),
+                ),
+              ),
+            ],
+          ),
+
+          // 6. TENTANG & INFORMASI APLIKASI
+          _sectionCard(
+            title: 'Tentang & Informasi Aplikasi',
+            icon: Icons.info_outline,
+            children: [
+              FutureBuilder<String>(
+                future: () async {
+                  final info = await PackageInfo.fromPlatform();
+                  return 'DyKal v${info.version} (Build ${info.buildNumber})';
+                }(),
+                builder: (_, s) => _infoTile(
+                  Icons.verified_outlined,
+                  'Versi Aplikasi',
+                  s.data ?? 'DyKal v1.0.17',
+                ),
+              ),
+              _infoTile(
+                Icons.cloud_done_outlined,
+                'Infrastruktur Realtime',
+                'Google Firestore & Cloudflare Worker',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 30),
+        ],
       ),
     );
   }
 
-  Widget _tile(IconData icon, String title, String subtitle, [VoidCallback? onTap]) {
+  Widget _sectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: DyKalTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DyKalTheme.borderOf(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Row(
+              children: [
+                Icon(icon, color: DyKalTheme.primary, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: DyKalTheme.primary),
+                ),
+              ],
+            ),
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _toggle(IconData icon, String title, bool value, ValueChanged<bool>? onChanged) {
     return ListTile(
-      leading: Icon(icon, color: DyKalTheme.textGrey),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-      trailing: const Icon(Icons.chevron_right, size: 20),
-      onTap: onTap ?? () async {
-        final plugin = FlutterLocalNotificationsPlugin();
-        final android = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-        if (android != null) await android.requestNotificationsPermission();
+      leading: Icon(icon, color: DyKalTheme.textSecondaryOf(context), size: 20),
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: Colors.white,
+        activeTrackColor: DyKalTheme.primary,
+      ),
+    );
+  }
+
+  Widget _tile(IconData icon, String title, String subtitle, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: DyKalTheme.textSecondaryOf(context), size: 20),
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context))),
+      trailing: const Icon(Icons.chevron_right, size: 18),
+      onTap: onTap,
+    );
+  }
+
+  Widget _infoTile(IconData icon, String title, String subtitle) {
+    return ListTile(
+      leading: Icon(icon, color: DyKalTheme.textSecondaryOf(context), size: 20),
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context))),
+    );
+  }
+
+  Widget _themeRow() {
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) {
+        final mode = ThemeController.instance.mode;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('Sistem'), icon: Icon(Icons.brightness_auto, size: 16)),
+              ButtonSegment(value: ThemeMode.light, label: Text('Terang'), icon: Icon(Icons.light_mode, size: 16)),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Gelap'), icon: Icon(Icons.dark_mode, size: 16)),
+            ],
+            selected: {mode},
+            onSelectionChanged: (s) => ThemeController.instance.set(s.first),
+          ),
+        );
       },
     );
   }
 
-  Widget _themeRow() => ListenableBuilder(
-    listenable: ThemeController.instance,
-    builder: (_, __) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: [
-        _themeChip('Sistem', ThemeMode.system),
-        const SizedBox(width: 8),
-        _themeChip('Terang', ThemeMode.light),
-        const SizedBox(width: 8),
-        _themeChip('Gelap', ThemeMode.dark),
-      ]),
-    ),
-  );
+  Widget _uiStyleRow() {
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) {
+        final currentStyle = ThemeController.instance.style;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SegmentedButton<AppUiStyle>(
+            segments: const [
+              ButtonSegment(value: AppUiStyle.rounded, label: Text('Rounded'), icon: Icon(Icons.rounded_corner, size: 16)),
+              ButtonSegment(value: AppUiStyle.ios, label: Text('iOS Style'), icon: Icon(Icons.phone_iphone, size: 16)),
+              ButtonSegment(value: AppUiStyle.sharp, label: Text('Sharp'), icon: Icon(Icons.crop_square, size: 16)),
+            ],
+            selected: {currentStyle},
+            onSelectionChanged: (s) => ThemeController.instance.setStyle(s.first),
+          ),
+        );
+      },
+    );
+  }
 
-Widget _bubbleChip(int style, String label, IconData icon) {
+  Widget _bubbleChip(int style, String label, IconData icon) {
     final active = _bubbleStyle == style;
     return GestureDetector(
-      onTap: () => _setBubbleStyle(style),
+      onTap: () {
+        setState(() => _bubbleStyle = style);
+        _saveLocalPref('bubble_style', style);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(color: active ? DyKalTheme.primary : DyKalTheme.borderSoft, borderRadius: BorderRadius.circular(10)),
-        child: Column(children: [Icon(icon, size: 20, color: active ? Colors.white : DyKalTheme.textGrey), const SizedBox(height: 4), Text(label, style: TextStyle(color: active ? Colors.white : DyKalTheme.textGrey, fontSize: 11, fontWeight: FontWeight.w600))]),
+        decoration: BoxDecoration(
+          color: active ? DyKalTheme.primary : DyKalTheme.cardOf(context),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: active ? DyKalTheme.primary : DyKalTheme.borderOf(context)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: active ? Colors.white : DyKalTheme.textSecondaryOf(context)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : DyKalTheme.textSecondaryOf(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _themeChip(String label, ThemeMode mode) {
-    final active = ThemeController.instance.mode == mode;
-    return GestureDetector(
-      onTap: () => ThemeController.instance.set(mode),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(color: active ? DyKalTheme.primary : DyKalTheme.borderSoft, borderRadius: BorderRadius.circular(10)),
-        child: Text(label, style: TextStyle(color: active ? Colors.white : DyKalTheme.textGrey, fontWeight: FontWeight.w600, fontSize: 13)),
+  Future<void> _selectRingtoneDialog({
+    required int type,
+    required String prefKey,
+    required String currentVal,
+    required ValueChanged<String> onSelect,
+  }) async {
+    final systemList = await RingtoneService.getRingtones(type: type);
+    if (!mounted) return;
+
+    final options = [
+      {'title': 'Default DyKal', 'uri': 'asset:default'},
+      ...systemList,
+    ];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Pilih Nada', style: TextStyle(fontSize: 16)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: options.length,
+            itemBuilder: (_, i) {
+              final item = options[i];
+              final title = (item['title'] as String?) ?? 'Nada';
+              final isSelected = title == currentVal;
+
+              return ListTile(
+                dense: true,
+                title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: 13)),
+                trailing: isSelected ? const Icon(Icons.check, color: DyKalTheme.primary, size: 18) : null,
+                onTap: () async {
+                  await _saveLocalPref(prefKey, title);
+                  onSelect(title);
+                  Navigator.pop(ctx);
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectMediaVisibilityDialog() async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Visibilitas Media di Galeri', style: TextStyle(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RadioListTile<int>(
+              value: 0,
+              groupValue: _mediaVisibility,
+              title: const Text('Semua Media (Foto & Video)', style: TextStyle(fontSize: 13)),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() => _mediaVisibility = v);
+                  _saveLocalPref('media_visibility_pref', v);
+                  Navigator.pop(ctx);
+                }
+              },
+            ),
+            RadioListTile<int>(
+              value: 1,
+              groupValue: _mediaVisibility,
+              title: const Text('Hanya Foto', style: TextStyle(fontSize: 13)),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() => _mediaVisibility = v);
+                  _saveLocalPref('media_visibility_pref', v);
+                  Navigator.pop(ctx);
+                }
+              },
+            ),
+            RadioListTile<int>(
+              value: 2,
+              groupValue: _mediaVisibility,
+              title: const Text('Manual (Tidak simpan ke galeri)', style: TextStyle(fontSize: 13)),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() => _mediaVisibility = v);
+                  _saveLocalPref('media_visibility_pref', v);
+                  Navigator.pop(ctx);
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

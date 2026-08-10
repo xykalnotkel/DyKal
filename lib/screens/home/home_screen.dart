@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
-import '../album/album_detail_screen.dart';
+import '../../services/update_service.dart';
+import '../../widgets/story_avatar.dart';
 import '../call/call_log_screen.dart';
+import 'story_viewer.dart';
+import '../album/album_detail_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  String _myName(Map<String, dynamic>? d) => d?['displayNameA'] as String? ?? AuthService().myName;
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   String _partnerName(Map<String, dynamic>? d) => d?['displayNameB'] as String? ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    UpdateService.instance.checkForUpdate();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,53 +34,166 @@ class HomeScreen extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          title: Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.favorite, color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("DyKal", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              StreamBuilder<DocumentSnapshot>(
-                stream: coupleId == null ? null : FirebaseFirestore.instance.doc('couples/$coupleId').snapshots(),
-                builder: (context, snap) {
-                  final d = snap.data?.data() as Map<String, dynamic>?;
-                  final name = _partnerName(d);
-                  return Text("Kamu & $name", style: TextStyle(fontSize: 11, color: DyKalTheme.textGrey));
-                },
+          title: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: DyKalTheme.dykalGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.favorite, color: Colors.white, size: 18),
               ),
-            ]),
-          ]),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('DyKal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: coupleId == null ? null : FirebaseFirestore.instance.doc('couples/$coupleId').snapshots(),
+                    builder: (context, snap) {
+                      final d = snap.data?.data() as Map<String, dynamic>?;
+                      final name = _partnerName(d);
+                      return Text(
+                        'Kamu & ${name.isNotEmpty ? name : 'Dia'}',
+                        style: TextStyle(fontSize: 11, color: DyKalTheme.textSecondaryOf(context)),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
           actions: [
             _chatButton(context),
-            IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallLogScreen())), tooltip: 'Log Panggilan', icon: Icon(Icons.phone_in_talk_outlined, color: DyKalTheme.textPrimaryOf(context))),
+            IconButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallLogScreen())),
+              tooltip: 'Log Panggilan',
+              icon: Icon(Icons.phone_in_talk_outlined, color: DyKalTheme.textPrimaryOf(context)),
+            ),
             const SizedBox(width: 4),
           ],
         ),
 
-        // HERO + tombol Chat
+        // Update Banner jika ada versi baru
+        SliverToBoxAdapter(child: _updateBanner()),
+
+        // Hero Card
         SliverToBoxAdapter(child: _hero(context)),
-        // FIX home kurang kosong: status partner + tombol telepon cepat
+
+        // Status Online Pasangan & Tombol Panggilan Cepat
         SliverToBoxAdapter(child: _partnerStatus()),
         SliverToBoxAdapter(child: _quickCall(context)),
-        SliverToBoxHeader(label: "Cerita Album"),
-        // CERITA ALBUM (story)
+
+        // Cerita Album (WhatsApp Segmented Story Style)
+        const SliverToBoxHeader(label: 'Cerita Album'),
         SliverToBoxAdapter(child: _storiesRow(context)),
-        // ANNIVERSARY
+
+        // Anniversary & Ultah
         SliverToBoxAdapter(child: _anniversary()),
-        // ULTAH
         SliverToBoxAdapter(child: _birthday()),
-        // STATISTIK
-        SliverToBoxHeader(label: "Statistik Kalian"),
+
+        // Statistik
+        const SliverToBoxHeader(label: 'Statistik Kalian'),
         SliverToBoxAdapter(child: _stats(context)),
-        SliverToBoxAdapter(child: SizedBox(height: 110)),
+        const SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
     );
   }
 
-  // FIX home: status online/last-seen partner
+  Widget _updateBanner() {
+    return ListenableBuilder(
+      listenable: UpdateService.instance,
+      builder: (context, _) {
+        final update = UpdateService.instance.availableUpdate;
+        if (update == null) return const SizedBox.shrink();
+
+        final isDownloading = UpdateService.instance.isDownloading;
+        final progress = UpdateService.instance.downloadProgress;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: DyKalTheme.surfaceDark,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DyKalTheme.primary.withValues(alpha: 0.4)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: DyKalTheme.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.system_update_alt_rounded, color: DyKalTheme.primary, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pembaruan Tersedia (v${update.versionName})',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
+                        ),
+                        Text(
+                          update.releaseNotes,
+                          style: const TextStyle(fontSize: 12, color: DyKalTheme.textMutedDark),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (isDownloading) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(DyKalTheme.primary),
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Mengunduh di latar belakang: ${(progress * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(fontSize: 11, color: DyKalTheme.textMutedDark),
+                ),
+              ] else
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DyKalTheme.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => UpdateService.instance.downloadAndInstall(),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('Unduh & Pasang Pembaruan'),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _partnerStatus() {
     final partnerId = AuthService().partnerId ?? '';
     if (partnerId.isEmpty) return const SizedBox.shrink();
@@ -86,26 +211,57 @@ class HomeScreen extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(color: (online ? DyKalTheme.online : DyKalTheme.textGrey).withOpacity(0.08), borderRadius: BorderRadius.circular(14)),
-          child: Row(children: [
-            Icon(Icons.circle, size: 10, color: online ? DyKalTheme.online : DyKalTheme.textGrey),
-            const SizedBox(width: 8),
-            Expanded(child: Text(sub, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: online ? DyKalTheme.online : DyKalTheme.textGrey))),
-          ]),
+          decoration: BoxDecoration(
+            color: (online ? DyKalTheme.online : DyKalTheme.textSecondaryOf(context)).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.circle, size: 10, color: online ? DyKalTheme.online : DyKalTheme.textSecondaryOf(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  sub,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: online ? DyKalTheme.online : DyKalTheme.textSecondaryOf(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  // FIX home: tombol telepon cepat
   Widget _quickCall(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(children: [
-        Expanded(child: _qaBtn(context, Icons.call, 'Telepon Suara', DyKalTheme.online, () => Navigator.pushNamed(context, '/audioCall', arguments: {'isCaller': true, 'type': 'audio'}))),
-        const SizedBox(width: 10),
-        Expanded(child: _qaBtn(context, Icons.videocam, 'Telepon Video', DyKalTheme.primary, () => Navigator.pushNamed(context, '/videoCall', arguments: {'isCaller': true, 'type': 'video'}))),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: _qaBtn(
+              context,
+              Icons.call,
+              'Telepon Suara',
+              DyKalTheme.online,
+              () => Navigator.pushNamed(context, '/audioCall', arguments: {'isCaller': true, 'type': 'audio'}),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _qaBtn(
+              context,
+              Icons.videocam,
+              'Telepon Video',
+              DyKalTheme.primary,
+              () => Navigator.pushNamed(context, '/videoCall', arguments: {'isCaller': true, 'type': 'video'}),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -115,7 +271,13 @@ class HomeScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
-        child: Column(children: [Icon(icon, color: Colors.white, size: 24), const SizedBox(height: 4), Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12))]),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }
@@ -125,36 +287,77 @@ class HomeScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: SizedBox(
-        height: 112,
+        height: 110,
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('couples/$coupleId/albums').snapshots(),
-          builder: (_, snap) {
+          builder: (context, snap) {
             final docs = snap.data?.docs ?? [];
             if (docs.isEmpty) return const SizedBox.shrink();
+
             return ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: docs.length,
+              itemCount: docs.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (_, i) {
-                final data = docs[i].data() as Map<String, dynamic>;
+              itemBuilder: (context, i) {
+                if (i == 0) {
+                  // Tombol Putar Cerita Lengkap
+                  return Column(
+                    children: [
+                      StoryAvatar(
+                        imageUrl: null,
+                        fallbackText: 'ALL',
+                        storyCount: docs.length,
+                        allSeen: false,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => StoryViewer(coupleId: coupleId)),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Semua Cerita',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  );
+                }
+
+                final doc = docs[i - 1];
+                final data = doc.data() as Map<String, dynamic>;
                 final name = data['name'] as String? ?? 'Album';
                 final cover = data['coverUrl'] as String?;
-                return GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AlbumDetailScreen(albumId: docs[i].id, albumName: name))),
-                  child: Column(children: [
-                    Container(
-                      width: 72, height: 72,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle),
-                      child: Container(
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.cardOf(context), image: cover != null ? DecorationImage(image: CachedNetworkImageProvider(cover), fit: BoxFit.cover) : null),
-                        child: cover == null ? Center(child: Icon(Icons.photo_library, color: DyKalTheme.primary)) : null,
-                      ),
+
+                return Column(
+                  children: [
+                    StoryAvatar(
+                      imageUrl: cover,
+                      fallbackText: name,
+                      storyCount: 1,
+                      allSeen: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AlbumDetailScreen(albumId: doc.id, albumName: name),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 6),
-                    SizedBox(width: 74, child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-                  ]),
+                    SizedBox(
+                      width: 70,
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 );
               },
             );
@@ -168,7 +371,9 @@ class HomeScreen extends StatelessWidget {
     final coupleId = AuthService().coupleId;
     final myId = AuthService().myId;
     return StreamBuilder<QuerySnapshot>(
-      stream: (coupleId == null || myId.isEmpty) ? null : FirebaseFirestore.instance.collection('chats/$coupleId/messages').snapshots(),
+      stream: (coupleId == null || myId.isEmpty)
+          ? null
+          : FirebaseFirestore.instance.collection('chats/$coupleId/messages').snapshots(),
       builder: (_, snap) {
         final unread = snap.data?.docs.where((d) {
               final m = d.data() as Map<String, dynamic>;
@@ -177,11 +382,22 @@ class HomeScreen extends StatelessWidget {
             0;
         return IconButton(
           onPressed: () => Navigator.pushNamed(context, '/chat'),
-          icon: Stack(clipBehavior: Clip.none, children: [
-            Icon(Icons.chat_bubble_outline, color: DyKalTheme.textPrimaryOf(context)),
-            if (unread > 0)
-              Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.all(3.5), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)))),
-          ]),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(Icons.chat_bubble_outline, color: DyKalTheme.textPrimaryOf(context)),
+              if (unread > 0)
+                Positioned(
+                  top: -3,
+                  right: -3,
+                  child: Container(
+                    padding: const EdgeInsets.all(3.5),
+                    decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle),
+                    child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
@@ -194,26 +410,41 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: DyKalTheme.cardOf(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: DyKalTheme.borderSoft),
+        border: Border.all(color: DyKalTheme.borderOf(context)),
       ),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Text("Hai, Kalian Berdua", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-            const SizedBox(width: 6),
-            Icon(Icons.favorite, color: DyKalTheme.primary, size: 18),
-          ]),
-          const SizedBox(height: 6),
-          Text("Semoga harimu indah. Sapa dia sekarang 💕", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 13)),
-          const SizedBox(height: 14),
-          FilledButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/chat'),
-            icon: const Icon(Icons.chat, size: 16),
-            label: const Text("Mulai Chat"),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('Hai, Kalian Berdua', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.favorite, color: DyKalTheme.primary, size: 18),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('Semoga harimu indah. Sapa dia sekarang.', style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 13)),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/chat'),
+                  icon: const Icon(Icons.chat, size: 16),
+                  label: const Text('Mulai Chat'),
+                ),
+              ],
+            ),
           ),
-        ])),
-        Image.asset('assets/illustrations/webp/home_hero.webp', width: 110, height: 110, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(width: 110, height: 110)),
-      ]),
+          Image.asset(
+            'assets/illustrations/webp/home_hero.webp',
+            width: 100,
+            height: 100,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox(width: 100, height: 100),
+          ),
+        ],
+      ),
     );
   }
 
@@ -230,7 +461,6 @@ class HomeScreen extends StatelessWidget {
         if (ann != null) {
           days = DateTime.now().difference(ann).inDays;
           title = 'Hari ke-${days < 0 ? 0 : days} Bersama';
-          // hitung ulang tahun anniversary berikutnya
           DateTime next = DateTime(DateTime.now().year, ann.month, ann.day);
           if (next.isBefore(DateTime.now())) next = DateTime(DateTime.now().year + 1, ann.month, ann.day);
           final left = next.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
@@ -240,23 +470,38 @@ class HomeScreen extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: DyKalTheme.secondary.withOpacity(0.08),
+            color: DyKalTheme.secondary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: DyKalTheme.secondary.withOpacity(0.15)),
+            border: Border.all(color: DyKalTheme.secondary.withValues(alpha: 0.15)),
           ),
-          child: Row(children: [
-            Image.asset('assets/illustrations/webp/anniversary.webp', width: 64, height: 64, fit: BoxFit.contain, errorBuilder: (_, __, ___) => SizedBox(width: 64, height: 64, child: Icon(Icons.cake, color: DyKalTheme.secondary))),
-            const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Icon(Icons.event_available, color: DyKalTheme.secondary, size: 16),
-                const SizedBox(width: 6),
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-              ]),
-              const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
-            ])),
-          ]),
+          child: Row(
+            children: [
+              Image.asset(
+                'assets/illustrations/webp/anniversary.webp',
+                width: 60,
+                height: 60,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => SizedBox(width: 60, height: 60, child: Icon(Icons.cake, color: DyKalTheme.secondary)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.event_available, color: DyKalTheme.secondary, size: 16),
+                        const SizedBox(width: 6),
+                        Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -284,17 +529,36 @@ class HomeScreen extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: DyKalTheme.loveGradient,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: DyKalTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(
+                color: DyKalTheme.primary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          child: Row(children: [
-            Image.asset('assets/illustrations/webp/birthday.webp', width: 70, height: 70, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.cake, color: Colors.white, size: 40)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: const [Icon(Icons.cake, color: Colors.white, size: 18), SizedBox(width: 6), Text("Selamat Ulang Tahun", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))]),
-              const SizedBox(height: 4),
-              Text("Hari ini ulang tahun $who. Kirim surat cinta yuk 💌", style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
-            ])),
-          ]),
+          child: Row(
+            children: [
+              Image.asset(
+                'assets/illustrations/webp/birthday.webp',
+                width: 64,
+                height: 64,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(Icons.cake, color: Colors.white, size: 40),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Selamat Ulang Tahun', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text('Hari ini ulang tahun $who. Kirim ucapan yuk.', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -304,49 +568,61 @@ class HomeScreen extends StatelessWidget {
     final coupleId = AuthService().coupleId;
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Row(children: [
-        _stat(context, Icons.chat, () => _countStream('chats/$coupleId/messages'), "Chat"),
-        const SizedBox(width: 12),
-        _stat(context, Icons.collections, () => _countStream('couples/$coupleId/albums'), "Album"),
-        const SizedBox(width: 12),
-        _stat(context, Icons.mail, () => _countStream('couples/$coupleId/letters'), "Surat"),
-      ]),
+      child: Row(
+        children: [
+          _stat(context, Icons.chat, () => _countStream('chats/$coupleId/messages'), 'Chat'),
+          const SizedBox(width: 12),
+          _stat(context, Icons.collections, () => _countStream('couples/$coupleId/albums'), 'Album'),
+          const SizedBox(width: 12),
+          _stat(context, Icons.mail, () => _countStream('couples/$coupleId/letters'), 'Surat'),
+        ],
+      ),
     );
   }
 
-  // Stream jumlah dokumen sebuah path
-  Stream<int> _countStream(String path) => FirebaseFirestore.instance.collection(path).snapshots().map((s) => s.docs.length);
+  Stream<int> _countStream(String path) =>
+      FirebaseFirestore.instance.collection(path).snapshots().map((s) => s.docs.length);
 
   Widget _stat(BuildContext context, IconData icon, Stream<int> Function() stream, String label) {
-    return Expanded(child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.borderOf(context))),
-      child: Column(children: [
-        Icon(icon, color: DyKalTheme.primary, size: 22),
-        const SizedBox(height: 8),
-        StreamBuilder<int>(
-          stream: stream(),
-          builder: (_, s) => Text('${s.data ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: DyKalTheme.cardOf(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DyKalTheme.borderOf(context)),
         ),
-        Text(label, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
-      ]),
-    ));
+        child: Column(
+          children: [
+            Icon(icon, color: DyKalTheme.primary, size: 22),
+            const SizedBox(height: 8),
+            StreamBuilder<int>(
+              stream: stream(),
+              builder: (_, s) => Text('${s.data ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            ),
+            Text(label, style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 11)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
-/// Header section kecil
 class SliverToBoxHeader extends StatelessWidget {
   final String label;
   const SliverToBoxHeader({super.key, required this.label});
+
   @override
   Widget build(BuildContext context) => SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(children: [
-            Icon(Icons.auto_awesome, size: 16, color: DyKalTheme.primary),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          ]),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome, size: 16, color: DyKalTheme.primary),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ],
+          ),
         ),
       );
 }

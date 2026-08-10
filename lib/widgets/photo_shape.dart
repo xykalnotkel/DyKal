@@ -16,7 +16,7 @@ extension PhotoShapeX on PhotoShape {
         PhotoShape.star: 'Bintang',
         PhotoShape.heart2: 'Hati',
       }[this]!;
-  String get badgeAsset => 'assets/icons/badge_$name.png';
+  String get badgeAsset => 'assets/icons/badge_$name.webp';
   IconData get icon => const {
         PhotoShape.love: Icons.favorite,
         PhotoShape.bulat: Icons.circle,

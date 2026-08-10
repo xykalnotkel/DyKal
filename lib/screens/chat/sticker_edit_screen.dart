@@ -15,7 +15,6 @@ class StickerEditScreen extends StatefulWidget {
 
 class _StickerEditScreenState extends State<StickerEditScreen> {
   double _size = 384; // px target
-  double _scale = 1.0; // preview zoom
   bool _saving = false;
 
   Future<void> _save() async {
@@ -64,7 +63,7 @@ class _StickerEditScreenState extends State<StickerEditScreen> {
             Row(children: [const Icon(Icons.photo_size_select_large, color: Colors.white70, size: 18), const SizedBox(width: 8), Text('Ukuran: ${_size.round()} px', style: const TextStyle(color: Colors.white70, fontSize: 13))]),
             Slider(value: _size, min: 200, max: 512, divisions: 8, activeColor: DyKalTheme.primary, onChanged: (v) => setState(() => _size = v)),
             const SizedBox(height: 4),
-            Text('Stiker disimpan lokal di Android/media/com.dykal.app/Dykal/Stiker/', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10), textAlign: TextAlign.center),
+            Text('Stiker disimpan lokal di Android/media/com.dykal.app/Dykal/Stiker/', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10), textAlign: TextAlign.center),
           ]),
         ),
       ])),

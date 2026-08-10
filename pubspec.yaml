@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.0.16+1   # v1.0.16: fix encrypt package version (5.0.6 -> 5.0.0)
+version: 1.0.17+1   # v1.0.17: Scoped Storage + Media Studio + In-App Camera + Soft Dark TikTok
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -70,6 +70,7 @@ dependencies:
   timezone: ^0.10.1 # (dinaikkan: dibutuhkan flutter_local_notifications ^19.5.0)
   swipe_to: ^1.0.2 # Swipe to reply
   scrollable_positioned_list: ^0.3.8
+  camera: ^0.12.0+2
 
 dev_dependencies:
   flutter_test:

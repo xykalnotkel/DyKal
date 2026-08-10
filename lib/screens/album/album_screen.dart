@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/photo_shape.dart';
@@ -106,7 +105,7 @@ class AlbumScreen extends StatelessWidget {
 
   Widget _empty(BuildContext context) => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.collections_outlined, size: 64, color: DyKalTheme.primary.withOpacity(0.4)),
+          Icon(Icons.collections_outlined, size: 64, color: DyKalTheme.primary.withValues(alpha: 0.4)),
           const SizedBox(height: 12),
           const Text('Belum ada album', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 4),

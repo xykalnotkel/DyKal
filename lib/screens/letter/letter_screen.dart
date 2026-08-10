@@ -41,7 +41,7 @@ class LetterScreen extends StatelessWidget {
                       color: DyKalTheme.cardOf(context),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: DyKalTheme.borderOf(context)),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 3))],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(18),
@@ -49,7 +49,7 @@ class LetterScreen extends StatelessWidget {
                         // Header amplop: pengirim + tanggal + segel love
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          color: DyKalTheme.primary.withOpacity(0.07),
+                          color: DyKalTheme.primary.withValues(alpha: 0.07),
                           child: Row(children: [
                             CircleAvatar(radius: 15, backgroundColor: DyKalTheme.primary, child: Text(fromName.isNotEmpty ? fromName[0] : "?", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
                             const SizedBox(width: 8),
@@ -114,7 +114,7 @@ class LetterScreen extends StatelessWidget {
       );
 
   Widget _empty() => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.drafts, size: 64, color: DyKalTheme.textGrey.withOpacity(0.4)),
+        Icon(Icons.drafts, size: 64, color: DyKalTheme.textGrey.withValues(alpha: 0.4)),
         const SizedBox(height: 12),
         const Text("Belum ada surat", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         const SizedBox(height: 4),

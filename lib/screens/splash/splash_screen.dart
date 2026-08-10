@@ -34,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Widget build(BuildContext context) {
     return Scaffold(
             body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Image.asset('assets/logo/dykal_logo_hd.png', width: 100, height: 100, errorBuilder: (_, __, ___) => Icon(Icons.favorite, size: 80, color: DyKalTheme.primary)),
+        Image.asset('assets/logo/dykal_logo_hd.webp', width: 100, height: 100, errorBuilder: (_, __, ___) => Icon(Icons.favorite, size: 80, color: DyKalTheme.primary)),
         const SizedBox(height: 24),
         const Text('DyKal', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
         const SizedBox(height: 32),
@@ -97,7 +97,7 @@ class _SnakeHeartPainter extends CustomPainter {
 
     // 2) Saat complete -> isi love tipis
     if (progress >= 0.999) {
-      final fill = Paint()..color = DyKalTheme.primary.withOpacity(0.16);
+      final fill = Paint()..color = DyKalTheme.primary.withValues(alpha: 0.16);
       canvas.drawPath(_pathOf(pts), fill);
     }
 

@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 
 class AudioCallScreen extends StatefulWidget {
   const AudioCallScreen({super.key});
+
   @override
   State<AudioCallScreen> createState() => _AudioCallScreenState();
 }
@@ -19,13 +20,14 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   @override
   void initState() {
     super.initState();
-    _init();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
   Future<void> _init() async {
+    if (!mounted) return;
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final isCaller = args?['isCaller'] ?? true;
-    call.addListener(() => setState(() {}));
+    call.addListener(_onStateChanged);
     try {
       if (isCaller == true) {
         await call.startOutgoing('audio');
@@ -39,18 +41,26 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       }
       return;
     }
-    if (mounted) _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _elapsed++));
+    if (mounted) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() => _elapsed++);
+      });
+    }
+  }
+
+  void _onStateChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    call.removeListener(() {});
+    call.removeListener(_onStateChanged);
     call.dispose();
     super.dispose();
   }
 
-  String get _time {
+  String get timeFormatted {
     final m = (_elapsed ~/ 60).toString().padLeft(2, '0');
     final s = (_elapsed % 60).toString().padLeft(2, '0');
     return '$m:$s';
@@ -58,78 +68,171 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final partnerName = AuthService().partnerName ?? 'Pasangan';
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1C1E),
-      body: SafeArea(child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            IconButton(onPressed: () { call.hangUp(); Navigator.pop(context); }, icon: const Icon(Icons.expand_more, color: Colors.white)),
-            const Spacer(),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
-              child: Row(children: [Icon(Icons.access_time, color: Colors.white70, size: 14), const SizedBox(width: 6), Text(_time, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))])),
-          ]),
-        ),
-        const Spacer(),
-        Container(
-          width: 140, height: 140,
-          decoration: BoxDecoration(shape: BoxShape.circle, gradient: DyKalTheme.dykalGradient, boxShadow: [BoxShadow(color: DyKalTheme.primary.withOpacity(0.4), blurRadius: 30)]),
-          child: Center(child: Text((AuthService().partnerName ?? '?').isNotEmpty ? (AuthService().partnerName ?? '?')[0] : '?', style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w800, color: Colors.white))),
-        ),
-        const SizedBox(height: 16),
-        Text(AuthService().partnerName ?? '', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.graphic_eq, color: Colors.white70, size: 14),
-          const SizedBox(width: 6),
-          Text(call.connected ? 'Tersambung • HD Voice' : 'Memanggil...', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-        ]),
-        const SizedBox(height: 24),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-          child: Row(children: [
-            const Icon(Icons.volume_up, color: Colors.white, size: 20),
-            Expanded(child: Slider(value: volume, min: 0, max: 1, activeColor: DyKalTheme.primary, inactiveColor: Colors.white24,
-              onChanged: (v) => setState(() => volume = v))),
-            const Icon(Icons.volume_down, color: Colors.white70, size: 16),
-          ]),
-        ),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              _btn(Icons.mic_off, call.muted, 'Mute', call.toggleMute),
-              _btn(Icons.volume_up, call.speakerOn, 'Speaker', () => call.toggleSpeaker()),
-              _btn(Icons.videocam, false, 'Video', () async {
-                await call.hangUp();
-                if (mounted) Navigator.pushReplacementNamed(context, '/videoCall', arguments: {'isCaller': true, 'type': 'video'});
-              }),
-            ]),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () { call.hangUp(); Navigator.pop(context); },
-              child: Container(width: 72, height: 72, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                child: const Icon(Icons.call_end, color: Colors.white, size: 28)),
+      backgroundColor: DyKalTheme.backgroundDark,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      call.hangUp();
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 28),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.access_time, color: Colors.white70, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          timeFormatted,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ]),
+            const Spacer(),
+            Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: DyKalTheme.dykalGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: DyKalTheme.primary.withValues(alpha: 0.35),
+                    blurRadius: 32,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  partnerName.isNotEmpty ? partnerName[0] : '?',
+                  style: const TextStyle(fontSize: 54, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              partnerName,
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.graphic_eq, color: DyKalTheme.online, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  call.connected ? 'Tersambung • HD Voice' : 'Menghubungkan...',
+                  style: const TextStyle(color: DyKalTheme.textMutedDark, fontSize: 13),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: DyKalTheme.surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: DyKalTheme.borderSoftDark),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.volume_down, color: Colors.white70, size: 18),
+                  Expanded(
+                    child: Slider(
+                      value: volume,
+                      min: 0,
+                      max: 1,
+                      activeColor: DyKalTheme.primary,
+                      inactiveColor: Colors.white12,
+                      onChanged: (v) => setState(() => volume = v),
+                    ),
+                  ),
+                  const Icon(Icons.volume_up, color: Colors.white, size: 20),
+                ],
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 36),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _btn(Icons.mic_off, call.muted, 'Mute', call.toggleMute),
+                      _btn(Icons.volume_up, call.speakerOn, 'Speaker', () => call.toggleSpeaker()),
+                      _btn(Icons.videocam, false, 'Video', () async {
+                        await call.hangUp();
+                        if (mounted) {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/videoCall',
+                            arguments: {'isCaller': true, 'type': 'video'},
+                          );
+                        }
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  GestureDetector(
+                    onTap: () {
+                      call.hangUp();
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                      child: const Icon(Icons.call_end, color: Colors.white, size: 30),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ])),
+      ),
     );
   }
 
   Widget _btn(IconData icon, bool active, String label, VoidCallback onTap) {
-    return Column(children: [
-      GestureDetector(
-        onTap: onTap,
-        child: Container(width: 56, height: 56, decoration: BoxDecoration(color: active ? DyKalTheme.primary : Colors.white.withOpacity(0.15), shape: BoxShape.circle),
-          child: Icon(icon, color: Colors.white, size: 22)),
-      ),
-      const SizedBox(height: 6),
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-    ]);
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: active ? DyKalTheme.primary : DyKalTheme.surfaceDark,
+              shape: BoxShape.circle,
+              border: Border.all(color: active ? DyKalTheme.primary : DyKalTheme.borderSoftDark),
+            ),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(color: DyKalTheme.textMutedDark, fontSize: 12)),
+      ],
+    );
   }
 }

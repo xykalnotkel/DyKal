@@ -28,7 +28,7 @@ class CallLogScreen extends StatelessWidget {
             return 0;
           });
           if (docs.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.phone_disabled, size: 56, color: DyKalTheme.textGrey.withOpacity(0.3)),
+            Icon(Icons.phone_disabled, size: 56, color: DyKalTheme.textGrey.withValues(alpha: 0.3)),
             const SizedBox(height: 12),
             const Text('Belum ada riwayat panggilan', style: TextStyle(fontWeight: FontWeight.w600)),
           ]));
@@ -46,7 +46,7 @@ class CallLogScreen extends StatelessWidget {
                 timeStr = '${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2,'0')}';
               }
               return ListTile(
-                leading: CircleAvatar(backgroundColor: isMissed ? Colors.red.withOpacity(0.1) : DyKalTheme.primary.withOpacity(0.1),
+                leading: CircleAvatar(backgroundColor: isMissed ? Colors.red.withValues(alpha: 0.1) : DyKalTheme.primary.withValues(alpha: 0.1),
                   child: Icon(isMissed ? Icons.call_missed : (isVideo ? Icons.videocam : Icons.call), color: isMissed ? Colors.red : DyKalTheme.primary)),
                 title: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isMissed ? Colors.red : DyKalTheme.textPrimaryOf(context))),
                 subtitle: Text(timeStr, style: const TextStyle(fontSize: 11)),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 
@@ -111,11 +112,15 @@ class _PairingScreenState extends State<PairingScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: DyKalTheme.cardOf(context), borderRadius: BorderRadius.circular(20), border: Border.all(color: DyKalTheme.borderOf(context))),
       child: Column(children: [
-        Row(children: [Icon(Icons.qr_code_2, color: DyKalTheme.primary, size: 18), const SizedBox(width: 8), const Text("Kode Pairing Kamu", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const Spacer(), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: DyKalTheme.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.history, size: 12, color: DyKalTheme.success), const SizedBox(width: 4), Text("Aktif 24 jam", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DyKalTheme.success))]))]),
+        Row(children: [Icon(Icons.qr_code_2, color: DyKalTheme.primary, size: 18), const SizedBox(width: 8), const Text("Kode Pairing Kamu", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const Spacer(), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: DyKalTheme.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)), child: Row(children: [Icon(Icons.history, size: 12, color: DyKalTheme.success), const SizedBox(width: 4), Text("Aktif 24 jam", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DyKalTheme.success))]))]),
         const SizedBox(height: 14),
-        Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16), decoration: BoxDecoration(color: DyKalTheme.background, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.primary.withOpacity(0.2), width: 1.5)), child: Text(code, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 26, letterSpacing: 3, color: Color(0xFFFF6B8A)))),
+        Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16), decoration: BoxDecoration(color: DyKalTheme.background, borderRadius: BorderRadius.circular(16), border: Border.all(color: DyKalTheme.primary.withValues(alpha: 0.2), width: 1.5)), child: Text(code, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 26, letterSpacing: 3, color: Color(0xFFFF6B8A)))),
         const SizedBox(height: 14),
-        Row(children: [Expanded(child: OutlinedButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Kode disalin"); }, icon: const Icon(Icons.content_copy, size: 16), label: const Text("Salin"))), const SizedBox(width: 10), Expanded(child: FilledButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Kode siap dikirim"); }, icon: const Icon(Icons.share, size: 16), label: const Text("Bagikan")))]),
+        Row(children: [
+          Expanded(child: OutlinedButton.icon(onPressed: () { Clipboard.setData(ClipboardData(text: code)); _toast("Kode disalin"); }, icon: const Icon(Icons.content_copy, size: 16), label: const Text("Salin"))),
+          const SizedBox(width: 10),
+          Expanded(child: FilledButton.icon(onPressed: () { Share.share('Yuk sambungkan akun DyKal kita! Masukkan kode pairing ini: $code'); }, icon: const Icon(Icons.share, size: 16), label: const Text("Bagikan"))),
+        ]),
       ]),
     );
   }
@@ -159,7 +164,7 @@ class _PairingScreenState extends State<PairingScreen> {
             prefixText: 'DYKAL-',
             prefixStyle: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2, fontSize: 18, color: DyKalTheme.primary),
             hintText: 'XXXX',
-            hintStyle: TextStyle(letterSpacing: 8, color: DyKalTheme.textGrey.withOpacity(0.4)),
+            hintStyle: TextStyle(letterSpacing: 8, color: DyKalTheme.textGrey.withValues(alpha: 0.4)),
             filled: true, fillColor: DyKalTheme.background,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(vertical: 16),

@@ -7,8 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart'; // FIX #5: deteksi offline real
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'config/theme.dart';
 import 'widgets/seamless_scaffold.dart';
 import 'widgets/dykal_bottom_nav.dart';
@@ -25,7 +24,7 @@ import 'screens/call/incoming_call_screen.dart';
 import 'services/auth_service.dart';
 import 'services/birthday_service.dart';
 import 'services/dev_logger.dart';
-import 'services/app_logger.dart'; // FIX: auto-record error ke logs
+import 'services/app_logger.dart';
 import 'services/fcm_service.dart';
 import 'services/theme_controller.dart';
 
@@ -34,11 +33,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 }
 
-// FIX #1: key navigator global biar aksi notif (accept/decline/tap) bisa navigasi
 final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
-  FlutterForegroundTask.initCommunicationPort(); // FIX screen share Android 14+
+  FlutterForegroundTask.initCommunicationPort();
   DevLogger.instance.info('app', 'Starting DyKal...');
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -49,7 +47,7 @@ Future<void> main() async {
     DevLogger.instance.error('firebase', 'InitializeApp FAILED', e);
   }
 
-  // High refresh rate 60/90/120Hz
+  // Unlock high refresh rate 90/120Hz
   try {
     final modes = await FlutterDisplayMode.supported;
     final high = modes.reduce((a, b) => a.refreshRate > b.refreshRate ? a : b);
@@ -68,23 +66,29 @@ Future<void> main() async {
   ));
 
   FCMService.navKey = _navKey;
-  // FIX: auto-record error ke Android/media/com.dykal.app/logs/app.log (devlog button dihapus)
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     AppLogger.error('flutter_error', details.exception, details.stack);
   };
+
   runZonedGuarded(() {
     FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(channelId: 'screen_share', channelName: 'DyKal Screen Share', channelDescription: 'Saat berbagi layar', onlyAlertOnce: true),
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'screen_share',
+        channelName: 'DyKal Screen Share',
+        channelDescription: 'Saat berbagi layar',
+        onlyAlertOnce: true,
+      ),
       iosNotificationOptions: const IOSNotificationOptions(),
       foregroundTaskOptions: ForegroundTaskOptions(eventAction: ForegroundTaskEventAction.nothing()),
     );
-    runApp(ProviderScope(child: DyKalApp()));
+    runApp(const DyKalApp());
   }, (e, st) => AppLogger.error('zone_error', e, st));
 }
 
 class DyKalApp extends StatelessWidget {
   const DyKalApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -97,30 +101,26 @@ class DyKalApp extends StatelessWidget {
         theme: DyKalTheme.lightTheme,
         darkTheme: DyKalTheme.darkTheme,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
+          data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),
           child: child!,
         ),
-        home: AuthGate(),
+        home: const AuthGate(),
         routes: {
-          '/chat': (_) => ChatScreen(),
-          '/videoCall': (_) => VideoCallScreen(),
-          '/audioCall': (_) => AudioCallScreen(),
-          '/incomingCall': (_) => IncomingCallScreen(),
-          '/profile': (_) => ProfileScreen(),
+          '/chat': (_) => const ChatScreen(),
+          '/videoCall': (_) => const VideoCallScreen(),
+          '/audioCall': (_) => const AudioCallScreen(),
+          '/incomingCall': (_) => const IncomingCallScreen(),
+          '/profile': (_) => const ProfileScreen(),
         },
       ),
     );
   }
 }
 
-/// Splash kecil
-Widget _splash() => Scaffold(
-      
+Widget _splash() => const Scaffold(
       body: Center(child: CircularProgressIndicator(color: DyKalTheme.primary)),
     );
 
-/// Gerbang routing otomatis:
-/// belum login -> AuthScreen | login tapi belum couple -> PairingScreen | sudah couple -> MainNav
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -133,11 +133,10 @@ class AuthGate extends StatelessWidget {
         final user = authSnap.data;
         if (user == null) {
           DevLogger.instance.info('auth', 'No user -> AuthScreen');
-          return AuthScreen();
+          return const AuthScreen();
         }
         DevLogger.instance.info('auth', 'User logged in: ${user.uid}');
 
-        // Inisialisasi FCM sekali per login
         FCMService().ensureInit();
 
         return StreamBuilder<String?>(
@@ -147,13 +146,12 @@ class AuthGate extends StatelessWidget {
             final cid = cSnap.data;
             if (cid == null) {
               DevLogger.instance.info('auth', 'coupleId null -> PairingScreen');
-              return PairingScreen();
+              return const PairingScreen();
             }
             DevLogger.instance.info('auth', 'coupleId: $cid');
             AuthService().coupleId = cid;
             AuthService().refresh();
-            // Hanya masuk app kalau pasangan sudah join (members >= 2).
-            // Kalau cuma 1 (creator belum di-join) -> tetap di PairingScreen nunjukin kode.
+
             return StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance.doc('couples/$cid').snapshots(),
               builder: (context, cs) {
@@ -161,7 +159,7 @@ class AuthGate extends StatelessWidget {
                 final d = cs.data!.data() as Map<String, dynamic>?;
                 final members = List<String>.from(d?['members'] ?? []);
                 DevLogger.instance.info('auth', 'couple members: ${members.length}');
-                return members.length >= 2 ? MainNav() : PairingScreen();
+                return members.length >= 2 ? const MainNav() : const PairingScreen();
               },
             );
           },
@@ -173,6 +171,7 @@ class AuthGate extends StatelessWidget {
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
+
   @override
   State<MainNav> createState() => _MainNavState();
 }
@@ -181,11 +180,12 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
   int idx = 0;
   StreamSubscription? _callSub;
   StreamSubscription? _connSub;
+  StreamSubscription? _deliveredSub;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // FIX #5: lifecycle app
+    WidgetsBinding.instance.addObserver(this);
     AuthService().refresh();
     _setPresenceOnline(true);
     _connSub = Connectivity().onConnectivityChanged.listen((res) {
@@ -198,7 +198,6 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     });
   }
 
-  // FIX #5: offline = app keluar/data mati ; online = app jalan & ada koneksi
   void _setPresenceOnline(bool online) {
     final uid = AuthService().myId;
     if (uid.isEmpty) return;
@@ -212,8 +211,10 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _setPresenceOnline(true);
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached || state == AppLifecycleState.hidden) {
-      _setPresenceOnline(false); // keluar app -> offline + lastSeen
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _setPresenceOnline(false);
     }
   }
 
@@ -221,10 +222,18 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     final coupleId = AuthService().coupleId;
     final myId = AuthService().myId;
     if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
-    FirebaseFirestore.instance.collection('chats/$coupleId/messages').snapshots().listen((qs) {
+
+    // Filter terarah hemat resource Firestore
+    _deliveredSub = FirebaseFirestore.instance
+        .collection('chats/$coupleId/messages')
+        .where('status', isEqualTo: 'sent')
+        .snapshots()
+        .listen((qs) {
       for (final d in qs.docs) {
-        final m = d.data() as Map<String, dynamic>;
-        if (m['fromId'] != myId && m['status'] == 'sent') d.reference.update({'status': 'delivered'});
+        final m = d.data();
+        if (m['fromId'] != myId) {
+          d.reference.update({'status': 'delivered'});
+        }
       }
     });
   }
@@ -234,10 +243,14 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     final myId = AuthService().myId;
     if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
     bool handled = false;
+
     _callSub = FirebaseFirestore.instance.doc('calls/$coupleId').snapshots().listen((doc) {
       if (!mounted) return;
       final data = doc.data();
-      if (data == null) { handled = false; return; }
+      if (data == null) {
+        handled = false;
+        return;
+      }
       final callerId = data['callerId'] as String?;
       final status = data['status'] as String?;
       if (callerId != myId && status == 'ringing' && !handled) {
@@ -254,13 +267,14 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     _setPresenceOnline(false);
     _connSub?.cancel();
     _callSub?.cancel();
+    _deliveredSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [HomeScreen(), AlbumScreen(), LetterScreen(), ProfileScreen()];
+    const pages = [HomeScreen(), AlbumScreen(), LetterScreen(), ProfileScreen()];
     return SeamlessScaffold(
       extendBody: true,
       body: SafeArea(

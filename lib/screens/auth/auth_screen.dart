@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudinary_service.dart';
@@ -89,7 +88,7 @@ class _AuthScreenState extends State<AuthScreen> {
               children: [
                 const SizedBox(height: 24),
                 Image.asset(
-                  'assets/logo/dykal_logo_hd.png',
+                  'assets/logo/dykal_logo_hd.webp',
                   width: 96,
                   height: 96,
                   errorBuilder: (_, __, ___) => Container(
@@ -174,7 +173,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ? ClipOval(child: Image.file(_photo!, width: 92, height: 92, fit: BoxFit.cover))
               : Container(
                   width: 92, height: 92,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.primary.withOpacity(0.12)),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: DyKalTheme.primary.withValues(alpha: 0.12)),
                   child: Icon(Icons.person, size: 46, color: DyKalTheme.primary),
                 ),
           Positioned(bottom: 0, right: 0, child: Container(padding: const EdgeInsets.all(6), decoration: const BoxDecoration(color: DyKalTheme.primary, shape: BoxShape.circle), child: const Icon(Icons.camera_alt, color: Colors.white, size: 16))),

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -180,9 +181,8 @@ class AuthService {
 
   String _generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rnd = DateTime.now().millisecondsSinceEpoch;
-    String s = '';
-    for (int i = 0; i < 4; i++) s += chars[(rnd + i * 37) % chars.length];
+    final rand = Random.secure();
+    final s = List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
     return 'DYKAL-$s';
   }
 }

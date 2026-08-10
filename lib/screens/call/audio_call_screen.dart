@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
 import '../../services/call_service.dart';
 import '../../services/auth_service.dart';
@@ -66,6 +67,25 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     return '$m:$s';
   }
 
+  /// Tulis riwayat panggilan ke chat (type system) — setara video call.
+  Future<void> _endCallLog() async {
+    final coupleId = AuthService().coupleId ?? '';
+    if (coupleId.isEmpty) return;
+    final connected = call.remoteStream != null;
+    final text = connected ? 'Panggilan suara ($timeFormatted)' : 'Panggilan suara tidak terjawab';
+    try {
+      await FirebaseFirestore.instance.collection('chats/$coupleId/messages').add({
+        'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
+        'fromId': AuthService().myId,
+        'toId': '',
+        'text': text,
+        'type': 'system',
+        'status': 'read',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final partnerName = AuthService().partnerName ?? 'Pasangan';
@@ -80,6 +100,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                 children: [
                   IconButton(
                     onPressed: () {
+                      _endCallLog();
                       call.hangUp();
                       Navigator.pop(context);
                     },
@@ -195,6 +216,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                   const SizedBox(height: 24),
                   GestureDetector(
                     onTap: () {
+                      _endCallLog();
                       call.hangUp();
                       Navigator.pop(context);
                     },

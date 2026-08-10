@@ -142,7 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
         showDialog(context: context, builder: (_) => AlertDialog(
           icon: const Icon(Icons.wifi_off, color: Color(0xFFFF6B8A), size: 40),
           title: const Text('Tidak ada koneksi internet'),
-          content: const Text('Pesan tertahan (ikon jam ⏳). Nyalakan data seluler atau sambungkan ke WiFi — pesan terkirim otomatis saat online.'),
+          content: const Text('Pesan tertahan (ikon jam). Nyalakan data seluler atau sambungkan ke WiFi — pesan terkirim otomatis saat online.'),
           actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
         ));
       }

@@ -118,7 +118,7 @@ class LetterScreen extends StatelessWidget {
         const SizedBox(height: 12),
         const Text("Belum ada surat", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         const SizedBox(height: 4),
-        Text("Tulis surat cinta pertama 💌", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+        Text("Tulis surat cinta pertama", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
       ]));
 
   void _compose(BuildContext context) {
@@ -152,7 +152,7 @@ class LetterScreen extends StatelessWidget {
               if (context.mounted) {
                 Navigator.pop(context);
                 PushService.notifyPartner(title: auth.myName, body: 'Surat baru untukmu', type: 'letter');
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Surat terkirim 💕")));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Surat terkirim")));
               }
             },
             icon: const Icon(Icons.send), label: const Text("Kirim Surat"),

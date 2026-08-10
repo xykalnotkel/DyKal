@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
-import '../../services/update_service.dart';
 import '../../widgets/story_avatar.dart';
 import '../call/call_log_screen.dart';
 import 'story_viewer.dart';
@@ -16,12 +15,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _partnerName(Map<String, dynamic>? d) => d?['displayNameB'] as String? ?? '';
-
-  @override
-  void initState() {
-    super.initState();
-    UpdateService.instance.checkForUpdate();
+  /// Nama pasangan: jika saya member A (pembuat couple), pasangan ada di
+  /// displayNameB; jika saya member B (yang join), pasangan ada di displayNameA.
+  String _partnerName(Map<String, dynamic>? d) {
+    if (d == null) return '';
+    final myId = AuthService().myId;
+    final createdBy = d['createdBy'] as String?;
+    final isMemberA = createdBy == myId;
+    return (isMemberA ? d['displayNameB'] : d['displayNameA']) as String? ?? '';
   }
 
   @override
@@ -76,9 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
 
-        // Update Banner jika ada versi baru
-        SliverToBoxAdapter(child: _updateBanner()),
-
         // Hero Card
         SliverToBoxAdapter(child: _hero(context)),
 
@@ -99,98 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverToBoxAdapter(child: _stats(context)),
         const SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
-    );
-  }
-
-  Widget _updateBanner() {
-    return ListenableBuilder(
-      listenable: UpdateService.instance,
-      builder: (context, _) {
-        final update = UpdateService.instance.availableUpdate;
-        if (update == null) return const SizedBox.shrink();
-
-        final isDownloading = UpdateService.instance.isDownloading;
-        final progress = UpdateService.instance.downloadProgress;
-
-        return Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: DyKalTheme.surfaceDark,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: DyKalTheme.primary.withValues(alpha: 0.4)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: DyKalTheme.primary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.system_update_alt_rounded, color: DyKalTheme.primary, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Pembaruan Tersedia (v${update.versionName})',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white),
-                        ),
-                        Text(
-                          update.releaseNotes,
-                          style: const TextStyle(fontSize: 12, color: DyKalTheme.textMutedDark),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (isDownloading) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white12,
-                    valueColor: const AlwaysStoppedAnimation<Color>(DyKalTheme.primary),
-                    minHeight: 6,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Mengunduh di latar belakang: ${(progress * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(fontSize: 11, color: DyKalTheme.textMutedDark),
-                ),
-              ] else
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: DyKalTheme.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => UpdateService.instance.downloadAndInstall(),
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('Unduh & Pasang Pembaruan'),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
     );
   }
 

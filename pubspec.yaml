@@ -89,6 +89,10 @@ flutter:
     - assets/logo/webp/
     - assets/icons/
     - assets/sounds/
+    - assets/banners/
+    - assets/backgrounds/
+    - assets/badges/
+    - assets/launcher/
 
 flutter_launcher_icons:
   android: true

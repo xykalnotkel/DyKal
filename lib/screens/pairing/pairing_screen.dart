@@ -86,7 +86,7 @@ class _PairingScreenState extends State<PairingScreen> {
           if (waiting) IconButton(onPressed: () => AuthService().logout(), icon: const Icon(Icons.logout, color: Colors.red)),
         ]),
         const SizedBox(height: 16),
-        Image.asset('assets/illustrations/webp/pairing.webp', width: 260, height: 140, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(height: 140)),
+        Image.asset('assets/illustrations/pairing_code.webp', width: 180, height: 180, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(height: 140)),
         const SizedBox(height: 8),
         Text(waiting ? "Bagikan Kode" : (isCreating ? "Hubungkan Akun" : "Masukkan Kode"), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18), textAlign: TextAlign.center),
         const SizedBox(height: 6),

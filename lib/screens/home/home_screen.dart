@@ -305,9 +305,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Image.asset(
-            'assets/illustrations/webp/home_hero.webp',
-            width: 100,
-            height: 100,
+            'assets/illustrations/home_hero_couple.webp',
+            width: 130,
+            height: 90,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => const SizedBox(width: 100, height: 100),
           ),

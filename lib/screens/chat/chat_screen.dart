@@ -277,11 +277,23 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Mainkan sound efek dari aset (vn_start, vn_sent, vn_cancel, msg_sent).
+  Future<void> _playSound(String asset) async {
+    try {
+      final p = AudioPlayer();
+      await p.setAsset(asset);
+      await p.play();
+      p.playerStateStream.firstWhere((s) => s.processingState == ProcessingState.completed)
+          .then((_) => p.dispose()).catchError((_) => p.dispose());
+    } catch (_) {}
+  }
+
   Future<void> _startRec() async {
     if (!await _recorder.hasPermission()) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Izinkan akses mikrofon dulu')));
       return;
     }
+    await _playSound('assets/sounds/vn_start.wav');
     final dir = await getTemporaryDirectory();
     _recPath = '${dir.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
     await _recorder.start(RecordConfig(encoder: AudioEncoder.aacLc), path: _recPath!);
@@ -292,6 +304,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _discardRec() async {
     if (!_isRecording) return;
+    await _playSound('assets/sounds/vn_cancel.wav');
     _recTimer?.cancel();
     try { await _recorder.stop(); } catch (_) {}
     setState(() { _isRecording = false; _locked = false; });
@@ -311,6 +324,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() { _isRecording = false; _locked = false; });
     _setRecording(false);
     if (path == null) return;
+    await _playSound('assets/sounds/vn_sent.wav');
     if (send) {
       // Voice note langsung muncul (ikon jam), upload di background.
       await _sendWithUpload(
@@ -412,9 +426,11 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: const AssetImage('assets/illustrations/chat_bg.webp'),
+              image: AssetImage(Theme.of(context).brightness == Brightness.dark
+                  ? 'assets/backgrounds/chat_bg_dark.webp'
+                  : 'assets/backgrounds/chat_bg_light.webp'),
               fit: BoxFit.cover,
-              opacity: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.08,
+              opacity: Theme.of(context).brightness == Brightness.dark ? 0.55 : 0.9,
             ),
           ),
           child: Column(

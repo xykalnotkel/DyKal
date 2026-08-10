@@ -53,7 +53,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       image: const DecorationImage(
-                        image: AssetImage('assets/illustrations/update_banner_bg.png'),
+                        image: AssetImage('assets/banners/app_update_banner.webp'),
                         fit: BoxFit.cover,
                       ),
                       boxShadow: [

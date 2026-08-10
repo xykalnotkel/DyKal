@@ -76,7 +76,7 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/illustrations/card_bg.webp'), fit: BoxFit.cover)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/banners/profile_banner_card.webp'), fit: BoxFit.cover)),
       child: Row(children: [
         Expanded(child: _memberCol(myId, '')),
         const Icon(Icons.favorite, color: Colors.white, size: 28),

@@ -87,14 +87,23 @@ class _AuthScreenState extends State<AuthScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
+                // Ilustrasi login/daftar dari aset (errorBuilder: logo)
                 Image.asset(
-                  'assets/logo/dykal_logo_hd.webp',
-                  width: 96,
-                  height: 96,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 96, height: 96,
-                    decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(24)),
-                    child: const Icon(Icons.favorite, color: Colors.white, size: 44),
+                  isLogin
+                      ? 'assets/illustrations/auth_login.webp'
+                      : 'assets/illustrations/auth_register.webp',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    'assets/logo/dykal_logo_hd.webp',
+                    width: 96,
+                    height: 96,
+                    errorBuilder: (_, ___, ____) => Container(
+                      width: 96, height: 96,
+                      decoration: BoxDecoration(gradient: DyKalTheme.dykalGradient, borderRadius: BorderRadius.circular(24)),
+                      child: const Icon(Icons.favorite, color: Colors.white, size: 44),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

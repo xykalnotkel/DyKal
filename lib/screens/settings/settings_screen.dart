@@ -12,6 +12,8 @@ import '../../config/theme.dart';
 import '../../services/theme_controller.dart';
 import '../../services/floating_service.dart';
 import '../../services/ringtone_service.dart';
+import '../../services/cloudinary_service.dart';
+import 'package:dio/dio.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -172,6 +174,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() => _storyAudioPaths.removeAt(index));
     await prefs.setStringList('story_audio_playlist', _storyAudioPaths);
+  }
+
+  /// Tambah lagu dari VIDEO: video diupload ke Cloudinary lalu diambil
+  /// audio-nya (MP3) — TANPA backend/FFmpeg, cukup ubah ekstensi URL.
+  Future<void> _addAudioFromVideo() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.video);
+    if (result == null || result.files.isEmpty || result.files.single.path == null) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Mengonversi video ke audio...')),
+    );
+    try {
+      final audioUrl = await CloudinaryService().uploadVideoForAudio(File(result.files.single.path!));
+      if (audioUrl == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal mengonversi video')));
+        return;
+      }
+      // Unduh MP3 ke folder lokal agar bisa diputar offline
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}/story_${DateTime.now().millisecondsSinceEpoch}.mp3';
+      await Dio().download(audioUrl, savePath);
+      final prefs = await SharedPreferences.getInstance();
+      setState(() => _storyAudioPaths.add(savePath));
+      await prefs.setStringList('story_audio_playlist', _storyAudioPaths);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio dari video ditambahkan')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+    }
   }
 
   Future<void> _previewAudio(String path) async {
@@ -415,6 +445,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _addAudio,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Tambah Musik dari HP'),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: OutlinedButton.icon(
+                  onPressed: _addAudioFromVideo,
+                  icon: const Icon(Icons.video_library, size: 18),
+                  label: const Text('Tambah dari Video (jadi MP3)'),
                 ),
               ),
             ],

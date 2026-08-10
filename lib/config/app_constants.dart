@@ -20,7 +20,13 @@ class AppConstants {
   //     -> buat TURN Key -> Generate static credentials di dashboard.
   //     TURN server: turn.cloudflare.com:3478 (udp) / turns:5349 (tcp)
   //
-  // [2] METERED TURN - 500 MB/bulan GRATIS tanpa CC (+ REST API)
+  // [2] EXPRESSTURN - 100 GB/bulan GRATIS
+  //     Daftar: https://www.expressturn.com -> dashboard dapat username & password.
+  //     STUN (tanpa login): stun:stun.expressturn.com:3478
+  //     TURN: turn:free.expressturn.com:3478?transport=udp
+  //     (ganti kolom turnUrl/turnUsername/turnCredential di bawah)
+  //
+  // [3] METERED TURN - 500 MB/bulan GRATIS tanpa CC (+ REST API)
   //     Daftar: https://www.metered.ca -> STUN/TURN -> Credentials.
   //     TURN server: turn.metered.ca:80 (udp) / turn.metered.ca:443 (tcp)
   //
@@ -28,7 +34,7 @@ class AppConstants {
   // dipakai pihak lain. Untuk aplikasi pribadi 2 orang ini tidak masalah;
   // untuk lebih aman bisa dipakai kredensial berumur pendek via REST API
   // (bisa ditambahkan nanti).
-  static const String turnUrl = '';          // mis: 'turn:turn.cloudflare.com:3478?transport=udp'
+  static const String turnUrl = '';          // mis: 'turn:free.expressturn.com:3478?transport=udp'
   static const String turnUsername = '';     // username dari provider
   static const String turnCredential = '';   // password dari provider
 
@@ -41,6 +47,7 @@ class AppConstants {
       {"urls": "stun:stun3.l.google.com:19302"},
       {"urls": "stun:stun4.l.google.com:19302"},
       {"urls": "stun:stun.cloudflare.com:3478"},
+      {"urls": "stun:stun.expressturn.com:3478"},
       {"urls": "stun:stun.stunprotocol.org:3478"},
       {"urls": "stun:stun.nextcloud.com:443"},
       {"urls": "stun:stun.telnyx.com:3478"},

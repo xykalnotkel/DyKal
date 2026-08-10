@@ -13,25 +13,87 @@ class AlbumScreen extends StatelessWidget {
   Future<void> _createAlbum(BuildContext context) async {
     final c = TextEditingController();
     PhotoShape shape = PhotoShape.love;
-    final ok = await showDialog<Map<String, dynamic>>(
+    // Bottom sheet (bukan popup) sesuai permintaan
+    final ok = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      builder: (_) => StatefulBuilder(builder: (_, setS) => AlertDialog(
-        title: const Text('Buat Album Baru'),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          TextField(controller: c, autofocus: true, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Mis. Liburan, Anniversary...', border: OutlineInputBorder())),
-          const SizedBox(height: 16),
-          const Text('Bentuk cover:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: PhotoShape.values.map((s) => GestureDetector(
-            onTap: () => setS(() => shape = s),
-            child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: shape == s ? DyKalTheme.primary : Colors.grey.shade200, borderRadius: BorderRadius.circular(20)), child: Text(s.label, style: TextStyle(color: shape == s ? Colors.white : Colors.black87, fontSize: 12, fontWeight: FontWeight.w600))),
-          )).toList()),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(context, {'name': c.text.trim(), 'shape': shape.name}), child: const Text('Buat')),
-        ],
-      )),
+      isScrollControlled: true,
+      backgroundColor: DyKalTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: SingleChildScrollView(
+          child: StatefulBuilder(builder: (_, setS) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: DyKalTheme.borderSoftDark, borderRadius: BorderRadius.circular(4)))),
+              const SizedBox(height: 16),
+              const Text('Buat Album Baru', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 14),
+              TextField(
+                controller: c,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Mis. Liburan, Anniversary...',
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                  filled: true,
+                  fillColor: DyKalTheme.backgroundDark,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Bentuk cover:', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                children: PhotoShape.values.map((s) => GestureDetector(
+                  onTap: () => setS(() => shape = s),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Container(
+                      width: 52, height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: shape == s ? DyKalTheme.primary.withValues(alpha: 0.2) : DyKalTheme.backgroundDark,
+                        border: Border.all(color: shape == s ? DyKalTheme.primary : DyKalTheme.borderSoftDark, width: 2),
+                      ),
+                      child: ClipPath(
+                        clipper: photoShapeClipper(s),
+                        child: Container(
+                          margin: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient),
+                          child: Icon(s.icon, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(s.label, style: TextStyle(color: shape == s ? Colors.white : Colors.white54, fontSize: 10)),
+                  ]),
+                )).toList(),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Batal'),
+                  )),
+                  const SizedBox(width: 12),
+                  Expanded(child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx, {'name': c.text.trim(), 'shape': shape.name}),
+                    child: const Text('Buat'),
+                  )),
+                ],
+              ),
+            ],
+          )),
+        ),
+      ),
     );
     if (ok == null || (ok['name'] as String).isEmpty || _coupleId.isEmpty) return;
     await FirebaseFirestore.instance.collection('couples/$_coupleId/albums').add({

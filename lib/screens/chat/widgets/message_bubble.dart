@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
 import '../../../services/sticker_store.dart';
+import '../../../services/voice_cache.dart';
 import '../../../widgets/fullscreen_media_viewer.dart';
 import '../../../services/auth_service.dart';
 
@@ -16,6 +18,8 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback onLove;
   final Function(String) onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onDeleteForMe;
+  final void Function(String) onReact;
   final VoidCallback? onDownload;
 
   const MessageBubble({
@@ -26,12 +30,16 @@ class MessageBubble extends StatelessWidget {
     required this.onLove,
     required this.onEdit,
     required this.onDelete,
+    required this.onDeleteForMe,
+    required this.onReact,
     this.onDownload,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (message.isDeleted) {
+    // Hapus untuk saya (per-user) juga dianggap terhapus bagi user tsb.
+    final deletedForMe = message.deletedFor.contains(AuthService().myId);
+    if (message.isDeleted || deletedForMe) {
       return Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -444,6 +452,23 @@ class MessageBubble extends StatelessWidget {
                     child: const Icon(Icons.favorite, color: DyKalTheme.primary, size: 14),
                   ),
                 ),
+              // Reaksi emoji (badge di pojok bubble)
+              if (message.reaction != null && message.reaction!.isNotEmpty)
+                Positioned(
+                  bottom: -12,
+                  right: isMe ? -4 : null,
+                  left: isMe ? null : -4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: DyKalTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DyKalTheme.borderSoftDark),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                    ),
+                    child: Text(message.reaction!, style: const TextStyle(fontSize: 13)),
+                  ),
+                ),
             ],
           ),
         ),
@@ -483,55 +508,39 @@ class MessageBubble extends StatelessWidget {
     }
   }
 
+  /// Menu opsi saat bubble ditahan: background blur + menu di bawah bubble.
+  /// Isi: reaksi emoji, balas, edit (pesan sendiri), favorit, hapus untuk saya,
+  /// hapus untuk semua.
   void _showOptions(BuildContext context) {
-    showDialog(
+    final box = context.findRenderObject() as RenderBox?;
+    final bubblePos = box?.localToGlobal(Offset.zero) ?? Offset.zero;
+    final bubbleSize = box?.size ?? Size.zero;
+    final overlaySize = MediaQuery.of(context).size;
+
+    showGeneralDialog(
       context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Opsi pesan',
       barrierColor: Colors.transparent,
-      builder: (ctx) => GestureDetector(
+      transitionDuration: const Duration(milliseconds: 150),
+      pageBuilder: (ctx, _, __) => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.pop(ctx),
         child: Stack(
           children: [
+            // Background blur
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
-                child: Container(color: Colors.black.withValues(alpha: 0.32)),
+                filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
               ),
             ),
-            Center(
-              child: Container(
-                margin: const EdgeInsets.all(24),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: DyKalTheme.surfaceDark,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: DyKalTheme.borderSoftDark),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _act(Icons.reply_rounded, 'Balas', const Color(0xFF0A84FF), () {
-                          Navigator.pop(ctx);
-                          onSwipeReply();
-                        }),
-                        if (isMe && message.type == MessageType.text)
-                          _act(Icons.edit_rounded, 'Edit', const Color(0xFF0A84FF), () {
-                            Navigator.pop(ctx);
-                            _editDialog(ctx);
-                          }),
-                        if (isMe)
-                          _act(Icons.delete_rounded, 'Hapus', Colors.redAccent, () {
-                            Navigator.pop(ctx);
-                            onDelete();
-                          }),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            // Menu di bawah bubble
+            Positioned(
+              left: 12,
+              right: 12,
+              top: (bubblePos.dy + bubbleSize.height + 10).clamp(8.0, overlaySize.height - 340),
+              child: _menuPanel(ctx),
             ),
           ],
         ),
@@ -539,26 +548,78 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  Widget _menuPanel(BuildContext ctx) {
+    const reactions = ['❤️', '😂', '😮', '😢', '🙏', '🎉'];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: DyKalTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: DyKalTheme.borderSoftDark),
+        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 18)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Reaksi emoji
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: reactions.map((e) {
+              final active = message.reaction == e;
+              return GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onReact(active ? '' : e); // ketuk lagi = hapus reaksi
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: active ? DyKalTheme.primary.withValues(alpha: 0.25) : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(e, style: const TextStyle(fontSize: 22)),
+                ),
+              );
+            }).toList(),
+          ),
+          const Divider(height: 20, color: DyKalTheme.borderSoftDark),
+          _act(Icons.reply_rounded, 'Balas', const Color(0xFF0A84FF), () {
+            Navigator.pop(ctx);
+            onSwipeReply();
+          }),
+          if (isMe && message.type == MessageType.text)
+            _act(Icons.edit_rounded, 'Edit Pesan', const Color(0xFF0A84FF), () {
+              Navigator.pop(ctx);
+              _editDialog(ctx);
+            }),
+          _act(message.isLoved ? Icons.favorite : Icons.favorite_border,
+              message.isLoved ? 'Hapus Favorit' : 'Favorit', DyKalTheme.primary, () {
+            Navigator.pop(ctx);
+            onLove();
+          }),
+          _act(Icons.delete_outline, 'Hapus untuk Saya', Colors.orangeAccent, () {
+            Navigator.pop(ctx);
+            onDeleteForMe();
+          }),
+          _act(Icons.delete_forever_rounded, 'Hapus untuk Semua', Colors.redAccent, () {
+            Navigator.pop(ctx);
+            onDelete();
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _act(IconData icon, String label, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 70,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center,
-            ),
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -666,6 +727,19 @@ class _VoicePlayerState extends State<_VoicePlayer> {
     });
   }
 
+  /// Putar: pakai file lokal (offline) jika pernah disimpan, else streaming URL.
+  Future<void> _play() async {
+    try {
+      final local = await VoiceCache.get(widget.url);
+      if (local != null && await File(local).exists()) {
+        await _player.setFilePath(local);
+      } else {
+        await _player.setUrl(widget.url);
+      }
+      await _player.play();
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _player.dispose();
@@ -682,10 +756,7 @@ class _VoicePlayerState extends State<_VoicePlayer> {
             if (_playing) {
               await _player.pause();
             } else {
-              try {
-                await _player.setUrl(widget.url);
-                await _player.play();
-              } catch (_) {}
+              await _play();
             }
           },
           child: Container(

@@ -14,6 +14,7 @@ import '../../services/auth_service.dart';
 import '../../services/dev_logger.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/media_saver.dart';
+import '../../services/voice_cache.dart';
 import '../../services/push_service.dart';
 import '../../services/theme_controller.dart';
 import '../call/call_log_screen.dart';
@@ -53,6 +54,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _dragCancel = false;
   bool _dragLock = false;
 
+  // Preview voice note di input field (bukan popup)
+  String? _previewVoicePath;
+  int? _previewVoiceSecs;
+  AudioPlayer? _previewPlayer;
+  bool _previewPlaying = false;
+
   String get _coupleId => AuthService().coupleId ?? '';
   String get _myId => AuthService().myId;
   String get _partnerId => AuthService().partnerId ?? '';
@@ -77,8 +84,14 @@ class _ChatScreenState extends State<ChatScreen> {
         final voice = m['voiceUrl'] as String?;
         final img = m['imageUrl'] as String?;
         final mt = m['type'] as String?;
-        if (voice != null) { _savedMedia.add(id); MediaSaver.save(voice, type: 'audio'); }
-        else if (img != null) { _savedMedia.add(id); MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto'); }
+        if (voice != null) {
+          _savedMedia.add(id);
+          // Simpan ke folder lokal + catat mapping URL->path agar bisa
+          // diputar OFFLINE (VoiceCache dipakai oleh pemutar).
+          MediaSaver.save(voice, type: 'audio').then((path) {
+            if (path != null) VoiceCache.put(voice, path);
+          });
+        } else if (img != null) { _savedMedia.add(id); MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto'); }
       }
     });
   }
@@ -317,35 +330,65 @@ class _ChatScreenState extends State<ChatScreen> {
     return '$m:$sec';
   }
 
+  /// Preview voice note tampil di INPUT FIELD (bukan popup):
+  /// tombol play/pause, durasi, sampah (hapus), kirim.
   void _showVoicePreview(String path, int secs) {
-    final player = AudioPlayer();
-    bool playing = false;
-    showDialog(context: context, builder: (_) => StatefulBuilder(builder: (_, setS) => AlertDialog(
-      title: const Text('Preview Voice Note'),
-      content: Row(mainAxisSize: MainAxisSize.min, children: [
-        IconButton(icon: Icon(playing ? Icons.pause_circle_filled : Icons.play_circle_filled, size: 40, color: DyKalTheme.primary),
-          onPressed: () async {
-            try {
-              if (!playing) { await player.setFilePath(path); await player.play(); setS(() => playing = true); }
-              else { await player.pause(); setS(() => playing = false); }
-            } catch (_) {}
-          }),
-        const SizedBox(width: 8),
-        Text('${_fmtRec(secs)} • putar dulu', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
-      ]),
-      actions: [
-        TextButton(onPressed: () { player.dispose(); Navigator.pop(context); }, child: const Text('Buang')),
-        FilledButton(onPressed: () async {
-          player.dispose(); Navigator.pop(context);
-          await _sendWithUpload(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            type: MessageType.voice,
-            voiceDuration: secs,
-            upload: () => CloudinaryService().uploadVoiceNote(File(path)),
-          );
-        }, child: const Text('Kirim')),
-      ],
-    ))).then((_) => player.dispose());
+    _previewPlayer?.dispose();
+    _previewPlayer = AudioPlayer();
+    setState(() {
+      _previewVoicePath = path;
+      _previewVoiceSecs = secs;
+      _previewPlaying = false;
+    });
+  }
+
+  Future<void> _togglePreviewPlay() async {
+    final player = _previewPlayer;
+    if (player == null || _previewVoicePath == null) return;
+    try {
+      if (_previewPlaying) {
+        await player.pause();
+        setState(() => _previewPlaying = false);
+      } else {
+        await player.setFilePath(_previewVoicePath!);
+        await player.play();
+        setState(() => _previewPlaying = true);
+        player.playerStateStream.listen((s) {
+          if (s.processingState == ProcessingState.completed && mounted) {
+            setState(() => _previewPlaying = false);
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _clearVoicePreview() {
+    _previewPlayer?.dispose();
+    _previewPlayer = null;
+    setState(() {
+      _previewVoicePath = null;
+      _previewVoiceSecs = null;
+      _previewPlaying = false;
+    });
+  }
+
+  Future<void> _sendVoicePreview() async {
+    final path = _previewVoicePath;
+    final secs = _previewVoiceSecs;
+    if (path == null || secs == null) return;
+    _previewPlayer?.dispose();
+    _previewPlayer = null;
+    setState(() {
+      _previewVoicePath = null;
+      _previewVoiceSecs = null;
+      _previewPlaying = false;
+    });
+    await _sendWithUpload(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      type: MessageType.voice,
+      voiceDuration: secs,
+      upload: () => CloudinaryService().uploadVoiceNote(File(path)),
+    );
   }
 
   void _onChanged(String v) {
@@ -545,6 +588,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         onLove: () => docs[i].reference.update({'isLoved': !msg.isLoved}),
                         onEdit: (newText) => docs[i].reference.update({'text': newText, 'isEdited': true}),
                         onDelete: () => docs[i].reference.update({'isDeleted': true, 'text': 'Pesan ini telah dihapus'}),
+                        onDeleteForMe: () => docs[i].reference.update({
+                          'deletedFor': FieldValue.arrayUnion([_myId]),
+                        }),
+                        onReact: (emoji) => docs[i].reference.update({'reaction': emoji.isEmpty ? FieldValue.delete() : emoji}),
                         onDownload: msg.imageUrl != null ? () async {
                           final p = await MediaSaver.save(msg.imageUrl!, type: 'foto');
                           if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(p == null ? 'Gagal menyimpan' : 'Foto tersimpan')));
@@ -727,7 +774,63 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _input() => Container(
+  Widget _input() {
+    // Preview voice note: input field berubah jadi bar preview (play, durasi, hapus, kirim)
+    if (_previewVoicePath != null) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
+        child: Row(
+          children: [
+            const Icon(Icons.mic_none, color: DyKalTheme.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? DyKalTheme.backgroundDark
+                      : DyKalTheme.background,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: DyKalTheme.borderOf(context)),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(_previewPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                          color: DyKalTheme.primary, size: 30),
+                      onPressed: _togglePreviewPlay,
+                      tooltip: _previewPlaying ? 'Jeda' : 'Putar',
+                    ),
+                    const SizedBox(width: 4),
+                    Text('${_fmtRec(_previewVoiceSecs ?? 0)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Preview voice note', style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context))),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      onPressed: _clearVoicePreview,
+                      tooltip: 'Hapus',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: _sendVoicePreview,
+              child: Container(
+                width: 42, height: 42,
+                decoration: const BoxDecoration(gradient: DyKalTheme.dykalGradient, shape: BoxShape.circle),
+                child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
         padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
         child: Row(
           children: [
@@ -867,4 +970,5 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       );
+  }
 }

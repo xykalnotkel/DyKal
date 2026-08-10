@@ -18,6 +18,8 @@ class ChatMessage {
   final bool isEdited;
   final bool isDeleted;
   final bool isLoved; // Love kan pesan
+  final String? reaction; // reaksi emoji (mis. ❤️, 😂)
+  final List<String> deletedFor; // uid yang menghapus untuk dirinya sendiri
   final bool isViewOnce;
   final bool viewOnceOpened;
   final MessageStatus status;
@@ -38,6 +40,8 @@ class ChatMessage {
     this.isEdited = false,
     this.isDeleted = false,
     this.isLoved = false,
+    this.reaction,
+    this.deletedFor = const [],
     this.isViewOnce = false,
     this.viewOnceOpened = false,
     this.status = MessageStatus.sent,
@@ -59,6 +63,8 @@ class ChatMessage {
     'isEdited': isEdited,
     'isDeleted': isDeleted,
     'isLoved': isLoved,
+    'reaction': reaction,
+    'deletedFor': deletedFor,
     'isViewOnce': isViewOnce,
     'viewOnceOpened': viewOnceOpened,
     'status': status.name,
@@ -80,6 +86,8 @@ class ChatMessage {
     isEdited: m['isEdited'] ?? false,
     isDeleted: m['isDeleted'] ?? false,
     isLoved: m['isLoved'] ?? false,
+    reaction: m['reaction'] as String?,
+    deletedFor: List<String>.from(m['deletedFor'] ?? const []),
     isViewOnce: m['isViewOnce'] ?? false,
     viewOnceOpened: m['viewOnceOpened'] ?? false,
     status: MessageStatus.values.firstWhere((e) => e.name == m['status'], orElse: () => MessageStatus.sent),

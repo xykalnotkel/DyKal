@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../config/theme.dart';
 
-enum PhotoShape { love, bulat, abstrak, bunga, hexagon, diamond, star, heart2 }
+enum PhotoShape {
+  love, bulat, abstrak, bunga, hexagon, diamond, star, heart2,
+  rounded, segitiga, pentagon, oktagon, cloud, tetes, perisai, daun,
+}
 
 extension PhotoShapeX on PhotoShape {
   String get label => const {
@@ -15,6 +18,14 @@ extension PhotoShapeX on PhotoShape {
         PhotoShape.diamond: 'Diamond',
         PhotoShape.star: 'Bintang',
         PhotoShape.heart2: 'Hati',
+        PhotoShape.rounded: 'Membulat',
+        PhotoShape.segitiga: 'Segitiga',
+        PhotoShape.pentagon: 'Segi Lima',
+        PhotoShape.oktagon: 'Segi Delapan',
+        PhotoShape.cloud: 'Awan',
+        PhotoShape.tetes: 'Tetes',
+        PhotoShape.perisai: 'Perisai',
+        PhotoShape.daun: 'Daun',
       }[this]!;
   String get badgeAsset => 'assets/icons/badge_$name.webp';
   IconData get icon => const {
@@ -26,6 +37,14 @@ extension PhotoShapeX on PhotoShape {
         PhotoShape.diamond: Icons.change_history,
         PhotoShape.star: Icons.star,
         PhotoShape.heart2: Icons.favorite_border,
+        PhotoShape.rounded: Icons.square_rounded,
+        PhotoShape.segitiga: Icons.change_history,
+        PhotoShape.pentagon: Icons.star_half,
+        PhotoShape.oktagon: Icons.crop_square,
+        PhotoShape.cloud: Icons.cloud,
+        PhotoShape.tetes: Icons.water_drop,
+        PhotoShape.perisai: Icons.shield,
+        PhotoShape.daun: Icons.eco,
       }[this]!;
 }
 
@@ -45,6 +64,14 @@ CustomClipper<Path> photoShapeClipper(PhotoShape s) {
     case PhotoShape.diamond: return const _DiamondClipper();
     case PhotoShape.star: return const _StarClipper();
     case PhotoShape.heart2: return const _Heart2Clipper();
+    case PhotoShape.rounded: return const _RoundedClipper();
+    case PhotoShape.segitiga: return const _TriangleClipper();
+    case PhotoShape.pentagon: return const _PentagonClipper();
+    case PhotoShape.oktagon: return const _OctagonClipper();
+    case PhotoShape.cloud: return const _CloudClipper();
+    case PhotoShape.tetes: return const _TeardropClipper();
+    case PhotoShape.perisai: return const _ShieldClipper();
+    case PhotoShape.daun: return const _LeafClipper();
   }
 }
 
@@ -111,6 +138,22 @@ class ShapedPhoto extends StatelessWidget {
         return const _StarClipper();
       case PhotoShape.heart2:
         return const _Heart2Clipper();
+      case PhotoShape.rounded:
+        return const _RoundedClipper();
+      case PhotoShape.segitiga:
+        return const _TriangleClipper();
+      case PhotoShape.pentagon:
+        return const _PentagonClipper();
+      case PhotoShape.oktagon:
+        return const _OctagonClipper();
+      case PhotoShape.cloud:
+        return const _CloudClipper();
+      case PhotoShape.tetes:
+        return const _TeardropClipper();
+      case PhotoShape.perisai:
+        return const _ShieldClipper();
+      case PhotoShape.daun:
+        return const _LeafClipper();
     }
   }
 }
@@ -257,6 +300,143 @@ class _Heart2Clipper extends CustomClipper<Path> {
     p.cubicTo(w, h * 0.42, w * 0.76, h * 0.68, w * 0.5, h * 0.96);
     p.cubicTo(w * 0.24, h * 0.68, w * 0.0, h * 0.42, w * 0.08, h * 0.22);
     p.cubicTo(w * 0.2, h * 0.0, w * 0.5, h * 0.04, w * 0.5, h * 0.12);
+    p.close();
+    return p;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+// ====== Bentuk tambahan (album & profil) ======
+
+/// Persegi membulat (rounded square)
+class _RoundedClipper extends CustomClipper<Path> {
+  const _RoundedClipper();
+  @override
+  Path getClip(Size size) => Path()
+    ..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.width * 0.22)));
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Segitiga
+class _TriangleClipper extends CustomClipper<Path> {
+  const _TriangleClipper();
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(size.width / 2, 0)
+    ..lineTo(size.width, size.height)
+    ..lineTo(0, size.height)
+    ..close();
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Segi lima (pentagon)
+class _PentagonClipper extends CustomClipper<Path> {
+  const _PentagonClipper();
+  @override
+  Path getClip(Size size) {
+    final cx = size.width / 2, cy = size.height / 2, r = size.shortestSide / 2;
+    final p = Path();
+    for (int i = 0; i < 5; i++) {
+      final a = 2 * math.pi / 5 * i - math.pi / 2;
+      final x = cx + r * math.cos(a), y = cy + r * math.sin(a);
+      if (i == 0) p.moveTo(x, y); else p.lineTo(x, y);
+    }
+    p.close();
+    return p;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Segi delapan (oktagon)
+class _OctagonClipper extends CustomClipper<Path> {
+  const _OctagonClipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height, k = w * 0.29;
+    return Path()
+      ..moveTo(k, 0)
+      ..lineTo(w - k, 0)
+      ..lineTo(w, k)
+      ..lineTo(w, h - k)
+      ..lineTo(w - k, h)
+      ..lineTo(k, h)
+      ..lineTo(0, h - k)
+      ..lineTo(0, k)
+      ..close();
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Awan
+class _CloudClipper extends CustomClipper<Path> {
+  const _CloudClipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    final p = Path();
+    p.moveTo(w * 0.25, h * 0.72);
+    p.cubicTo(w * 0.05, h * 0.72, w * 0.05, h * 0.45, w * 0.2, h * 0.45);
+    p.cubicTo(w * 0.2, h * 0.25, w * 0.45, h * 0.2, w * 0.55, h * 0.32);
+    p.cubicTo(w * 0.65, h * 0.15, w * 0.9, h * 0.22, w * 0.88, h * 0.42);
+    p.cubicTo(w, h * 0.48, w * 0.98, h * 0.72, w * 0.78, h * 0.72);
+    p.close();
+    return p;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Tetes air
+class _TeardropClipper extends CustomClipper<Path> {
+  const _TeardropClipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    final p = Path();
+    p.moveTo(w * 0.5, 0);
+    p.cubicTo(w * 0.9, h * 0.38, w, h * 0.58, w * 0.5, h);
+    p.cubicTo(0, h * 0.58, w * 0.1, h * 0.38, w * 0.5, 0);
+    p.close();
+    return p;
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Perisai
+class _ShieldClipper extends CustomClipper<Path> {
+  const _ShieldClipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    return Path()
+      ..moveTo(w * 0.5, 0)
+      ..lineTo(w, h * 0.18)
+      ..lineTo(w * 0.88, h * 0.75)
+      ..cubicTo(w * 0.75, h * 0.95, w * 0.6, h, w * 0.5, h)
+      ..cubicTo(w * 0.4, h, w * 0.25, h * 0.95, w * 0.12, h * 0.75)
+      ..lineTo(0, h * 0.18)
+      ..close();
+  }
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+/// Daun
+class _LeafClipper extends CustomClipper<Path> {
+  const _LeafClipper();
+  @override
+  Path getClip(Size size) {
+    final w = size.width, h = size.height;
+    final p = Path();
+    p.moveTo(w * 0.5, 0);
+    p.cubicTo(w * 0.95, h * 0.2, w, h * 0.7, w * 0.5, h);
+    p.cubicTo(w * 0.05, h * 0.7, w * 0.05, h * 0.2, w * 0.5, 0);
     p.close();
     return p;
   }

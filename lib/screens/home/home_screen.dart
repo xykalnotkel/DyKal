@@ -5,7 +5,6 @@ import '../../services/auth_service.dart';
 import '../../widgets/story_avatar.dart';
 import '../call/call_log_screen.dart';
 import 'story_viewer.dart';
-import '../album/album_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -190,6 +189,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _storiesRow(BuildContext context) {
     final coupleId = AuthService().coupleId ?? '';
+    final partnerPhoto = AuthService().partnerPhotoUrl;
+    final partnerName = AuthService().partnerName ?? 'Dia';
+    // Home hanya menampilkan cerita (story) — foto/album dibuka lewat tab Album.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: SizedBox(
@@ -199,73 +201,33 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, snap) {
             final docs = snap.data?.docs ?? [];
             if (docs.isEmpty) return const SizedBox.shrink();
-
-            return ListView.separated(
+            return ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: docs.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (context, i) {
-                if (i == 0) {
-                  // Tombol Putar Cerita Lengkap
-                  return Column(
-                    children: [
-                      StoryAvatar(
-                        imageUrl: null,
-                        fallbackText: 'ALL',
-                        storyCount: docs.length,
-                        allSeen: false,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => StoryViewer(coupleId: coupleId)),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Semua Cerita',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  );
-                }
-
-                final doc = docs[i - 1];
-                final data = doc.data() as Map<String, dynamic>;
-                final name = data['name'] as String? ?? 'Album';
-                final cover = data['coverUrl'] as String?;
-
-                return Column(
+              children: [
+                // Satu entri cerita -> membuka StoryViewer (semua foto album)
+                Column(
                   children: [
                     StoryAvatar(
-                      imageUrl: cover,
-                      fallbackText: name,
-                      storyCount: 1,
-                      allSeen: true,
+                      imageUrl: partnerPhoto,
+                      fallbackText: partnerName.isNotEmpty ? partnerName[0] : 'D',
+                      storyCount: docs.length,
+                      allSeen: false,
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => AlbumDetailScreen(albumId: doc.id, albumName: name),
-                          ),
+                          MaterialPageRoute(builder: (_) => StoryViewer(coupleId: coupleId)),
                         );
                       },
                     ),
                     const SizedBox(height: 6),
-                    SizedBox(
-                      width: 70,
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
+                    const Text(
+                      'Cerita Kita',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ],
-                );
-              },
+                ),
+              ],
             );
           },
         ),

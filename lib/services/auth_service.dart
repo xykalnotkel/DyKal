@@ -24,10 +24,12 @@ class AuthService {
   String? myPhotoUrl;
   String? _myName; // FIX: cache nama dari Firestore (Auth displayName sering kosong)
   String? _myStatus; // status/bio singkat dari Firestore
+  String? _myAvatarShape; // shape avatar (custom seperti album)
   String? partnerPhotoUrl;
   String get myId => _auth.currentUser?.uid ?? '';
   String get myName => _myName ?? _auth.currentUser?.displayName ?? '';
   String get myStatus => _myStatus ?? '';
+  String get myAvatarShape => _myAvatarShape ?? 'bulat';
 
   Stream<User?> get authState => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -150,6 +152,7 @@ class AuthService {
       myPhotoUrl = meSnap.data()?['photoUrl'] as String?;
       _myName = meSnap.data()?['displayName'] as String?;
       _myStatus = meSnap.data()?['status'] as String?;
+      _myAvatarShape = meSnap.data()?['avatarShape'] as String?;
       if (coupleId != null) {
         final cSnap = await _db.doc('couples/$coupleId').get();
         final members = List<String>.from(cSnap.data()?['members'] ?? []);

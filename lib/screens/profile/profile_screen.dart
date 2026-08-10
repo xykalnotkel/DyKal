@@ -12,6 +12,7 @@ import '../../services/cloudinary_service.dart';
 import '../../services/theme_controller.dart';
 import '../settings/settings_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../widgets/photo_shape.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -98,8 +99,19 @@ class ProfileScreen extends StatelessWidget {
         final d = snap.data?.data() as Map<String, dynamic>?;
         final name = (d?['displayName'] as String?) ?? fallback;
         final photo = d?['photoUrl'] as String?;
+        final shape = shapeFromName(d?['avatarShape'] as String?);
         return Column(children: [
-          CircleAvatar(radius: 34, backgroundColor: Colors.white.withValues(alpha: 0.25), backgroundImage: photo != null ? CachedNetworkImageProvider(photo) : null, child: photo == null ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)) : null),
+          // Avatar dengan shape custom (sama seperti album), bukan selalu bulat
+          ClipPath(
+            clipper: photoShapeClipper(shape),
+            child: Container(
+              width: 68, height: 68,
+              color: Colors.white.withValues(alpha: 0.25),
+              child: photo != null
+                  ? CachedNetworkImage(imageUrl: photo, fit: BoxFit.cover)
+                  : Center(child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800))),
+            ),
+          ),
           const SizedBox(height: 8),
           Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
         ]);
@@ -244,6 +256,7 @@ class ProfileScreen extends StatelessWidget {
     final myId = auth.myId;
     final nameCtl = TextEditingController(text: auth.myName);
     final statusCtl = TextEditingController(text: auth.myStatus);
+    PhotoShape avatarShape = shapeFromName(auth.myAvatarShape);
     String? photoUrl = auth.myPhotoUrl;
     File? picked;
     if (!context.mounted) return;
@@ -270,10 +283,52 @@ class ProfileScreen extends StatelessWidget {
               );
               if (cropped != null) setS(() => picked = File(cropped.path));
             },
-            child: CircleAvatar(radius: 42, backgroundColor: DyKalTheme.primary.withValues(alpha: 0.15), backgroundImage: picked != null ? FileImage(picked!) as ImageProvider : (photoUrl != null ? CachedNetworkImageProvider(photoUrl) as ImageProvider : null), child: (picked == null && photoUrl == null) ? Icon(Icons.person, size: 40, color: DyKalTheme.primary) : null),
+            child: ClipPath(
+              clipper: photoShapeClipper(avatarShape),
+              child: Container(
+                width: 84, height: 84,
+                color: DyKalTheme.primary.withValues(alpha: 0.15),
+                child: picked != null
+                    ? Image.file(picked!, fit: BoxFit.cover)
+                    : (photoUrl != null
+                        ? CachedNetworkImage(imageUrl: photoUrl, fit: BoxFit.cover)
+                        : const Icon(Icons.person, size: 40, color: DyKalTheme.primary)),
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           Text('Ketuk foto untuk ganti', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
+          const SizedBox(height: 12),
+          // Pilih bentuk avatar (custom seperti album)
+          const Text('Bentuk avatar:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 64,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: PhotoShape.values.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final sh = PhotoShape.values[i];
+                final active = sh == avatarShape;
+                return GestureDetector(
+                  onTap: () => setS(() => avatarShape = sh),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    ClipPath(
+                      clipper: photoShapeClipper(sh),
+                      child: Container(
+                        width: 36, height: 36,
+                        color: active ? DyKalTheme.primary : DyKalTheme.borderOf(s),
+                        child: Icon(sh.icon, size: 14, color: active ? Colors.white : DyKalTheme.textSecondaryOf(s)),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(sh.label, style: TextStyle(fontSize: 9, color: active ? DyKalTheme.primary : DyKalTheme.textSecondaryOf(s))),
+                  ]),
+                );
+              },
+            ),
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: nameCtl,
@@ -310,7 +365,7 @@ class ProfileScreen extends StatelessWidget {
               }
               // FIX: TULIS users doc DULU (nama WAJIB kesimpen walau foto gagal)
               try {
-                await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto, 'status': newStatus}, SetOptions(merge: true));
+                await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto, 'status': newStatus, 'avatarShape': avatarShape.name}, SetOptions(merge: true));
               } catch (e) {
                 if (s.mounted) ScaffoldMessenger.of(s).showSnackBar(SnackBar(content: Text('Gagal simpan profil: $e')));
               }

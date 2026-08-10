@@ -27,6 +27,7 @@ import 'services/dev_logger.dart';
 import 'services/app_logger.dart';
 import 'services/fcm_service.dart';
 import 'services/theme_controller.dart';
+import 'widgets/update_banner.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -280,7 +281,12 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: IndexedStack(index: idx, children: pages),
+        child: Stack(
+          children: [
+            IndexedStack(index: idx, children: pages),
+            const UpdateBanner(),
+          ],
+        ),
       ),
       bottomNavigationBar: DyKalBottomNav(
         currentIndex: idx,

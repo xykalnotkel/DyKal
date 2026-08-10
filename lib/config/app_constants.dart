@@ -1,7 +1,6 @@
 // DyKal App Constants
 class AppConstants {
   static const appName = "DyKal";
-  static const coupleId = "dykal_couple_01"; // Nanti dari invite code
   
   // Cloudinary - GRATIS TANPA CC, daftar 1 menit jadi
   // Daftar di cloudinary.com -> Settings -> Upload -> Upload presets -> Create unsigned preset

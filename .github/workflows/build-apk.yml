@@ -14,11 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java 21 (Temurin LTS)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Flutter (pin 3.44.9)
         uses: subosito/flutter-action@v2
@@ -27,15 +27,29 @@ jobs:
           flutter-version: '3.44.9'
           cache: true
 
-      - name: Decode google-services.json (dari GitHub Secrets)
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # google-services.json sudah ter-commit (lihat .gitignore),
+      # sehingga tidak perlu decode dari secret.
+
+      - name: Cek secret keystore (wajib untuk signing rilis)
         env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
-            echo "google-services.json terpasang"
-          else
-            echo "GOOGLE_SERVICES_JSON_BASE64 belum di-set, build tetap jalan tapi Firebase tidak akan connect"
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret KEYSTORE_BASE64 belum di-set."
+            echo "Tanpa keystore, build release GAGAL pada langkah signing (storeFile null)."
+            echo "Set 4 secret: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS."
+            echo "Panduan: lihat SETUP_GITHUB_ACTIONS.md."
+            exit 1
           fi
 
       - name: Setup release keystore (dari GitHub Secrets)
@@ -45,26 +59,13 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/dykal-release-key.jks
-            cat > android/key.properties <<EOF
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/dykal-release-key.jks
+          cat > android/key.properties <<EOF
           storePassword=$KEYSTORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
           storeFile=dykal-release-key.jks
           EOF
-            echo "Keystore terpasang dari secret"
-          else
-            echo "KEYSTORE_BASE64 belum di-set - set secret agar release signing jalan"
-          fi
-
-      - name: Setup Cloudinary & App Constants
-        run: |
-          if [ -n "${{ secrets.CLOUDINARY_CLOUD_NAME }}" ]; then
-            sed -i "s/GANTI_DENGAN_CLOUD_NAME_KALIAN/${{ secrets.CLOUDINARY_CLOUD_NAME }}/g" lib/config/app_constants.dart || true
-            echo "Cloudinary cloud_name dari secrets"
-          fi
-          cat lib/config/app_constants.dart
 
       - name: Install dependencies
         run: flutter pub get
@@ -72,10 +73,10 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Analyze (cek error, tapi tetap lanjut)
-        run: flutter analyze || true
+      - name: Analyze (gagal jika ada error/warning)
+        run: flutter analyze
 
-      - name: Build APK universal (tanpa split)
+      - name: Build APK (split arm64 + armeabi)
         run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation
 
       - name: List APK hasil

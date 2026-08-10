@@ -109,7 +109,7 @@ class AlbumScreen extends StatelessWidget {
           const SizedBox(height: 12),
           const Text('Belum ada album', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 4),
-          Text('Buat album pertama kalian 💕', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+          Text('Buat album pertama kalian', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
         ]),
       );
 }

@@ -61,7 +61,7 @@ class LetterScreen extends StatelessWidget {
                               onTap: () {
                                 docs[i].reference.update({'isLoved': !isLoved});
                                 if (!isLoved && data['fromId'] != AuthService().myId) {
-                                  PushService.notifyPartner(title: AuthService().myName, body: '❤️ menyukai suratmu', type: 'letter');
+                                  PushService.notifyPartner(title: AuthService().myName, body: 'Menyukai suratmu', type: 'letter');
                                 }
                               },
                               child: Container(
@@ -108,7 +108,7 @@ class LetterScreen extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [const Text("Tulis Surat", style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(width: 6), Icon(Icons.favorite, size: 14, color: DyKalTheme.primary)]),
             const SizedBox(height: 4),
-            Text("Ketuk surat untuk membuka dengan segel love ✉️", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+            Text("Ketuk surat untuk membuka dengan segel love", style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
           ])),
         ]),
       );
@@ -151,7 +151,7 @@ class LetterScreen extends StatelessWidget {
               });
               if (context.mounted) {
                 Navigator.pop(context);
-                PushService.notifyPartner(title: auth.myName, body: '💌 Surat baru untukmu', type: 'letter');
+                PushService.notifyPartner(title: auth.myName, body: 'Surat baru untukmu', type: 'letter');
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Surat terkirim 💕")));
               }
             },

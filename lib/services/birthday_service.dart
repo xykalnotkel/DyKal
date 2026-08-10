@@ -43,13 +43,13 @@ class BirthdayService {
       importance: Importance.high,
       priority: Priority.high,
       channelShowBadge: true,
-      styleInformation: BigTextStyleInformation('Selamat anniversary kalian! 🎉❤️'),
+      styleInformation: BigTextStyleInformation('Selamat anniversary kalian!'),
       color: const Color(0xFFFF6B8A),
     );
     await _notifications.zonedSchedule(
       99001,
-      'Anniversary DyKal 💍',
-      'Selamat anniversary! Sekian tahun bersama ❤️',
+      'Anniversary DyKal',
+      'Selamat anniversary! Sekian tahun bersama',
       tz.TZDateTime.from(next, tz.local),
       NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -68,13 +68,13 @@ class BirthdayService {
       importance: Importance.max,
       priority: Priority.high,
       channelShowBadge: true,
-      styleInformation: BigTextStyleInformation('Jangan lupa ucapan & kejutan 🎂💕'),
+      styleInformation: BigTextStyleInformation('Jangan lupa ucapan & kejutan'),
       color: const Color(0xFFFF6B8A),
     );
     await _notifications.zonedSchedule(
       id,
-      'Selamat Ulang Tahun $name 🎂',
-      'Hari ini ulang tahun $name! Kasih kejutan & surat cinta yuk 💕',
+      'Selamat Ulang Tahun $name',
+      'Hari ini ulang tahun $name! Kasih kejutan & surat cinta yuk',
       tz.TZDateTime.from(next, tz.local),
       NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

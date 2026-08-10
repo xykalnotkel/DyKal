@@ -4,37 +4,51 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
+    // Amankan pembacaan dokumen yang mungkin tidak ada (hindari error pada get())
     function isMember(coupleId) {
-      return signedIn()
-        && request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.members;
+      let doc = get(/databases/$(database)/documents/couples/$(coupleId));
+      return signedIn() && doc.exists && request.auth.uid in doc.data.members;
     }
 
-    // Profil user
+    // Pasangan dari user yang login: uid == diri sendiri, ATAU
+    // uid merupakan anggota dari couple milik user yang login.
+    function isPartner(uid) {
+      if (request.auth.uid == uid) return true;
+      let myUser = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      if (!myUser.exists || myUser.data.coupleId == null) return false;
+      let couple = get(/databases/$(database)/documents/couples/$(myUser.data.coupleId));
+      return couple.exists && uid in couple.data.members;
+    }
+
+    // Profil user — hanya diri sendiri dan pasangan
     match /users/{uid} {
-      allow read: if signedIn();
+      allow read: if signedIn() && isPartner(uid);
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Presence (online / typing / last seen)
+    // Presence (online / typing / last seen) — hanya diri sendiri dan pasangan
     match /presence/{uid} {
-      allow read: if signedIn();
+      allow read: if signedIn() && isPartner(uid);
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Invite code pairing (Hardened)
+    // Invite code pairing — hanya pembuat atau anggota couple terkait
     match /inviteCodes/{code} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+        resource.data.createdBy == request.auth.uid ||
+        isMember(resource.data.coupleId)
+      );
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
       allow delete: if signedIn() && (
         resource.data.createdBy == request.auth.uid ||
-        request.auth.uid in get(/databases/$(database)/documents/couples/$(resource.data.coupleId)).data.members
+        isMember(resource.data.coupleId)
       );
     }
 
-    // Metadata Couple
+    // Metadata Couple — hanya anggota
     match /couples/{coupleId} {
       allow create: if signedIn() && request.auth.uid in request.resource.data.members;
-      allow read: if signedIn();
+      allow read: if isMember(coupleId);
       allow update: if signedIn() && (
         request.auth.uid in resource.data.members ||
         (request.auth.uid in request.resource.data.members && request.resource.data.members.size() <= 2)
@@ -47,7 +61,7 @@ service cloud.firestore {
       }
     }
 
-    // Pesan Chat
+    // Pesan Chat — hanya anggota couple
     match /chats/{coupleId} {
       allow read, write: if isMember(coupleId);
       match /{document=**} {
@@ -55,7 +69,7 @@ service cloud.firestore {
       }
     }
 
-    // Signaling WebRTC Panggilan
+    // Signaling WebRTC Panggilan — hanya anggota couple
     match /calls/{coupleId} {
       allow read, write: if isMember(coupleId);
       match /{document=**} {

@@ -34,7 +34,7 @@ class _StickerEditScreenState extends State<StickerEditScreen> {
       final dest = await StickerStore.add(File(out));
       if (mounted) {
         Navigator.pop(context, dest);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dest == null ? 'Gagal menyimpan stiker' : 'Stiker tersimpan ✅')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(dest == null ? 'Gagal menyimpan stiker' : 'Stiker tersimpan')));
       }
     } catch (e) {
       // fallback: simpan apa adanya

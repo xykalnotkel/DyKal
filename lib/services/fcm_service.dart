@@ -148,7 +148,7 @@ class FCMService {
     );
     await _local.show(
       7777,
-      '📞 $callerName',
+      '$callerName',
       callType == 'video' ? 'Panggilan video masuk' : 'Panggilan suara masuk',
       NotificationDetails(android: androidDetails),
       payload: callType,

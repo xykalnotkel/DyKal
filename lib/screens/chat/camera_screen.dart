@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../../config/theme.dart';
@@ -100,11 +101,40 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     } catch (_) {}
   }
 
+  bool get _isFrontCamera =>
+      _cameras.isNotEmpty &&
+      _cameras[_selectedCameraIdx].lensDirection == CameraLensDirection.front;
+
+  /// Mirror gambar hasil jepret kamera depan agar hasil = apa yang terlihat
+  /// di preview (WYSIWYG, seperti WhatsApp).
+  Future<File> _mirrorImage(File file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final img = frame.image;
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.translate(img.width.toDouble(), 0);
+      canvas.scale(-1, 1);
+      canvas.drawImage(img, Offset.zero, Paint());
+      final pic = recorder.endRecording();
+      final mirrored = await pic.toImage(img.width, img.height);
+      final byteData = await mirrored.toByteData(format: ui.ImageByteFormat.png);
+      final outPath = '${file.path}.mirror.png';
+      await File(outPath).writeAsBytes(byteData!.buffer.asUint8List());
+      return File(outPath);
+    } catch (_) {
+      return file; // gagal mirror, pakai asli
+    }
+  }
+
   Future<void> _takePhoto() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
     try {
       final xFile = await _controller!.takePicture();
-      final capturedFile = File(xFile.path);
+      var capturedFile = File(xFile.path);
+      if (_isFrontCamera) capturedFile = await _mirrorImage(capturedFile);
       if (!mounted) return;
 
       final result = await Navigator.push<Map<String, dynamic>>(
@@ -165,15 +195,10 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       body: SafeArea(
         child: Stack(
           children: [
-            // Live Camera Preview
+            // Live Camera Preview (cover-crop, tidak distorsi, mirror bila kamera depan)
             Positioned.fill(
               child: _isInit && _controller != null
-                  ? (filter == null
-                      ? CameraPreview(_controller!)
-                      : ColorFiltered(
-                          colorFilter: filter,
-                          child: CameraPreview(_controller!),
-                        ))
+                  ? _buildPreview(filter)
                   : const Center(
                       child: CircularProgressIndicator(color: DyKalTheme.primary),
                     ),
@@ -293,6 +318,53 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
           ],
         ),
       ),
+    );
+  }
+
+  /// Preview kamera mengisi layar tanpa distorsi (crop berlebih dibuang),
+  /// dan dicerminkan horizontal saat kamera depan (seperti WhatsApp).
+  Widget _buildPreview(ColorFilter? filter) {
+    final controller = _controller!;
+    Widget preview = CameraPreview(controller);
+
+    if (_isFrontCamera) {
+      preview = Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.diagonal3Values(-1, 1, 1),
+        child: preview,
+      );
+    }
+    if (filter != null) {
+      preview = ColorFiltered(colorFilter: filter, child: preview);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenW = constraints.maxWidth;
+        final screenH = constraints.maxHeight;
+        final previewRatio = controller.value.aspectRatio; // lebar / tinggi
+        final screenRatio = screenW / screenH;
+        double w, h;
+        if (previewRatio > screenRatio) {
+          // Preview lebih lebar dari layar -> potong kiri/kanan
+          w = screenH * previewRatio;
+          h = screenH;
+        } else {
+          // Preview lebih tinggi dari layar -> potong atas/bawah
+          w = screenW;
+          h = screenW / previewRatio;
+        }
+        return ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.center,
+            minWidth: 0,
+            minHeight: 0,
+            maxWidth: double.infinity,
+            maxHeight: double.infinity,
+            child: SizedBox(width: w, height: h, child: preview),
+          ),
+        );
+      },
     );
   }
 

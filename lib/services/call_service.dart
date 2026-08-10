@@ -111,7 +111,7 @@ class DyKalCallService extends ChangeNotifier {
 
     // Push notif "panggilan masuk" ke pasangan (jalan walau app-nya di-kill)
     PushService.notifyPartner(
-      title: '📞 Panggilan ${callType == 'video' ? 'Video' : 'Suara'} Masuk',
+      title: 'Panggilan ${callType == 'video' ? 'Video' : 'Suara'} Masuk',
       body: '${AuthService().myName} menelpon kamu',
       type: 'call',
       callerName: AuthService().myName,

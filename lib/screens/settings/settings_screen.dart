@@ -37,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _bubbleStyle = 0;
   int _mediaVisibility = 0;
   String _cacheSize = '0 MB';
+  bool _bubbleEnabled = false;
 
   @override
   void initState() {
@@ -55,7 +56,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _bubbleStyle = prefs.getInt('bubble_style') ?? 0;
       _mediaVisibility = prefs.getInt('media_visibility_pref') ?? 0;
       _storyAudioPaths = prefs.getStringList('story_audio_playlist') ?? [];
+      _bubbleEnabled = prefs.getBool('floating_bubble_enabled') ?? false;
     });
+
+    // Auto-tampilkan bubble saat aplikasi dibuka jika toggle aktif dan izin ada.
+    if (_bubbleEnabled) {
+      final ok = await FloatingService.hasOverlayPermission();
+      if (ok) await FloatingService.showChatBubble();
+    }
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -88,6 +96,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (v is bool) await prefs.setBool(key, v);
     if (v is String) await prefs.setString(key, v);
     if (v is int) await prefs.setInt(key, v);
+  }
+
+  /// Aktif/nonaktifkan floating chat bubble (chat head).
+  Future<void> _toggleFloatingBubble(bool enable) async {
+    if (enable) {
+      final ok = await FloatingService.hasOverlayPermission();
+      if (!ok) {
+        await FloatingService.requestOverlayPermission();
+        await _saveLocalPref('floating_bubble_enabled', false);
+        if (mounted) {
+          setState(() => _bubbleEnabled = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Izinkan izin overlay di pengaturan sistem, lalu aktifkan kembali'),
+            ),
+          );
+        }
+        return;
+      }
+      await FloatingService.showChatBubble();
+    } else {
+      await FloatingService.hideBubble();
+    }
+    await _saveLocalPref('floating_bubble_enabled', enable);
+    if (mounted) setState(() => _bubbleEnabled = enable);
   }
 
   Future<void> _calculateCacheSize() async {
@@ -296,6 +329,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   onTap: () => FloatingService.requestOverlayPermission(),
                 ),
+              ),
+              SwitchListTile(
+                secondary: Icon(
+                  Icons.bubble_chart,
+                  color: _bubbleEnabled ? DyKalTheme.primary : DyKalTheme.textGrey,
+                ),
+                title: const Text('Floating Bubble (Chat Head)', style: TextStyle(fontSize: 14)),
+                subtitle: Text(
+                  _bubbleEnabled
+                      ? 'Bubble melayang di atas aplikasi lain'
+                      : 'Tampilkan bubble chat saat keluar aplikasi',
+                  style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context)),
+                ),
+                value: _bubbleEnabled,
+                activeThumbColor: DyKalTheme.primary,
+                onChanged: _toggleFloatingBubble,
               ),
               _tile(
                 Icons.visibility_outlined,

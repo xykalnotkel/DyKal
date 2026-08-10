@@ -108,6 +108,18 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> with SingleTicker
                                 email,
                                 style: const TextStyle(color: Colors.white70, fontSize: 13),
                               ),
+                            if ((d?['status'] as String?)?.isNotEmpty ?? false)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  (d?['status'] as String?)!,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
                             const SizedBox(height: 6),
                             _presenceBadge(),
                           ],

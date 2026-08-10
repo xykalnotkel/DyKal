@@ -135,7 +135,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text("Dengan masuk, kamu setuju DyKal hanya untuk kamu & dia 💌",
+                Text("Dengan masuk, kamu setuju DyKal hanya untuk kamu & dia",
                     textAlign: TextAlign.center, style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
               ],
             ),

@@ -125,7 +125,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Tulis (offline-persist: pesan muncul dgn icon jam). Saat sync -> 'sent' + push.
     ref.set(msg.toMap()).then((_) {
       ref.update({'status': 'sent'});
-      final preview = msg.type == MessageType.voice ? '🎙️ Voice note' : (msg.type == MessageType.sticker ? '😎 Stiker' : (msg.imageUrl != null ? '📷 Foto' : msg.text));
+      final preview = msg.type == MessageType.voice ? 'Voice note' : (msg.type == MessageType.sticker ? 'Stiker' : (msg.imageUrl != null ? 'Foto' : msg.text));
       PushService.notifyPartner(title: AuthService().myName, body: preview);
     });
     _msgController.clear();
@@ -323,9 +323,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // FIX #3: reply ke VN/foto/stiker kasih placeholder (sebelumnya kosong = "error")
   String _replyPreviewText(ChatMessage m) {
-    if (m.type == MessageType.voice) return "🎙️ Voice note";
-    if (m.type == MessageType.image) return m.isViewOnce ? "📷 Foto sekali lihat" : "📷 Foto";
-    if (m.type == MessageType.sticker) return "😎 Stiker";
+    if (m.type == MessageType.voice) return "Voice note";
+    if (m.type == MessageType.image) return m.isViewOnce ? "Foto sekali lihat" : "Foto";
+    if (m.type == MessageType.sticker) return "Stiker";
     return m.text.isEmpty ? "Pesan" : m.text;
   }
 
@@ -479,7 +479,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         onDelete: () => docs[i].reference.update({'isDeleted': true, 'text': 'Pesan ini telah dihapus'}),
                         onDownload: msg.imageUrl != null ? () async {
                           final p = await MediaSaver.save(msg.imageUrl!, type: 'foto');
-                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(p == null ? 'Gagal menyimpan' : 'Foto tersimpan ✅')));
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(p == null ? 'Gagal menyimpan' : 'Foto tersimpan')));
                         } : null,
                       );
             },

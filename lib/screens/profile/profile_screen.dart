@@ -50,7 +50,7 @@ class ProfileScreen extends StatelessWidget {
           if (bA != null && bB != null) SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.all(16),
             child: FilledButton.icon(
-              onPressed: () async { await BirthdayService().scheduleBirthdays(birthdayA: bA, birthdayB: bB, nameA: nameA, nameB: nameB); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi ulang tahun dijadwalkan ✅'))); },
+              onPressed: () async { await BirthdayService().scheduleBirthdays(birthdayA: bA, birthdayB: bB, nameA: nameA, nameB: nameB); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi ulang tahun dijadwalkan'))); },
               icon: const Icon(Icons.notifications_active, size: 16), label: const Text('Jadwalkan Notif Ulang Tahun'),
             ),
           )),
@@ -59,6 +59,7 @@ class ProfileScreen extends StatelessWidget {
           SliverToBoxAdapter(child: _themeSelector()),
           SliverToBoxHeader(label: "Akun"),
           SliverToBoxAdapter(child: _editProfileTile(context)),
+          SliverToBoxAdapter(child: _changePasswordTile(context)),
           SliverToBoxAdapter(child: _settingsTile(context)),
           SliverToBoxAdapter(child: _account(context, nameA)),
           SliverToBoxAdapter(child: _versionFooter()),
@@ -242,6 +243,7 @@ class ProfileScreen extends StatelessWidget {
     final coupleId = auth.coupleId ?? '';
     final myId = auth.myId;
     final nameCtl = TextEditingController(text: auth.myName);
+    final statusCtl = TextEditingController(text: auth.myStatus);
     String? photoUrl = auth.myPhotoUrl;
     File? picked;
     if (!context.mounted) return;
@@ -273,11 +275,33 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text('Ketuk foto untuk ganti', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 11)),
           const SizedBox(height: 12),
-          TextField(controller: nameCtl, decoration: const InputDecoration(hintText: 'Nama panggilan', filled: true, fillColor: Color(0xFFFFF8F9), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))))),
+          TextField(
+            controller: nameCtl,
+            style: TextStyle(color: DyKalTheme.textPrimaryOf(s)),
+            decoration: InputDecoration(
+              hintText: 'Nama panggilan',
+              filled: true,
+              fillColor: Theme.of(s).brightness == Brightness.dark ? DyKalTheme.surfaceDark : const Color(0xFFFFF8F9),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: statusCtl,
+            maxLength: 80,
+            style: TextStyle(color: DyKalTheme.textPrimaryOf(s)),
+            decoration: InputDecoration(
+              hintText: 'Status (mis. "Selalu bahagia")',
+              filled: true,
+              fillColor: Theme.of(s).brightness == Brightness.dark ? DyKalTheme.surfaceDark : const Color(0xFFFFF8F9),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: FilledButton.icon(
             onPressed: () async {
               final newName = nameCtl.text.trim();
+              final newStatus = statusCtl.text.trim();
               if (newName.isEmpty) return;
               Navigator.pop(s);
               String? newPhoto = photoUrl;
@@ -286,7 +310,7 @@ class ProfileScreen extends StatelessWidget {
               }
               // FIX: TULIS users doc DULU (nama WAJIB kesimpen walau foto gagal)
               try {
-                await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto}, SetOptions(merge: true));
+                await FirebaseFirestore.instance.doc('users/$myId').set({'displayName': newName, 'photoUrl': newPhoto, 'status': newStatus}, SetOptions(merge: true));
               } catch (e) {
                 if (s.mounted) ScaffoldMessenger.of(s).showSnackBar(SnackBar(content: Text('Gagal simpan profil: $e')));
               }
@@ -308,6 +332,88 @@ class ProfileScreen extends StatelessWidget {
         ]),
       ))))),
     ));
+  }
+
+  Widget _changePasswordTile(BuildContext context) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Material(
+          color: DyKalTheme.cardOf(context),
+          borderRadius: BorderRadius.circular(16),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: DyKalTheme.primary.withValues(alpha: 0.15),
+              child: Icon(Icons.lock_outline, color: DyKalTheme.primary),
+            ),
+            title: const Text('Ganti Kata Sandi', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Perbarui password akun', style: TextStyle(fontSize: 12)),
+            trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onTap: () => _changePassword(context),
+          ),
+        ),
+      );
+
+  Future<void> _changePassword(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? '';
+    if (email.isEmpty || user == null) return;
+
+    final curCtl = TextEditingController();
+    final newCtl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: const Text('Ganti Kata Sandi'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: curCtl,
+              obscureText: true,
+              decoration: const InputDecoration(hintText: 'Kata sandi saat ini', filled: true),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newCtl,
+              obscureText: true,
+              decoration: const InputDecoration(hintText: 'Kata sandi baru (min. 6 karakter)', filled: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('Simpan')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    final cur = curCtl.text.trim();
+    final newPwd = newCtl.text.trim();
+    if (cur.isEmpty || newPwd.length < 6) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Isi kata sandi dengan benar (baru min. 6 karakter)')),
+        );
+      }
+      return;
+    }
+    try {
+      final cred = EmailAuthProvider.credential(email: email, password: cur);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPwd);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kata sandi berhasil diubah')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: pastikan kata sandi saat ini benar ($e)')),
+        );
+      }
+    }
   }
 
   Future<DateTime?> _pick(BuildContext context, DateTime? initial) async {

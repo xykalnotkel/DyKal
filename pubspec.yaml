@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.0.17+1   # v1.0.17: Scoped Storage + Media Studio + In-App Camera + Soft Dark TikTok
+version: 1.1.0+2   # v1.1.0: Update in-app (banner + changelog), kamera cover/mirror, floating bubble, edit profil lengkap
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -91,7 +91,9 @@ flutter:
     - assets/sounds/
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  android: true
   ios: false
   image_path: "assets/logo/dykal_launcher.png"
-  min_sdk_android: 21
+  adaptive_icon_background: "assets/logo/launcher_bg_1.png"
+  adaptive_icon_foreground: "assets/logo/adaptive_foreground.png"
+  min_sdk_android: 24

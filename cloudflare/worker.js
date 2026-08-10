@@ -38,7 +38,7 @@ export default {
         data: normalizeData({ ...(data || {}), type }),
         android: {
           priority: 'high',
-          notification: { icon: 'launcher_icon', channel_id: isCall ? 'dykal_call' : 'dykal_chat', sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
+          notification: { icon: 'ic_launcher', channel_id: isCall ? 'dykal_call' : 'dykal_chat', sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
         },
         apns: { payload: { aps: { sound: 'default' } } },
       };

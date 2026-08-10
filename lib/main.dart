@@ -27,8 +27,10 @@ import 'services/birthday_service.dart';
 import 'services/dev_logger.dart';
 import 'services/app_logger.dart';
 import 'services/fcm_service.dart';
+import 'services/floating_service.dart';
 import 'services/theme_controller.dart';
 import 'widgets/update_banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -321,7 +323,20 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenIncomingCalls();
       _listenDelivered();
+      _maybeShowFloatingBubble();
     });
+  }
+
+  /// Floating bubble otomatis muncul setiap aplikasi dibuka (jika sudah
+  /// diaktifkan di Settings dan izin overlay diberikan). Klik bubble = buka chat.
+  Future<void> _maybeShowFloatingBubble() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('floating_bubble_enabled') ?? false;
+      if (!enabled) return;
+      final ok = await FloatingService.hasOverlayPermission();
+      if (ok) await FloatingService.showChatBubble();
+    } catch (_) {}
   }
 
   void _setPresenceOnline(bool online) {

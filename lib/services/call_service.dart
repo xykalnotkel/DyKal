@@ -54,6 +54,10 @@ class DyKalCallService extends ChangeNotifier {
     };
     _pc!.onConnectionState = (s) {
       connected = s == RTCPeerConnectionState.RTCPeerConnectionStateConnected;
+      if (s == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+        // Sinyal hilang — coba sambungkan ulang otomatis (ICE restart)
+        Future.delayed(const Duration(milliseconds: 1500), () => reconnect());
+      }
       notifyListeners();
     };
   }
@@ -125,6 +129,12 @@ class DyKalCallService extends ChangeNotifier {
       if (data['status'] == 'ended') { await _cleanup(); return; }
       final pf = data['calleeFilter'] as String?;
       if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
+      // ICE restart: kalau reconnect di-trigger, jawaban lama tidak berlaku
+      final restart = data['iceRestart'];
+      if (restart is Timestamp && restart != _lastIceRestart) {
+        _lastIceRestart = restart;
+        _remoteDescriptionSet = false;
+      }
       final answer = data['answer'];
       if (answer != null && !_remoteDescriptionSet) {
         _remoteDescriptionSet = true;
@@ -184,7 +194,40 @@ class DyKalCallService extends ChangeNotifier {
       if (d == null || d['status'] == 'ended') { await _cleanup(); return; }
       final pf = d['callerFilter'] as String?;
       if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
+      // ICE restart: penerima harus menjawab offer baru
+      final restart = d['iceRestart'];
+      if (restart is Timestamp && restart != _lastIceRestart) {
+        _lastIceRestart = restart;
+        final offer = d['offer'] as Map<String, dynamic>?;
+        if (offer != null) {
+          try {
+            await _pc?.setRemoteDescription(RTCSessionDescription(offer['sdp'] as String, offer['type'] as String));
+            final answer = await _pc!.createAnswer({});
+            await _pc!.setLocalDescription(answer);
+            await _db.doc('calls/$coupleId').update({
+              'answer': {'sdp': answer.sdp, 'type': answer.type},
+            });
+          } catch (_) {}
+        }
+      }
     });
+  }
+
+  /// Tandai ICE restart terakhir yang sudah diproses (hindari proses ganda)
+  Timestamp? _lastIceRestart;
+
+  /// Sambungkan ulang otomatis (ICE restart) saat koneksi putus.
+  Future<void> reconnect() async {
+    if (_pc == null || connected) return;
+    try {
+      final offer = await _pc!.createOffer({'iceRestart': true});
+      await _pc!.setLocalDescription(offer);
+      _remoteDescriptionSet = false;
+      await _db.doc('calls/$coupleId').update({
+        'offer': {'sdp': offer.sdp, 'type': offer.type},
+        'iceRestart': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
   }
 
   // ---------- Kontrol ----------

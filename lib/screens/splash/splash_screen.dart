@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
@@ -15,17 +16,26 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _progress;
+  Timer? _fallback;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(seconds: 3));
     _progress = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _controller.forward().whenComplete(() => widget.onComplete());
+    _controller.forward().whenComplete(() {
+      if (mounted) widget.onComplete();
+    });
+    // Pengaman: apa pun yang terjadi, jangan biarkan app menggantung di splash.
+    // Jika animasi tidak selesai dalam 5 detik, paksa lanjut ke AuthGate.
+    _fallback = Timer(const Duration(seconds: 5), () {
+      if (mounted) widget.onComplete();
+    });
   }
 
   @override
   void dispose() {
+    _fallback?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -38,13 +48,16 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         const SizedBox(height: 24),
         const Text('DyKal', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
         const SizedBox(height: 32),
-        // Animasi ular-love
+        // Animasi ular-love + persen berjalan (persen di dalam AnimatedBuilder
+        // supaya ikut ter-update — sebelumnya beku di 0% dan terlihat "stuck")
         AnimatedBuilder(
           animation: _progress,
-          builder: (_, child) => CustomPaint(painter: _SnakeHeartPainter(_progress.value), size: const Size(200, 180)),
+          builder: (_, child) => Column(mainAxisSize: MainAxisSize.min, children: [
+            CustomPaint(painter: _SnakeHeartPainter(_progress.value), size: const Size(200, 180)),
+            const SizedBox(height: 16),
+            Text('${(_progress.value * 100).toInt()}%', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
+          ]),
         ),
-        const SizedBox(height: 16),
-        Text('${(_progress.value * 100).toInt()}%', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
       ])),
     );
   }

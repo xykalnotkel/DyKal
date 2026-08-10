@@ -37,27 +37,21 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
+/// Status inisialisasi Firebase — dibaca AuthGate agar tidak menggantung.
+enum AppInitStatus { pending, ready, failed }
+AppInitStatus appInitStatus = AppInitStatus.pending;
+
 Future<void> main() async {
   FlutterForegroundTask.initCommunicationPort();
   DevLogger.instance.info('app', 'Starting DyKal...');
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp();
-    DevLogger.instance.info('firebase', 'InitializeApp SUCCESS');
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } catch (e) {
-    DevLogger.instance.error('firebase', 'InitializeApp FAILED', e);
-  }
 
-  // Unlock high refresh rate 90/120Hz
-  try {
-    final modes = await FlutterDisplayMode.supported;
-    final high = modes.reduce((a, b) => a.refreshRate > b.refreshRate ? a : b);
-    await FlutterDisplayMode.setPreferredMode(high);
-  } catch (_) {}
+  // Inisialisasi yang TIDAK butuh Firebase — jalan di background,
+  // tidak memblokir runApp (splash langsung tampil).
+  unawaited(_initNonFirebase());
 
-  await ThemeController.instance.load();
-  await BirthdayService().init();
+  // Firebase — background juga; hasilnya dibaca AuthGate via appInitStatus.
+  unawaited(_initFirebase());
 
   final darkBars = ThemeController.instance.mode == ThemeMode.dark;
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -86,6 +80,37 @@ Future<void> main() async {
     );
     runApp(const DyKalApp());
   }, (e, st) => AppLogger.error('zone_error', e, st));
+}
+
+/// Inisialisasi non-Firebase — masing-masing diberi batas waktu agar
+/// tidak ada satu pun yang bisa menggantung startup aplikasi.
+Future<void> _initNonFirebase() async {
+  // Unlock high refresh rate 90/120Hz (non-kritis; timeout 3 detik)
+  try {
+    final modes = await FlutterDisplayMode.supported.timeout(const Duration(seconds: 3));
+    final high = modes.reduce((a, b) => a.refreshRate > b.refreshRate ? a : b);
+    await FlutterDisplayMode.setPreferredMode(high);
+  } catch (_) {}
+  try { await ThemeController.instance.load(); } catch (_) {}
+  try { await BirthdayService().init().timeout(const Duration(seconds: 5)); } catch (_) {}
+}
+
+/// Inisialisasi Firebase di background. Status disimpan di [appInitStatus]
+/// dan dibaca oleh AuthGate (spinner tidak lagi menggantung selamanya).
+Future<void> _initFirebase() async {
+  try {
+    if (Firebase.apps.isNotEmpty) {
+      appInitStatus = AppInitStatus.ready;
+      return;
+    }
+    await Firebase.initializeApp().timeout(const Duration(seconds: 20));
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    appInitStatus = AppInitStatus.ready;
+    DevLogger.instance.info('firebase', 'InitializeApp SUCCESS');
+  } catch (e) {
+    appInitStatus = AppInitStatus.failed;
+    DevLogger.instance.error('firebase', 'InitializeApp FAILED', e);
+  }
 }
 
 class DyKalApp extends StatelessWidget {
@@ -143,11 +168,50 @@ class _SplashGateState extends State<SplashGate> {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  Timer? _timeout;
+
+  @override
+  void initState() {
+    super.initState();
+    // Kalau Firebase belum siap dalam 20 detik, tampilkan layar peringatan
+    // + tombol Coba Lagi — bukan spinner yang menggantung selamanya.
+    _timeout = Timer(const Duration(seconds: 20), () {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timeout?.cancel();
+    super.dispose();
+  }
+
+  void _retry() {
+    setState(() => appInitStatus = AppInitStatus.pending);
+    unawaited(_initFirebase());
+    _timeout = Timer(const Duration(seconds: 20), () {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final timedOut = _timeout?.isActive == false;
+    if (appInitStatus == AppInitStatus.failed ||
+        (appInitStatus == AppInitStatus.pending && timedOut)) {
+      return _InitErrorScreen(onRetry: _retry);
+    }
+    if (appInitStatus != AppInitStatus.ready) {
+      return _splash();
+    }
     return StreamBuilder<User?>(
       stream: AuthService().authState,
       builder: (context, authSnap) {
@@ -187,6 +251,46 @@ class AuthGate extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Layar peringatan saat Firebase tidak bisa dijangkau — dengan tombol coba lagi.
+class _InitErrorScreen extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _InitErrorScreen({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off, size: 56, color: DyKalTheme.textGrey),
+              const SizedBox(height: 16),
+              const Text(
+                'Gagal menghubungi server',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'DyKal tidak bisa menghubungi Firebase. Pastikan internet aktif, lalu coba lagi.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

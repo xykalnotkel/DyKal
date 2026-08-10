@@ -4,20 +4,23 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
-    // Amankan pembacaan dokumen yang mungkin tidak ada (hindari error pada get())
+    // Hanya anggota couple yang boleh akses
     function isMember(coupleId) {
       let doc = get(/databases/$(database)/documents/couples/$(coupleId));
       return signedIn() && doc.exists && request.auth.uid in doc.data.members;
     }
 
-    // Pasangan dari user yang login: uid == diri sendiri, ATAU
-    // uid merupakan anggota dari couple milik user yang login.
+    // Pasangan dari user yang login: uid == diri sendiri, ATAU uid adalah
+    // anggota dari couple milik user yang login.
+    // CATATAN: aturan Firestore TIDAK mendukung statement 'if'.
+    // Gunakan ekspresi boolean dengan let (short-circuit mencegah get() di path null).
     function isPartner(uid) {
-      if (request.auth.uid == uid) return true;
       let myUser = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      if (!myUser.exists || myUser.data.coupleId == null) return false;
-      let couple = get(/databases/$(database)/documents/couples/$(myUser.data.coupleId));
-      return couple.exists && uid in couple.data.members;
+      return request.auth.uid == uid || (
+        myUser.exists &&
+        myUser.data.coupleId != null &&
+        uid in get(/databases/$(database)/documents/couples/$(myUser.data.coupleId)).data.members
+      );
     }
 
     // Profil user — hanya diri sendiri dan pasangan

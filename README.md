@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo/dykal_logo_hd.webp" width="120" alt="DyKal Logo" />
+  <img src="assets/logo/dykal_launcher.png" width="120" alt="DyKal Logo" />
 </p>
 
 <h1 align="center">DyKal</h1>

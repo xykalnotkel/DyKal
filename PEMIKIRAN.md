@@ -24,6 +24,8 @@ kerja supaya standar dan gaya kerjanya konsisten dari waktu ke waktu.
 - Repo: github.com/xykalnotkel/DyKal.
 - Jangkar waktu kerja: 2026-08-11 (Agustus 2026). Semua keputusan versi,
   API, dan praktik terbaik mengacu ke tanggal itu — bukan ke masa lalu.
+- Logo resmi SATU-SATUNYA: assets/logo/dykal_launcher.png (keputusan owner
+  2026-08-11). Tidak ada file logo lain; jangan buat/rujuk varian lama.
 
 ## 3. Cara Berpikir
 

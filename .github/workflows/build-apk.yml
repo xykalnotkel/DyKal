@@ -3,8 +3,18 @@ name: Build DyKal APK
 on:
   push:
     branches: [ main, master ]
+    # Anti-boros CI: perubahan yang TIDAK menyentuh kode/aset app tidak usah
+    # build APK (dokumentasi, file CI itu sendiri, worker cloudflare).
+    paths-ignore:
+      - '**.md'
+      - 'cloudflare/**'
+      - '.github/**'
   pull_request:
     branches: [ main, master ]
+    paths-ignore:
+      - '**.md'
+      - 'cloudflare/**'
+      - '.github/**'
   workflow_dispatch:
 
 jobs:

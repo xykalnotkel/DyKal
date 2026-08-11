@@ -3,6 +3,11 @@ name: Release DyKal APK
 on:
   push:
     branches: [ main ]
+    # Anti-boros CI: release hanya untuk perubahan kode/aset app.
+    paths-ignore:
+      - '**.md'
+      - 'cloudflare/**'
+      - '.github/**'
   workflow_dispatch:
 
 jobs:

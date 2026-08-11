@@ -28,5 +28,5 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          pip install --quiet google-auth
+          pip install --quiet google-auth requests
           python3 .github/scripts/deploy_rules.py firestore.rules dykal-5e2b9

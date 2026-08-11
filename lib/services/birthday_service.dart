@@ -18,7 +18,7 @@ class BirthdayService {
       tz.setLocalLocation(tz.getLocation('Asia/Makassar'));
     } catch (_) {}
 
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@drawable/ic_notification');
     const ios = DarwinInitializationSettings();
     await _notifications.initialize(const InitializationSettings(android: android, iOS: ios));
 

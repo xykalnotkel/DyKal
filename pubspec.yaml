@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.1.6+8   # v1.1.6: konsolidasi logo - SATU-SATUNYA logo resmi dykal_launcher.png, 26 file logo lama dimusnahkan
+version: 1.1.7+9   # v1.1.7: brand kit lengkap (transparan + ICO/SVG/favicon/OG di branding/), icon notif siluet resmi ic_notification, logo di app tanpa latar
 
 environment:
   # SDK min dinaikkan ke 3.6.0: syarat firebase_core ^4.x (CI pakai Flutter 3.44.9, aman)
@@ -101,9 +101,12 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/logo/dykal_launcher.png"
-  # SATU-SATUNYA master logo resmi (aturan owner 2026-08-11): dykal_launcher.png.
-  # adaptive_foreground.png adalah TURUNAN resminya (latar putih dicabut via
-  # flood-fill, konten di zona aman 64%) — digenerate dari master, bukan logo lain.
+  # SATU-SATUNYA master logo resmi (aturan owner 2026-08-11): dykal_launcher.png
+  # (latar putih = versi "background default"). adaptive_foreground.png adalah
+  # TURUNAN resminya (latar dicabut via flood-fill, konten di zona aman 64%).
+  # Logo di dalam app memakai dykal_logo_transparent.png karena UI punya custom
+  # background sendiri. Kit format lain (ICO/SVG/favicon/OG) ada di folder
+  # branding/ — sengaja TIDAK dideklarasikan di sini agar tidak membundel APK.
   adaptive_icon_background: "#FFE9EE"
   adaptive_icon_foreground: "assets/logo/adaptive_foreground.png"
   min_sdk_android: 24

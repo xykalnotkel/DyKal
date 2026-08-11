@@ -107,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         ],
                       ),
                       child: Image.asset(
-                        'assets/logo/dykal_launcher.png',
+                        'assets/logo/dykal_logo_transparent.png',
                         width: 104,
                         height: 104,
                         errorBuilder: (_, __, ___) =>

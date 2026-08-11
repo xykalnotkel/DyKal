@@ -174,7 +174,7 @@ Widget _splash() => Scaffold(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/logo/dykal_launcher.png',
+              Image.asset('assets/logo/dykal_logo_transparent.png',
                   width: 72,
                   height: 72,
                   errorBuilder: (_, __, ___) =>

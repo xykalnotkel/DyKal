@@ -72,5 +72,9 @@
         </provider>
 
         <meta-data android:name="flutterEmbedding" android:value="2" />
+        <!-- Icon & warna default notif FCM saat payload tidak menyebut icon:
+             siluet DyKal + pink brand. Payload worker sudah set icon serupa. -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/dykal_brand" />
     </application>
 </manifest>

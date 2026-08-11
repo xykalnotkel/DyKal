@@ -35,7 +35,7 @@ class FCMService {
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
     // 2. Init local notifications (untuk fallback) + handler aksi (balas dari notif)
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@drawable/ic_notification');
     const ios = DarwinInitializationSettings();
     await _local.initialize(
       InitializationSettings(android: android, iOS: ios),

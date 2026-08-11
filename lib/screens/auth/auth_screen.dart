@@ -96,7 +96,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   height: 120,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => Image.asset(
-                    'assets/logo/dykal_launcher.png',
+                    'assets/logo/dykal_logo_transparent.png',
                     width: 96,
                     height: 96,
                     errorBuilder: (_, ___, ____) => Container(

@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 
-/// Splash screen dengan animasi "ular" mendaki dari kiri & kanan
-/// ke arah berlawanan menyusun outline love (perintah owner #10).
+/// Splash DyKal — versi halus (anti "kaku"):
+/// logo pop-in elastis -> dua "ular" menggambar outline love -> fade-out lembut.
+/// Animasi ular-love dipertahankan sesuai permintaan owner (#10),
+/// tapi sekarang ada transisi masuk & keluar yang mulus + latar gradient.
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
   const SplashScreen({super.key, required this.onComplete});
@@ -14,20 +16,25 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _progress;
+  late final AnimationController _intro;    // logo pop-in
+  late final AnimationController _main;     // ular-love + persen
+  late final AnimationController _outro;    // fade-out keseluruhan
   Timer? _fallback;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 3));
-    _progress = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    _controller.forward().whenComplete(() {
+    _intro = AnimationController(vsync: this, duration: const Duration(milliseconds: 620));
+    _main = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
+    _outro = AnimationController(vsync: this, duration: const Duration(milliseconds: 280), value: 1.0);
+
+    _intro.forward();
+    _main.forward().whenComplete(() async {
+      if (!mounted) return;
+      await _outro.reverse(); // fade-out lembut sebelum pindah layar
       if (mounted) widget.onComplete();
     });
     // Pengaman: apa pun yang terjadi, jangan biarkan app menggantung di splash.
-    // Jika animasi tidak selesai dalam 5 detik, paksa lanjut ke AuthGate.
     _fallback = Timer(const Duration(seconds: 5), () {
       if (mounted) widget.onComplete();
     });
@@ -36,29 +43,101 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void dispose() {
     _fallback?.cancel();
-    _controller.dispose();
+    _intro.dispose();
+    _main.dispose();
+    _outro.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-            body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Image.asset('assets/logo/dykal_logo_hd.webp', width: 100, height: 100, errorBuilder: (_, __, ___) => Icon(Icons.favorite, size: 80, color: DyKalTheme.primary)),
-        const SizedBox(height: 24),
-        const Text('DyKal', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 32),
-        // Animasi ular-love + persen berjalan (persen di dalam AnimatedBuilder
-        // supaya ikut ter-update — sebelumnya beku di 0% dan terlihat "stuck")
-        AnimatedBuilder(
-          animation: _progress,
-          builder: (_, child) => Column(mainAxisSize: MainAxisSize.min, children: [
-            CustomPaint(painter: _SnakeHeartPainter(_progress.value), size: const Size(200, 180)),
-            const SizedBox(height: 16),
-            Text('${(_progress.value * 100).toInt()}%', style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12)),
-          ]),
+    final logoScale = Tween(begin: 0.55, end: 1.0)
+        .animate(CurvedAnimation(parent: _intro, curve: Curves.easeOutBack));
+    final logoFade = CurvedAnimation(parent: _intro, curve: Curves.easeOut);
+    final progress = CurvedAnimation(parent: _main, curve: Curves.easeInOut);
+
+    return FadeTransition(
+      opacity: _outro,
+      child: Scaffold(
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                DyKalTheme.background,   // warm white
+                Color(0xFFFFE9EE),       // blush rose lembut
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                const Spacer(flex: 3),
+                // Logo pop-in elastis + bayangan lembut
+                ScaleTransition(
+                  scale: logoScale,
+                  child: FadeTransition(
+                    opacity: logoFade,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: DyKalTheme.primary.withValues(alpha: 0.25),
+                            blurRadius: 32,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/logo/dykal_logo_hd.webp',
+                        width: 104,
+                        height: 104,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.favorite, size: 84, color: DyKalTheme.primary),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FadeTransition(
+                  opacity: logoFade,
+                  child: Column(
+                    children: [
+                      const Text('DyKal',
+                          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+                      const SizedBox(height: 4),
+                      Text('Buat kamu & dia',
+                          style: TextStyle(fontSize: 13, color: DyKalTheme.textGrey, letterSpacing: 0.3)),
+                    ],
+                  ),
+                ),
+                const Spacer(flex: 2),
+                // Ular-love + persen (ikonik DyKal)
+                AnimatedBuilder(
+                  animation: progress,
+                  builder: (_, __) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomPaint(
+                        painter: _SnakeHeartPainter(progress.value),
+                        size: const Size(180, 150),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('${(progress.value * 100).toInt()}%',
+                          style: TextStyle(color: DyKalTheme.textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                const Spacer(flex: 2),
+              ],
+            ),
+          ),
         ),
-      ])),
+      ),
     );
   }
 }
@@ -108,10 +187,9 @@ class _SnakeHeartPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(_pathOf(pts), trackPaint);
 
-    // 2) Saat complete -> isi love tipis
+    // 2) Saat complete -> isi love tipis + glow
     if (progress >= 0.999) {
-      final fill = Paint()..color = DyKalTheme.primary.withValues(alpha: 0.16);
-      canvas.drawPath(_pathOf(pts), fill);
+      canvas.drawPath(_pathOf(pts), Paint()..color = DyKalTheme.primary.withValues(alpha: 0.16));
     }
 
     final snakePaint = Paint()
@@ -130,10 +208,15 @@ class _SnakeHeartPainter extends CustomPainter {
       canvas.drawPath(_pathOf(pts.sublist(n - k, n + 1)), snakePaint);
     }
 
-    // 5) Kepala ular (titik berjalan) di ujung masing-masing
-    final headPaint = Paint()..color = DyKalTheme.primary;
+    // 5) Kepala ular (titik berjalan + glow halus) di ujung masing-masing
     final headR = (progress < 0.999) ? 5.0 : 0.0;
     if (headR > 0) {
+      final glow = Paint()
+        ..color = DyKalTheme.primary.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawCircle(pts[k], headR + 3, glow);
+      canvas.drawCircle(pts[n - k], headR + 3, glow);
+      final headPaint = Paint()..color = DyKalTheme.primary;
       canvas.drawCircle(pts[k], headR, headPaint);
       canvas.drawCircle(pts[n - k], headR, headPaint);
     }

@@ -21,6 +21,15 @@ export default {
 
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+
+    // KEAMANAN (opsional tapi dianjurkan): kalau secret DYKAL_PUSH_KEY di-set
+    // di Cloudflare (`wrangler secret put DYKAL_PUSH_KEY`), request WAJIB bawa
+    // header x-dykal-key yang sama — memblokir orang iseng yang menemukan URL
+    // worker lalu spam-push. Kalau secret tidak di-set: mode lama (terima semua).
+    if (env.DYKAL_PUSH_KEY && request.headers.get('x-dykal-key') !== env.DYKAL_PUSH_KEY) {
+      return json({ error: 'unauthorized' }, 401);
+    }
+
     const { token, title, body: msgBody, data, type } = body || {};
     if (!token || !title) return json({ error: 'token & title required' }, 400);
 
@@ -38,6 +47,11 @@ export default {
         data: normalizeData({ ...(data || {}), type }),
         android: {
           priority: 'high',
+          // collapse_key: banyak pesan beruntun -> 1 notif terbaru (anti numpuk)
+          collapse_key: isCall ? 'dykal_call' : 'dykal_chat',
+          // ttl: notif panggilan basi setelah 45 dtk (telepon tak diangkat),
+          // chat bertahan 24 jam kalau HP pasangan offline.
+          ttl: isCall ? '45s' : '86400s',
           notification: { icon: 'ic_launcher', channel_id: isCall ? 'dykal_call' : 'dykal_chat', sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
         },
         apns: { payload: { aps: { sound: 'default' } } },

@@ -10,6 +10,11 @@ class PushService {
   /// Ganti dengan URL Worker kamu (lihat cloudflare/README.md).
   static const String workerUrl = 'https://dykal.akuntiktok76y.workers.dev';
 
+  /// Opsional (dianjurkan): samakan dengan secret DYKAL_PUSH_KEY di Cloudflare
+  /// (`wrangler secret put DYKAL_PUSH_KEY`). Kosongkan = worker menerima semua
+  /// request (mode lama). Isi string acak panjang, mis. hasil `openssl rand -hex 24`.
+  static const String workerKey = '';
+
   static bool get _enabled =>
       workerUrl.contains('workers.dev') && !workerUrl.contains('example');
 
@@ -35,7 +40,10 @@ class PushService {
       if (prefs != null && prefs[key] == false) return;
       await http.post(
         Uri.parse(workerUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (workerKey.isNotEmpty) 'x-dykal-key': workerKey,
+        },
         body: jsonEncode({
           'token': token,
           'title': title,

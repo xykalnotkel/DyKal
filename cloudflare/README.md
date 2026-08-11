@@ -23,6 +23,14 @@ wrangler secret put FCM_PRIVATE_KEY
 ```
 (`private_key` di-paste utuh termasuk `-----BEGIN PRIVATE KEY-----` dst.)
 
+### 3b. (Dianjurkan) Kunci endpoint biar tidak di-spam orang iseng
+```
+# bikin kunci acak, contoh: openssl rand -hex 24
+wrangler secret put DYKAL_PUSH_KEY   # paste string acak yang sama
+```
+lalu isi string yang sama ke `PushService.workerKey` di `lib/services/push_service.dart`.
+Kalau secret ini TIDAK di-set, worker tetap jalan tapi menerima request dari siapa pun.
+
 ### 4. Masukkan URL Worker ke app
 Edit `lib/services/push_service.dart` → ganti `workerUrl` dengan URL Worker-mu (langkah 1). Lalu build ulang.
 

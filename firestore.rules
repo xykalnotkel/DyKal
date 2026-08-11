@@ -10,28 +10,21 @@ service cloud.firestore {
       return signedIn() && doc.exists && request.auth.uid in doc.data.members;
     }
 
-    // Pasangan dari user yang login: uid == diri sendiri, ATAU uid adalah
-    // anggota dari couple milik user yang login.
-    // CATATAN: aturan Firestore TIDAK mendukung statement 'if'.
-    // Gunakan ekspresi boolean dengan let (short-circuit mencegah get() di path null).
-    function isPartner(uid) {
-      let myUser = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return signedIn() && (request.auth.uid == uid || (
-        myUser.exists &&
-        myUser.data.coupleId != null &&
-        uid in get(/databases/$(database)/documents/couples/$(myUser.data.coupleId)).data.members
-      ));
-    }
-
-    // Profil user — hanya diri sendiri dan pasangan
+    // Profil user — LONGGAR di fase auth/register (permintaan owner):
+    // siapa pun yang LOGIN boleh baca profil SATU user by id (dia harus tahu
+    // uid-nya), tapi TIDAK bisa dump semua user (list dilarang).
+    // Tulis: tetap hanya diri sendiri.
     match /users/{uid} {
-      allow read: if isPartner(uid);
+      allow get: if signedIn();
+      allow list: if false;
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Presence (online / typing / last seen) — hanya diri sendiri dan pasangan
+    // Presence (online / typing / last seen) — sama: baca by id longgar,
+    // list dilarang, tulis hanya milik sendiri.
     match /presence/{uid} {
-      allow read: if isPartner(uid);
+      allow get: if signedIn();
+      allow list: if false;
       allow write: if signedIn() && request.auth.uid == uid;
     }
 

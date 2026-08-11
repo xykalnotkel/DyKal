@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.1.2+4   # v1.1.2: self-heal doc users (displayName hilang) + workflow deploy rules ganti firebase-tools resmi
+version: 1.1.3+5   # v1.1.3: rules auth/register dilonggarkan + splash diperhalus + worker push diperkuat (key/collapse/ttl)
 
 environment:
   # SDK min dinaikkan ke 3.6.0: syarat firebase_core ^4.x (CI pakai Flutter 3.44.9, aman)

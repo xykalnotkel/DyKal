@@ -43,6 +43,9 @@ final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 enum AppInitStatus { pending, ready, failed }
 AppInitStatus appInitStatus = AppInitStatus.pending;
 
+/// Pesan error terakhir saat inisialisasi Firebase gagal (untuk layar error).
+String? appInitError;
+
 Future<void> main() async {
   FlutterForegroundTask.initCommunicationPort();
   DevLogger.instance.info('app', 'Starting DyKal...');
@@ -111,6 +114,7 @@ Future<void> _initFirebase() async {
     DevLogger.instance.info('firebase', 'InitializeApp SUCCESS');
   } catch (e) {
     appInitStatus = AppInitStatus.failed;
+    appInitError = '$e';
     DevLogger.instance.error('firebase', 'InitializeApp FAILED', e);
   }
 }
@@ -182,20 +186,24 @@ class _AuthGateState extends State<AuthGate> {
   bool _bootFailed = false;
   bool _reachedContent = false;
 
+  // Diagnostik: apa yang macet / error terakhir — ditampilkan di layar error
+  String _stage = 'Memulai...';
+  String? _lastError;
+
   @override
   void initState() {
     super.initState();
     _startBootTimer();
   }
 
-  /// Jika dalam 12 detik aplikasi belum sampai ke layar konten (auth/pairing/
+  /// Jika dalam 20 detik aplikasi belum sampai ke layar konten (auth/pairing/
   /// main), tampilkan layar "Gagal menghubungi server" + Coba Lagi —
   /// TIDAK ada spinner yang menggantung selamanya.
   void _startBootTimer() {
     _bootFailed = false;
     _reachedContent = false;
     _bootTimer?.cancel();
-    _bootTimer = Timer(const Duration(seconds: 12), () {
+    _bootTimer = Timer(const Duration(seconds: 20), () {
       if (mounted && !_reachedContent) setState(() => _bootFailed = true);
     });
   }
@@ -210,6 +218,8 @@ class _AuthGateState extends State<AuthGate> {
     setState(() {
       appInitStatus = AppInitStatus.pending;
       _bootFailed = false;
+      _stage = 'Memulai...';
+      _lastError = null;
     });
     unawaited(_initFirebase());
     _startBootTimer();
@@ -219,7 +229,13 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showError) return _InitErrorScreen(onRetry: _retry);
+    if (_showError) {
+      final detail = _lastError ?? appInitError;
+      final stage = _lastError == null && appInitStatus == AppInitStatus.failed
+          ? 'Inisialisasi Firebase gagal'
+          : _stage;
+      return _InitErrorScreen(onRetry: _retry, detail: detail, stage: stage);
+    }
     if (appInitStatus != AppInitStatus.ready) return _splash();
 
     return StreamBuilder<User?>(
@@ -227,9 +243,16 @@ class _AuthGateState extends State<AuthGate> {
       builder: (context, authSnap) {
         // Stream error (mis. Firestore ditolak / jaringan) -> layar error, bukan spinner
         if (authSnap.hasError || _bootFailed) {
-          return _InitErrorScreen(onRetry: _retry);
+          if (authSnap.hasError) _lastError = '${authSnap.error}';
+          if (_bootFailed && _lastError == null) {
+            _lastError = 'Stream auth tidak selesai (jaringan/App Check?)';
+          }
+          return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: _stage);
         }
-        if (authSnap.connectionState != ConnectionState.active) return _splash();
+        if (authSnap.connectionState != ConnectionState.active) {
+          _stage = 'Menunggu status login...';
+          return _splash();
+        }
         final user = authSnap.data;
         if (user == null) {
           DevLogger.instance.info('auth', 'No user -> AuthScreen');
@@ -244,9 +267,16 @@ class _AuthGateState extends State<AuthGate> {
           stream: AuthService().coupleIdStream(),
           builder: (context, cSnap) {
             if (cSnap.hasError || _bootFailed) {
-              return _InitErrorScreen(onRetry: _retry);
+              if (cSnap.hasError) _lastError = '${cSnap.error}';
+              if (_bootFailed && _lastError == null) {
+                _lastError = 'Gagal membaca data user (jaringan/App Check/permission rules?)';
+              }
+              return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: _stage);
             }
-            if (cSnap.connectionState != ConnectionState.active) return _splash();
+            if (cSnap.connectionState != ConnectionState.active) {
+              _stage = 'Menunggu data pasangan...';
+              return _splash();
+            }
             final cid = cSnap.data;
             if (cid == null) {
               DevLogger.instance.info('auth', 'coupleId null -> PairingScreen');
@@ -261,9 +291,16 @@ class _AuthGateState extends State<AuthGate> {
               stream: FirebaseFirestore.instance.doc('couples/$cid').snapshots(),
               builder: (context, cs) {
                 if (cs.hasError || _bootFailed) {
-                  return _InitErrorScreen(onRetry: _retry);
+                  if (cs.hasError) _lastError = '${cs.error}';
+                  if (_bootFailed && _lastError == null) {
+                    _lastError = 'Dokumen couple tidak terbaca (permission rules / App Check?)';
+                  }
+                  return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: _stage);
                 }
-                if (!cs.hasData) return _splash();
+                if (!cs.hasData) {
+                  _stage = 'Menunggu data couple...';
+                  return _splash();
+                }
                 final d = cs.data!.data() as Map<String, dynamic>?;
                 final members = List<String>.from(d?['members'] ?? []);
                 DevLogger.instance.info('auth', 'couple members: ${members.length}');
@@ -278,10 +315,13 @@ class _AuthGateState extends State<AuthGate> {
   }
 }
 
-/// Layar peringatan saat Firebase tidak bisa dijangkau — dengan tombol coba lagi.
+/// Layar peringatan saat aplikasi tidak bisa lanjut — dengan tombol coba lagi
+/// dan detail error (agar penyebabnya terlihat, bukan hitam).
 class _InitErrorScreen extends StatelessWidget {
   final VoidCallback onRetry;
-  const _InitErrorScreen({required this.onRetry});
+  final String? detail;
+  final String stage;
+  const _InitErrorScreen({required this.onRetry, this.detail, this.stage = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -295,15 +335,31 @@ class _InitErrorScreen extends StatelessWidget {
               const Icon(Icons.cloud_off, size: 56, color: DyKalTheme.textGrey),
               const SizedBox(height: 16),
               const Text(
-                'Gagal menghubungi server',
+                'Gagal Menghubungi Server',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
-                'DyKal tidak bisa menghubungi Firebase. Pastikan internet aktif, lalu coba lagi.',
+                'DyKal tidak bisa lanjut. Pastikan internet aktif, lalu coba lagi.\n\n'
+                'Tahap: $stage',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 13),
               ),
+              if (detail != null && detail!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    detail!,
+                    style: const TextStyle(fontSize: 11, color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: onRetry,
@@ -385,7 +441,6 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     final myId = AuthService().myId;
     if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
 
-    // Filter terarah hemat resource Firestore
     _deliveredSub = FirebaseFirestore.instance
         .collection('chats/$coupleId/messages')
         .where('status', isEqualTo: 'sent')

@@ -77,7 +77,7 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK (split arm64 + armeabi)
-        run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation --dart-define=DYKAL_PUSH_KEY=${{ secrets.DYKAL_PUSH_KEY }}
 
       - name: List APK hasil
         run: ls -lh build/app/outputs/flutter-apk/

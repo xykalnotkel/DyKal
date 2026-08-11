@@ -1,6 +1,11 @@
-name = "dykal-push"
+name = "dykal"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 
-# Secrets di-set terpisah via dashboard atau `wrangler secret put`:
-#   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY
+# PENTING: "name" harus SAMA dengan URL worker yang dipanggil app
+# (lib/services/push_service.dart -> https://dykal.<subdomain>.workers.dev).
+# Dulu tertulis "dykal-push" -> deploy menciptakan worker BARU dan URL lama
+# tidak pernah ter-update.
+#
+# Secrets di-set otomatis oleh GitHub Actions (lihat README.md):
+#   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY, DYKAL_PUSH_KEY

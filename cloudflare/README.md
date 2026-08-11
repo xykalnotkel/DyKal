@@ -1,42 +1,46 @@
 # DyKal Push Worker (Cloudflare) — push background GRATIS tanpa Blaze
 
-Worker ini dikirim push FCM ke device pasangan pas ada **chat baru** atau **panggilan masuk** (termasuk saat app di-kill), tanpa perlu Cloud Functions / Blaze.
+Worker ini mengirim push FCM ke device pasangan saat ada **chat baru** atau
+**panggilan masuk** (termasuk saat app di-kill), tanpa Cloud Functions / Blaze.
 
-## Setup (sekali doang)
+## Cara kerja sekarang (otomatis via GitHub Actions)
 
-### 1. Buat akun & deploy Worker
-- Daftar [cloudflare.com](https://cloudflare.com) (gratis).
-- Install wrangler: `npm i -g wrangler` lalu `wrangler login`.
-- Di folder `cloudflare/`: `wrangler deploy`.
-- Catat URL Worker-nya, misal `https://dykal-push.<sub>.workers.dev`.
+Worker **ter-deploy & tersinkron otomatis** tiap folder `cloudflare/` berubah di
+branch `main` (workflow "Deploy Cloudflare Worker"). Termasuk sinkron 4 secret
+worker ini dari GitHub Secrets (sudah di-set, tidak perlu diapa-apakan lagi):
 
-### 2. Ambil Service Account Key Firebase
-- Firebase Console → **Project settings** → **Service accounts** → **Generate new private key** → simpan JSON.
-- Dari JSON itu ambil 3 nilai: `project_id`, `client_email`, `private_key`.
+| Secret worker | Sumber |
+|---|---|
+| `FCM_PROJECT_ID` | service account JSON Firebase |
+| `FCM_CLIENT_EMAIL` | service account JSON Firebase |
+| `FCM_PRIVATE_KEY` | service account JSON Firebase |
+| `DYKAL_PUSH_KEY` | kunci anti-spam (disuntik juga ke APK via `--dart-define` saat build CI) |
 
-### 3. Set secret di Worker
-Di folder `cloudflare/`, jalankan 3 perintah (paste nilai dari JSON):
-```
-wrangler secret put FCM_PROJECT_ID
-wrangler secret put FCM_CLIENT_EMAIL
-wrangler secret put FCM_PRIVATE_KEY
-```
-(`private_key` di-paste utuh termasuk `-----BEGIN PRIVATE KEY-----` dst.)
+## Yang harus kamu lakukan SEKALI (±2 menit)
 
-### 3b. (Dianjurkan) Kunci endpoint biar tidak di-spam orang iseng
-```
-# bikin kunci acak, contoh: openssl rand -hex 24
-wrangler secret put DYKAL_PUSH_KEY   # paste string acak yang sama
-```
-lalu isi string yang sama ke `PushService.workerKey` di `lib/services/push_service.dart`.
-Kalau secret ini TIDAK di-set, worker tetap jalan tapi menerima request dari siapa pun.
+1. **dash.cloudflare.com** → My Profile → **API Tokens** → **Create Token** →
+   template **"Edit Cloudflare Workers"** → Continue → Create → copy token.
+2. GitHub repo → Settings → **Secrets and variables → Actions** → New repository secret:
+   - Nama: `CLOUDFLARE_API_TOKEN`
+   - Isi: token dari langkah 1
+3. Tab **Actions** → "Deploy Cloudflare Worker" → **Run workflow**. Selesai ✅
+   (push berikutnya yang menyentuh folder ini akan deploy sendiri.)
 
-### 4. Masukkan URL Worker ke app
-Edit `lib/services/push_service.dart` → ganti `workerUrl` dengan URL Worker-mu (langkah 1). Lalu build ulang.
+## Catatan penting
+
+- `wrangler.toml` memakai `name = "dykal"` — HARUS sama dengan URL worker yang
+  dipanggil app di `lib/services/push_service.dart`
+  (`https://dykal.<subdomain>.workers.dev`). Salah nama = bikin worker baru yang
+  tidak dipakai app.
+- Setelah `DYKAL_PUSH_KEY` aktif, worker HANYA menerima request yang membawa
+  kunci. Kunci mulai tertanam di APK mulai v1.1.4 (via `--dart-define`), jadi
+  pastikan kedua HP ter-update supaya push tidak tertolak.
+- Cara manual (opsional): `npm i -g wrangler` → `wrangler login` →
+  `wrangler deploy` dari folder ini. Hasilnya sama.
+- Notif muncul saat app di-kill; tap notif membuka app. Layar incoming-call
+  full-screen otomatis bisa ditambah nanti (butuh FCM data-only + handler).
 
 ## Tes
-- Pasangan tutup app-nya (kill).
-- Kamu kirim chat → dia dapat notif "pesan baru". ✅
-- Kamu nelpon → dia dapat notif "panggilan masuk". ✅
 
-> Catatan: notif ini MUNCUL saat app ditutup, tapi belum otomatis membuka layar telepon full-screen (butuh layar incoming-call khusus — bisa ditambah nanti). Tap notif tetap membuka app.
+- Pasangan kill app-nya → kamu kirim chat → dia dapat notif ✅
+- Kamu nelpon → dia dapat notif panggilan (basi otomatis setelah 45 detik) ✅

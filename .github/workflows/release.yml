@@ -53,7 +53,7 @@ jobs:
           dart run flutter_launcher_icons
 
       - name: Build arm64 + armeabi
-        run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation --dart-define=DYKAL_PUSH_KEY=${{ secrets.DYKAL_PUSH_KEY }}
 
       - name: Rename
         run: |

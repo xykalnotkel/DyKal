@@ -10,10 +10,11 @@ class PushService {
   /// Ganti dengan URL Worker kamu (lihat cloudflare/README.md).
   static const String workerUrl = 'https://dykal.akuntiktok76y.workers.dev';
 
-  /// Opsional (dianjurkan): samakan dengan secret DYKAL_PUSH_KEY di Cloudflare
-  /// (`wrangler secret put DYKAL_PUSH_KEY`). Kosongkan = worker menerima semua
-  /// request (mode lama). Isi string acak panjang, mis. hasil `openssl rand -hex 24`.
-  static const String workerKey = '';
+  /// Shared key anti-abuse untuk Worker.
+  /// Disuntik CI saat build via --dart-define=DYKAL_PUSH_KEY=... (nilainya = GitHub
+  /// secret DYKAL_PUSH_KEY = secret worker Cloudflare). SENGAJA tidak di-hardcode
+  /// karena repo ini publik. Build manual/lokal tanpa dart-define -> kosong.
+  static const String workerKey = String.fromEnvironment('DYKAL_PUSH_KEY');
 
   static bool get _enabled =>
       workerUrl.contains('workers.dev') && !workerUrl.contains('example');

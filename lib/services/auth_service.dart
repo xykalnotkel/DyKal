@@ -253,6 +253,16 @@ class AuthService {
     } catch (_) {}
   }
 
+  /// Bersihkan coupleId usang (doc couple tidak ada / setengah jadi).
+  /// Dipakai AuthGate saat mendeteksi referensi couple yatim.
+  Future<void> clearStaleCouple() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      try { await _db.doc('users/$uid').set({'coupleId': null}, SetOptions(merge: true)); } catch (_) {}
+    }
+    coupleId = partnerId = partnerName = partnerPhotoUrl = null;
+  }
+
   Future<void> logout() async {
     final uid = _auth.currentUser?.uid;
     if (uid != null) {

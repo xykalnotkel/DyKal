@@ -157,8 +157,45 @@ class DyKalApp extends StatelessWidget {
   }
 }
 
-Widget _splash() => const Scaffold(
-      body: Center(child: CircularProgressIndicator(color: DyKalTheme.primary)),
+/// Mini-boot bermerek (menggantikan spinner polos "muter-muter"):
+/// logo + bar ramping + tahap proses, konsisten dengan SplashScreen utama.
+Widget _splash() => Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [DyKalTheme.background, Color(0xFFFFE9EE)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset('assets/logo/dykal_logo_hd.webp',
+                  width: 72,
+                  height: 72,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.favorite, size: 64, color: DyKalTheme.primary)),
+              const SizedBox(height: 14),
+              const Text('DyKal', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 22),
+              const SizedBox(
+                width: 150,
+                child: LinearProgressIndicator(
+                  color: DyKalTheme.primary,
+                  backgroundColor: DyKalTheme.borderSoft,
+                  minHeight: 4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(bootStage, style: TextStyle(fontSize: 12, color: DyKalTheme.textGrey)),
+            ],
+          ),
+        ),
+      ),
     );
 
 /// Menampilkan splash screen beranimasi (logo + love) lalu masuk ke AuthGate.
@@ -309,6 +346,15 @@ class _AuthGateState extends State<AuthGate> {
                 if (!cs.hasData) {
                   bootStage = 'Menunggu data couple...';
                   return _splash();
+                }
+                // Self-heal: doc couple tidak ada tapi users.coupleId masih
+                // menunjuk ke sana (warisan data setengah jadi) -> bersihkan
+                // & anggap belum pairing. Tanpa ini, boot bisa looping error.
+                if (!cs.data!.exists) {
+                  unawaited(AuthService().clearStaleCouple());
+                  DevLogger.instance.info('auth', 'couple doc hilang -> reset & PairingScreen');
+                  _reachedContent = true;
+                  return const PairingScreen();
                 }
                 final d = cs.data!.data() as Map<String, dynamic>?;
                 final members = List<String>.from(d?['members'] ?? []);

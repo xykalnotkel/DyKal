@@ -25,19 +25,31 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _intro = AnimationController(vsync: this, duration: const Duration(milliseconds: 620));
-    _main = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
+    _main = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
     _outro = AnimationController(vsync: this, duration: const Duration(milliseconds: 280), value: 1.0);
 
     _intro.forward();
-    _main.forward().whenComplete(() async {
-      if (!mounted) return;
-      await _outro.reverse(); // fade-out lembut sebelum pindah layar
-      if (mounted) widget.onComplete();
-    });
+    _main.forward().whenComplete((_) => _finish(animated: true));
     // Pengaman: apa pun yang terjadi, jangan biarkan app menggantung di splash.
-    _fallback = Timer(const Duration(seconds: 5), () {
-      if (mounted) widget.onComplete();
-    });
+    _fallback = Timer(const Duration(seconds: 5), _finish);
+  }
+
+  bool _finishing = false;
+
+  /// Selesaikan splash sekali saja. [animated] = fade-out lembut dulu;
+  /// false = langsung lanjut (fallback timer / hard-stop).
+  Future<void> _finish({bool animated = false}) async {
+    if (_finishing) return;
+    _finishing = true;
+    if (animated && mounted) await _outro.reverse();
+    if (mounted) widget.onComplete();
+  }
+
+  /// TAP di mana pun = skip animasi, langsung masuk app.
+  void _skip() {
+    _intro.stop();
+    _main.stop();
+    _finish();
   }
 
   @override
@@ -56,8 +68,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     final logoFade = CurvedAnimation(parent: _intro, curve: Curves.easeOut);
     final progress = CurvedAnimation(parent: _main, curve: Curves.easeInOut);
 
-    return FadeTransition(
-      opacity: _outro,
+    return GestureDetector(
+      onTap: _skip, // ketuk layar = skip splash
+      child: FadeTransition(
+        opacity: _outro,
       child: Scaffold(
         body: Container(
           width: double.infinity,
@@ -136,6 +150,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               ],
             ),
           ),
+        ),
         ),
       ),
     );

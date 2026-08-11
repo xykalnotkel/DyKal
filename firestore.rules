@@ -49,12 +49,13 @@ service cloud.firestore {
     match /couples/{coupleId} {
       allow create: if signedIn() && request.auth.uid in request.resource.data.members;
 
-      // FIX #2: saat joinWithCode(), pasangan membaca doc couple SEBELUM jadi
-      // member -> rules lama menolak. Sekarang: anggota boleh baca, dan user
-      // login manapun boleh GET doc couple yang masih kurang dari 2 anggota
-      // (masih "joinable"). 'list' dilarang -> tidak bisa dump semua couple.
+      // FIX #2 (v1.1.5): saat joinWithCode(), pasangan membaca doc couple SEBELUM
+      // jadi member -> rules lama menolak. Dan yg lebih halus: kalau doc couple
+      // TIDAK ADA (coupleId usang setengah jadi), akses resource.data error ->
+      // Firestore balas PERMISSION_DENIED & AuthGate nyangkut. Sekarang:
+      // doc tidak ada = diizinkan (Firestore balas NOT_FOUND -> app route ke Pairing).
       allow get: if isMember(coupleId) || (
-        signedIn() && resource.data.members.size() < 2
+        signedIn() && (resource == null || resource.data.members.size() < 2)
       );
       allow list: if false;
 

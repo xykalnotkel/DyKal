@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.1.4+6   # v1.1.4: worker Cloudflare auto-deploy via CI + DYKAL_PUSH_KEY aktif (dart-define) + fix nama worker (dykal)
+version: 1.1.5+7   # v1.1.5: rules couple tak-ada = 404 (bukan 403) + AuthGate self-heal couple yatim + boot screen bermerek + splash tap-to-skip
 
 environment:
   # SDK min dinaikkan ke 3.6.0: syarat firebase_core ^4.x (CI pakai Flutter 3.44.9, aman)

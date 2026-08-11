@@ -26,6 +26,7 @@ class AuthService {
   String? _myStatus; // status/bio singkat dari Firestore
   String? _myAvatarShape; // shape avatar (custom seperti album)
   String? partnerPhotoUrl;
+  bool _userDocChecked = false; // ensureUserDoc auto-call: sekali per sesi
   String get myId => _auth.currentUser?.uid ?? '';
   String get myName => _myName ?? _auth.currentUser?.displayName ?? '';
   String get myStatus => _myStatus ?? '';
@@ -42,29 +43,95 @@ class AuthService {
   }
 
   Future<UserCredential> register({required String email, required String password, required String displayName, String? photoUrl}) async {
-    final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    UserCredential cred;
+    try {
+      cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    } catch (e) {
+      // SAFETY NET (bug pendaftaran era dulu): akun bisa terlanjur terbuat di
+      // server walau respons gagal didekode plugin -> user kelihatan "gagal
+      // daftar" padahal akun ada TANPA doc users. Pulihkan doc dulu, baru
+      // lempar errornya ke UI.
+      if (_auth.currentUser != null) {
+        await ensureUserDoc(displayName: displayName, photoUrl: photoUrl);
+      }
+      rethrow;
+    }
     final uid = cred.user!.uid;
-    // FIX REGISTRASI: tulis users doc DULU (paling penting - nama wajib kesimpen)
-    await _db.doc('users/$uid').set({
-      'uid': uid,
-      'displayName': displayName,
-      'email': email,
-      'photoUrl': photoUrl,
-      'coupleId': null,
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    // FIX REGISTRASI: tulis users doc DULU (paling penting - nama wajib kesimpen).
+    // Non-fatal: kalau gagal (jaringan/rules), doc disembuhkan otomatis oleh
+    // ensureUserDoc() pada login/app-start berikutnya — displayName TIDAK akan
+    // hilang permanen sampai harus edit profil manual seperti dulu.
+    try {
+      await _db.doc('users/$uid').set({
+        'uid': uid,
+        'displayName': displayName,
+        'email': email,
+        'photoUrl': photoUrl,
+        'coupleId': null,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
     _myName = displayName;   // cache langsung
     myPhotoUrl = photoUrl;
     // updateDisplayName Auth non-kritis (jangan block registrasi kalau gagal)
     try { await cred.user!.updateDisplayName(displayName); } catch (_) {}
     await _saveFcmToken(uid);
+    _userDocChecked = true;
     return cred;
   }
 
   Future<UserCredential> login({required String email, required String password}) async {
     final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+    await ensureUserDoc(); // self-heal akun lama: doc hilang / displayName kosong
     await _saveFcmToken(cred.user!.uid);
     return cred;
+  }
+
+  /// Pastikan doc users/{uid} ada & displayName terisi.
+  /// Menyembuhkan akun era bug: akun Auth terbuat tapi doc Firestore tidak
+  /// sempat ditulis -> nama kosong sampai user edit profil manual.
+  /// Dipanggil saat register, login, dan setiap app start (AuthGate).
+  /// Urutan fallback nama: parameter -> displayName Auth -> prefix email.
+  Future<void> ensureUserDoc({String? displayName, String? photoUrl}) async {
+    if (_userDocChecked && displayName == null) return; // sekali per sesi utk auto-call
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final ref = _db.doc('users/${user.uid}');
+    try {
+      final snap = await ref.get();
+      if (!snap.exists) {
+        final name = _fallbackName(displayName, user);
+        await ref.set({
+          'uid': user.uid,
+          'displayName': name,
+          'email': user.email,
+          'photoUrl': photoUrl,
+          'coupleId': null,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        _myName = name;
+      } else {
+        final data = snap.data()!;
+        final patch = <String, dynamic>{};
+        final dn = (data['displayName'] as String?) ?? '';
+        if (dn.trim().isEmpty) patch['displayName'] = _fallbackName(displayName, user);
+        if (!data.containsKey('coupleId')) patch['coupleId'] = null;
+        if (!data.containsKey('email') && user.email != null) patch['email'] = user.email;
+        if (patch.isNotEmpty) {
+          await ref.set(patch, SetOptions(merge: true));
+          final fixed = patch['displayName'] as String?;
+          if (fixed != null) _myName = fixed;
+        }
+      }
+      _userDocChecked = true;
+    } catch (_) {}
+  }
+
+  String _fallbackName(String? displayName, User user) {
+    for (final c in [displayName, user.displayName, user.email?.split('@').first]) {
+      if (c != null && c.trim().isNotEmpty) return c.trim();
+    }
+    return 'User';
   }
 
   /// Buat couple + invite code (yang pertama)
@@ -163,6 +230,25 @@ class AuthService {
           partnerName = pSnap.data()?['displayName'] ?? '';
           partnerPhotoUrl = pSnap.data()?['photoUrl'] as String?;
         }
+        // Self-heal nama kosong di doc couple (era bug: couple terbuat dengan
+        // displayNameA/B '' karena doc users belum ada saat createCouple).
+        final nm = _myName ?? '';
+        if (nm.isNotEmpty && members.contains(uid)) {
+          final cData = cSnap.data()!;
+          final iAmA = members.first == uid;
+          final patchC = <String, dynamic>{};
+          if (iAmA && (((cData['displayNameA'] as String?) ?? '').trim().isEmpty)) {
+            patchC['displayNameA'] = nm;
+            if (myPhotoUrl != null && cData['photoA'] == null) patchC['photoA'] = myPhotoUrl;
+          }
+          if (!iAmA && (((cData['displayNameB'] as String?) ?? '').trim().isEmpty)) {
+            patchC['displayNameB'] = nm;
+            if (myPhotoUrl != null && cData['photoB'] == null) patchC['photoB'] = myPhotoUrl;
+          }
+          if (patchC.isNotEmpty) {
+            try { await _db.doc('couples/$coupleId').set(patchC, SetOptions(merge: true)); } catch (_) {}
+          }
+        }
       }
     } catch (_) {}
   }
@@ -173,6 +259,7 @@ class AuthService {
       await _db.doc('presence/$uid').set({'isOnline': false, 'lastSeen': FieldValue.serverTimestamp()}, SetOptions(merge: true));
     }
     coupleId = partnerId = partnerName = myPhotoUrl = partnerPhotoUrl = null;
+    _userDocChecked = false; // biar login berikutnya ensureUserDoc jalan lagi
     await _auth.signOut();
   }
 

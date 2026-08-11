@@ -267,6 +267,9 @@ class _AuthGateState extends State<AuthGate> {
         }
         DevLogger.instance.info('auth', 'User logged in: ${user.uid}');
 
+        // Self-heal doc users (nama hilang era bug auth lama) — sekali per sesi
+        unawaited(AuthService().ensureUserDoc());
+
         FCMService().ensureInit();
 
         return StreamBuilder<String?>(

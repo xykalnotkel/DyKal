@@ -101,9 +101,9 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/logo/dykal_launcher.png"
-  # SATU-SATUNYA logo resmi (aturan owner 2026-08-11). Background adaptive pakai
-  # warna solid warm-white (bukan file gambar lagi) supaya folder logo benar-benar
-  # hanya berisi dykal_launcher.png.
-  adaptive_icon_background: "#FFF8F9"
-  adaptive_icon_foreground: "assets/logo/dykal_launcher.png"
+  # SATU-SATUNYA master logo resmi (aturan owner 2026-08-11): dykal_launcher.png.
+  # adaptive_foreground.png adalah TURUNAN resminya (latar putih dicabut via
+  # flood-fill, konten di zona aman 64%) — digenerate dari master, bukan logo lain.
+  adaptive_icon_background: "#FFE9EE"
+  adaptive_icon_foreground: "assets/logo/adaptive_foreground.png"
   min_sdk_android: 24

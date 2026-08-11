@@ -99,6 +99,8 @@ jobs:
             ## Download APK
             - **DyKal-arm64.apk** = HP 64-bit (mayoritas HP modern)
             - **DyKal-armeabi-v7a.apk** = HP 32-bit
+            - Updater in-app mulai v1.1.8 **otomatis memilih varian sesuai ABI HP**,
+              jadi pengguna tidak perlu menebak-nebak.
 
             ## Changelog
             ${{ steps.changelog.outputs.notes }}

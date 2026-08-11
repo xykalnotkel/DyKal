@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.1.7+9   # v1.1.7: brand kit lengkap (transparan + ICO/SVG/favicon/OG di branding/), icon notif siluet resmi ic_notification, logo di app tanpa latar
+version: 1.1.8+10   # v1.1.8: updater cerdas - auto-detect ABI HP (arm64/armeabi-v7a) via channel native, pilih aset APK release yang cocok
 
 environment:
   # SDK min dinaikkan ke 3.6.0: syarat firebase_core ^4.x (CI pakai Flutter 3.44.9, aman)

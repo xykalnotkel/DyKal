@@ -13,6 +13,8 @@ class UpdateInfo {
   final String apkUrl;
   final String releaseNotes;
   final bool isForce;
+  // Nama aset APK yang dipilih sesuai ABI device (info/debug UI)
+  final String? apkAssetName;
 
   UpdateInfo({
     required this.versionName,
@@ -20,6 +22,7 @@ class UpdateInfo {
     required this.apkUrl,
     required this.releaseNotes,
     this.isForce = false,
+    this.apkAssetName,
   });
 }
 
@@ -43,6 +46,64 @@ class UpdateService extends ChangeNotifier {
   bool isDownloading = false;
   double downloadProgress = 0.0;
   String? localApkPath;
+
+  // Cache ABI device (tidak berubah selama proses hidup)
+  List<String>? _abisCache;
+
+  /// ABI yang didukung HP ini, urutan = preferensi sistem ([0] = ABI utama).
+  /// Contoh HP 64-bit: [arm64-v8a, armeabi-v7a, armeabi]. Fallback aman arm64.
+  Future<List<String>> _supportedAbis() async {
+    final cached = _abisCache;
+    if (cached != null) return cached;
+    try {
+      final res = await _installerChannel.invokeMethod<List<dynamic>>('getSupportedAbis');
+      if (res != null && res.isNotEmpty) {
+        _abisCache = res.whereType<String>().toList();
+        if (_abisCache!.isNotEmpty) return _abisCache!;
+      }
+    } catch (_) {}
+    _abisCache = const ['arm64-v8a'];
+    return _abisCache!;
+  }
+
+  /// Pilih aset APK release yang cocok dengan ABI device.
+  /// Kenapa wajib: salah ABI -> install ditolak Android (NO_MATCHING_ABI).
+  /// Rantai fallback: ABI cocok -> universal -> arm64 -> APK pertama.
+  static ({String url, String name})? _pickApkAsset(List<dynamic> assets, List<String> abis) {
+    final apks = <Map<String, dynamic>>[];
+    for (final a in assets) {
+      if (a is Map &&
+          ((a['name'] as String?) ?? '').endsWith('.apk') &&
+          a['browser_download_url'] is String) {
+        apks.add(a.cast<String, dynamic>());
+      }
+    }
+    if (apks.isEmpty) return null;
+
+    ({String url, String name})? findBy(String key) {
+      for (final a in apks) {
+        final name = a['name'] as String;
+        if (name.contains(key)) {
+          final url = a['browser_download_url'] as String?;
+          if (url != null) return (url: url, name: name);
+        }
+      }
+      return null;
+    }
+
+    for (final abi in abis) {
+      final key = switch (abi) {
+        'arm64-v8a' => 'arm64',
+        'armeabi-v7a' || 'armeabi' => 'armeabi-v7a',
+        'x86_64' || 'x86' => 'x86_64',
+        _ => abi,
+      };
+      final hit = findBy(key);
+      if (hit != null) return hit;
+    }
+    return findBy('universal') ?? findBy('arm64') ??
+        (url: apks.first['browser_download_url'] as String, name: apks.first['name'] as String);
+  }
 
   Future<void> checkForUpdate() async {
     if (isChecking || isDownloading) return;
@@ -71,24 +132,19 @@ class UpdateService extends ChangeNotifier {
       final notes = (data['body'] as String?) ?? '';
       final assets = (data['assets'] as List?) ?? [];
 
-      String? apkUrl;
-      for (final a in assets) {
-        final name = (a['name'] as String?) ?? '';
-        if (!name.endsWith('.apk')) continue;
-        if (apkUrl == null) apkUrl = a['browser_download_url'] as String?;
-        if (name.contains('arm64')) {
-          apkUrl = a['browser_download_url'] as String?;
-          break;
-        }
-      }
-      if (versionName.isEmpty || apkUrl == null) return null;
+      // Deteksi ABI HP lalu pilih APK yang cocok (32-bit jangan ditawari arm64!)
+      final abis = await _supportedAbis();
+      final pick = _pickApkAsset(assets, abis);
+      if (pick == null) return null;
+      if (versionName.isEmpty) return null;
 
       final packageInfo = await PackageInfo.fromPlatform();
       if (_compareVersion(versionName, packageInfo.version) > 0) {
         return UpdateInfo(
           versionName: versionName,
           versionCode: int.tryParse(versionName.replaceAll('.', '')) ?? 0,
-          apkUrl: apkUrl,
+          apkUrl: pick.url,
+          apkAssetName: pick.name,
           releaseNotes: notes,
         );
       }

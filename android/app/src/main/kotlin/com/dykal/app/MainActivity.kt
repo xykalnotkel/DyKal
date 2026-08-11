@@ -108,6 +108,13 @@ class MainActivity : FlutterActivity() {
         // APK Installer Handler
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALLER_CHANNEL)
             .setMethodCallHandler { call, result ->
+                // Updater in-app: deteksi ABI device supaya APK yang diunduh cocok
+                // (DyKal-arm64.apk untuk 64-bit, DyKal-armeabi-v7a.apk untuk 32-bit).
+                // Urutan SUPPORTED_ABIS = preferensi sistem ([0] = ABI utama).
+                if (call.method == "getSupportedAbis") {
+                    result.success(Build.SUPPORTED_ABIS.toList())
+                    return@setMethodCallHandler
+                }
                 if (call.method == "installApk") {
                     val filePath = call.argument<String>("filePath")
                     if (filePath != null) {

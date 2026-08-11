@@ -46,6 +46,9 @@ AppInitStatus appInitStatus = AppInitStatus.pending;
 /// Pesan error terakhir saat inisialisasi Firebase gagal (untuk layar error).
 String? appInitError;
 
+/// Tahap boot saat ini (untuk layar error) — global karena di-set dari _initFirebase.
+String bootStage = 'Memulai...';
+
 Future<void> main() async {
   FlutterForegroundTask.initCommunicationPort();
   DevLogger.instance.info('app', 'Starting DyKal...');
@@ -104,17 +107,21 @@ Future<void> _initNonFirebase() async {
 /// dan dibaca oleh AuthGate (spinner tidak lagi menggantung selamanya).
 Future<void> _initFirebase() async {
   try {
+    bootStage = 'Menghubungi Firebase...';
     if (Firebase.apps.isNotEmpty) {
       appInitStatus = AppInitStatus.ready;
+      bootStage = 'Firebase siap';
       return;
     }
     await Firebase.initializeApp().timeout(const Duration(seconds: 15));
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     appInitStatus = AppInitStatus.ready;
+    bootStage = 'Firebase siap';
     DevLogger.instance.info('firebase', 'InitializeApp SUCCESS');
   } catch (e) {
     appInitStatus = AppInitStatus.failed;
     appInitError = '$e';
+    bootStage = 'Inisialisasi Firebase gagal';
     DevLogger.instance.error('firebase', 'InitializeApp FAILED', e);
   }
 }
@@ -186,8 +193,7 @@ class _AuthGateState extends State<AuthGate> {
   bool _bootFailed = false;
   bool _reachedContent = false;
 
-  // Diagnostik: apa yang macet / error terakhir — ditampilkan di layar error
-  String _stage = 'Memulai...';
+  // Diagnostik: error terakhir — ditampilkan di layar error
   String? _lastError;
 
   @override
@@ -218,7 +224,7 @@ class _AuthGateState extends State<AuthGate> {
     setState(() {
       appInitStatus = AppInitStatus.pending;
       _bootFailed = false;
-      _stage = 'Memulai...';
+      bootStage = 'Memulai...';
       _lastError = null;
     });
     unawaited(_initFirebase());
@@ -233,7 +239,7 @@ class _AuthGateState extends State<AuthGate> {
       final detail = _lastError ?? appInitError;
       final stage = _lastError == null && appInitStatus == AppInitStatus.failed
           ? 'Inisialisasi Firebase gagal'
-          : _stage;
+          : bootStage;
       return _InitErrorScreen(onRetry: _retry, detail: detail, stage: stage);
     }
     if (appInitStatus != AppInitStatus.ready) return _splash();
@@ -247,10 +253,10 @@ class _AuthGateState extends State<AuthGate> {
           if (_bootFailed && _lastError == null) {
             _lastError = 'Stream auth tidak selesai (jaringan/App Check?)';
           }
-          return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: _stage);
+          return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: bootStage);
         }
         if (authSnap.connectionState != ConnectionState.active) {
-          _stage = 'Menunggu status login...';
+          bootStage = 'Menunggu status login...';
           return _splash();
         }
         final user = authSnap.data;
@@ -271,10 +277,10 @@ class _AuthGateState extends State<AuthGate> {
               if (_bootFailed && _lastError == null) {
                 _lastError = 'Gagal membaca data user (jaringan/App Check/permission rules?)';
               }
-              return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: _stage);
+              return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: bootStage);
             }
             if (cSnap.connectionState != ConnectionState.active) {
-              _stage = 'Menunggu data pasangan...';
+              bootStage = 'Menunggu data pasangan...';
               return _splash();
             }
             final cid = cSnap.data;
@@ -295,10 +301,10 @@ class _AuthGateState extends State<AuthGate> {
                   if (_bootFailed && _lastError == null) {
                     _lastError = 'Dokumen couple tidak terbaca (permission rules / App Check?)';
                   }
-                  return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: _stage);
+                  return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: bootStage);
                 }
                 if (!cs.hasData) {
-                  _stage = 'Menunggu data couple...';
+                  bootStage = 'Menunggu data couple...';
                   return _splash();
                 }
                 final d = cs.data!.data() as Map<String, dynamic>?;
@@ -340,7 +346,7 @@ class _InitErrorScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'DyKal tidak bisa lanjut. Pastikan internet aktif, lalu coba lagi.\n\n'
+                'DyKal tidak bisa lanjut.\n\n'
                 'Tahap: $stage',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 13),
@@ -356,6 +362,22 @@ class _InitErrorScreen extends StatelessWidget {
                   child: SelectableText(
                     detail!,
                     style: const TextStyle(fontSize: 11, color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Tidak ada pesan error detail — koneksi menggantung, kemungkinan ditolak server.\n'
+                    'Periksa: (1) App Check di Firebase Console dimatikan, (2) internet aktif, '
+                    '(3) akun & data pasangan masih ada.',
+                    style: TextStyle(fontSize: 11, color: Colors.orange),
                     textAlign: TextAlign.center,
                   ),
                 ),

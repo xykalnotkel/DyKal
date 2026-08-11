@@ -178,28 +178,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// Tambah lagu dari VIDEO: video diupload ke Cloudinary lalu diambil
   /// audio-nya (MP3) — TANPA backend/FFmpeg, cukup ubah ekstensi URL.
+  /// FIX (laporan owner "gada status upload/loading"): dialog progres 2 fase
+  /// (upload -> unduh hasil) dengan persen, jadi jelas prosesnya jalan.
   Future<void> _addAudioFromVideo() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.video);
     if (result == null || result.files.isEmpty || result.files.single.path == null) return;
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mengonversi video ke audio...')),
-    );
-    try {
-      final audioUrl = await CloudinaryService().uploadVideoForAudio(File(result.files.single.path!));
-      if (audioUrl == null) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal mengonversi video')));
-        return;
+
+    final progress = ValueNotifier<double>(0.0);
+    final phase = ValueNotifier<String>('Mengupload video...');
+    bool dialogOpen = true;
+    void closeDialog() {
+      if (dialogOpen && mounted) {
+        dialogOpen = false;
+        Navigator.of(context, rootNavigator: true).pop();
       }
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('Menyiapkan audio story'),
+          content: ValueListenableBuilder<double>(
+            valueListenable: progress,
+            builder: (_, p, __) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LinearProgressIndicator(value: p == 0 ? null : p),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<String>(
+                  valueListenable: phase,
+                  builder: (_, ph, __) => Text('$ph ${(p * 100).clamp(0, 100).toInt()}%'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final audioUrl = await CloudinaryService().uploadVideoForAudio(
+        File(result.files.single.path!),
+        onProgress: (p) {
+          progress.value = p * 0.7; // fase upload = 70% pertama
+        },
+      );
+      if (audioUrl == null) throw Exception('konversi gagal');
+      phase.value = 'Mengunduh MP3...';
+      progress.value = 0.7;
+
       // Unduh MP3 ke folder lokal agar bisa diputar offline
       final tempDir = await getTemporaryDirectory();
       final savePath = '${tempDir.path}/story_${DateTime.now().millisecondsSinceEpoch}.mp3';
-      await Dio().download(audioUrl, savePath);
+      await Dio().download(audioUrl, savePath, onReceiveProgress: (r, t) {
+        if (t > 0) progress.value = 0.7 + (r / t) * 0.3;
+      });
+
       final prefs = await SharedPreferences.getInstance();
       setState(() => _storyAudioPaths.add(savePath));
       await prefs.setStringList('story_audio_playlist', _storyAudioPaths);
+      closeDialog();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio dari video ditambahkan')));
     } catch (e) {
+      closeDialog();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
     }
   }

@@ -2,7 +2,9 @@ package com.dykal.app
 
 import android.app.Service
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -10,37 +12,52 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.ImageView
+import kotlin.math.abs
 
 /**
  * Floating chat bubble (chat head) ala WhatsApp.
  * - Butuh izin SYSTEM_ALERT_WINDOW; dicek sebelum addView.
- * - Bisa digeser (drag) dan diketuk untuk membuka aplikasi.
+ * - FIX (laporan owner): dulu drag & tap tidak dibedakan -> lepas drag selalu
+ *   membuka app ("dipencet malah masuk aplikasi") dan bubble tanpa ukuran fix
+ *   jadi kecil/kabur. Sekarang: drag = geser saja (+snap ke tepi terdekat),
+ *   TAP (gerakan < ambang) = buka app, TAHAN LAMA = tutup bubble.
  */
 class FloatingChatService : Service() {
     private var windowManager: WindowManager? = null
     private var floatingView: View? = null
+
+    private val density by lazy { resources.displayMetrics.density }
+    private fun dp(v: Int) = (v * density).toInt()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
 
-        // Jangan crash diam-diam: tanpa izin overlay, layanan berhenti.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             stopSelf()
             return
         }
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val imageView = ImageView(this).apply {
-            setImageResource(R.drawable.ic_chat_bubble)
-            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+        val size = dp(56)
+        val container = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#FF6B8A"))
+            }
+            elevation = dp(4).toFloat()
         }
+        container.addView(
+            ImageView(this).apply { setImageResource(R.drawable.ic_chat_bubble) },
+            FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER)
+        )
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            size, size,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
@@ -55,30 +72,64 @@ class FloatingChatService : Service() {
         }
 
         try {
-            windowManager?.addView(imageView, params)
-            floatingView = imageView
+            windowManager?.addView(container, params)
+            floatingView = container
         } catch (e: Exception) {
             stopSelf()
             return
         }
 
-        // Drag bubble
-        imageView.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> { }
+        val touchSlop = dp(8) // gerakan di bawah ini dianggap tap, bukan drag
+        var downRawX = 0f
+        var downRawY = 0f
+        var moved = false
+        var longPressed = false
+
+        val longPress = Runnable {
+            longPressed = true
+            // Tahan lama = tutup bubble (cara satu-satunya mematikan selain toggle di Settings)
+            stopSelf()
+        }
+
+        container.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downRawX = event.rawX
+                    downRawY = event.rawY
+                    moved = false
+                    longPressed = false
+                    v.postDelayed(longPress, 600)
+                }
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = event.rawX.toInt() - imageView.width / 2
-                    params.y = event.rawY.toInt() - imageView.height / 2
-                    windowManager?.updateViewLayout(imageView, params)
+                    val dx = event.rawX - downRawX
+                    val dy = event.rawY - downRawY
+                    if (!moved && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
+                        moved = true
+                        v.removeCallbacks(longPress) // dibatalkan: ini drag, bukan tahan
+                    }
+                    if (moved) {
+                        params.x = event.rawX.toInt() - container.width / 2
+                        params.y = event.rawY.toInt() - container.height / 2
+                        windowManager?.updateViewLayout(container, params)
+                    }
                 }
                 MotionEvent.ACTION_UP -> {
-                    // Ketuk: buka aplikasi
-                    val intent = packageManager.getLaunchIntentForPackage(packageName)
-                    intent?.addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    )
-                    startActivity(intent)
+                    v.removeCallbacks(longPress)
+                    if (longPressed) return@setOnTouchListener true
+                    if (!moved) {
+                        // TAP murni -> buka aplikasi
+                        val intent = packageManager.getLaunchIntentForPackage(packageName)
+                        intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        startActivity(intent)
+                    } else {
+                        // Habis drag -> snap ke tepi kiri/kanan terdekat (rasa WA)
+                        val screenW = resources.displayMetrics.widthPixels
+                        val targetX = if (params.x + container.width / 2 < screenW / 2) dp(8) else screenW - container.width - dp(8)
+                        params.x = targetX
+                        windowManager?.updateViewLayout(container, params)
+                    }
                 }
+                MotionEvent.ACTION_CANCEL -> v.removeCallbacks(longPress)
             }
             true
         }

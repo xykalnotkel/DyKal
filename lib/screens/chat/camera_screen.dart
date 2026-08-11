@@ -321,11 +321,26 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     );
   }
 
-  /// Preview kamera mengisi layar tanpa distorsi (crop berlebih dibuang),
-  /// dan dicerminkan horizontal saat kamera depan (seperti WhatsApp).
+  /// Preview kamera mengisi layar TANPA distorsi + dicerminkan saat kamera depan.
+  /// FIX (laporan owner "gepeng"): aspectRatio kamera Android dilaporkan dalam
+  /// orientasi SENSOR (landscape), kalau dipakai mentah utk layar portrait
+  /// hasilnya gepeng/zoom aneh. Solusi: pakai previewSize yang ditukar sisinya
+  /// + FittedBox cover — pola baku kamera Flutter.
   Widget _buildPreview(ColorFilter? filter) {
     final controller = _controller!;
     Widget preview = CameraPreview(controller);
+
+    if (filter != null) {
+      preview = ColorFiltered(colorFilter: filter, child: preview);
+    }
+
+    final ps = controller.value.previewSize;
+    if (ps == null) return Center(child: preview);
+
+    // previewSize hidup dalam koordinat sensor (lebar > tinggi di ponsel portrait
+    // umumnya). Di layar portrait: lebar widget = tinggi sensor, dst.
+    final w = ps.height;
+    final h = ps.width;
 
     if (_isFrontCamera) {
       preview = Transform(
@@ -334,37 +349,13 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
         child: preview,
       );
     }
-    if (filter != null) {
-      preview = ColorFiltered(colorFilter: filter, child: preview);
-    }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenW = constraints.maxWidth;
-        final screenH = constraints.maxHeight;
-        final previewRatio = controller.value.aspectRatio; // lebar / tinggi
-        final screenRatio = screenW / screenH;
-        double w, h;
-        if (previewRatio > screenRatio) {
-          // Preview lebih lebar dari layar -> potong kiri/kanan
-          w = screenH * previewRatio;
-          h = screenH;
-        } else {
-          // Preview lebih tinggi dari layar -> potong atas/bawah
-          w = screenW;
-          h = screenW / previewRatio;
-        }
-        return ClipRect(
-          child: OverflowBox(
-            alignment: Alignment.center,
-            minWidth: 0,
-            minHeight: 0,
-            maxWidth: double.infinity,
-            maxHeight: double.infinity,
-            child: SizedBox(width: w, height: h, child: preview),
-          ),
-        );
-      },
+    return ClipRect(
+      child: FittedBox(
+        fit: BoxFit.cover,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(width: w, height: h, child: preview),
+      ),
     );
   }
 

@@ -80,7 +80,7 @@ class CloudinaryService {
   /// Ekstrak audio dari video TANPA backend — cukup ubah ekstensi URL
   /// video menjadi .mp3; Cloudinary otomatis mengubah video jadi audio (MP3).
   /// Mengembalikan URL audio mp3 (perlu diunduh ke lokal untuk playlist story).
-  Future<String?> uploadVideoForAudio(File video, {String folder = "dykal/story_music"}) async {
+  Future<String?> uploadVideoForAudio(File video, {String folder = "dykal/story_music", void Function(double progress)? onProgress}) async {
     try {
       final mimeType = lookupMimeType(video.path) ?? 'video/mp4';
       final formData = FormData.fromMap({
@@ -95,6 +95,10 @@ class CloudinaryService {
       final res = await _dio.post(
         'https://api.cloudinary.com/v1_1/$cloudName/video/upload',
         data: formData,
+        // onSendProgress: UI bisa tampilkan persen upload, bukan diam bengong
+        onSendProgress: (sent, total) {
+          if (total > 0) onProgress?.call(sent / total);
+        },
       );
       if (res.statusCode == 200) {
         final url = res.data['secure_url'] as String?;

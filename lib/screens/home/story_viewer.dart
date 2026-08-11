@@ -20,6 +20,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   List<String> _audioPaths = [];
   int _currentIndex = 0;
   bool _loading = true;
+  String? _error; // FIX: dulu error -> loading muter SELAMANYA (layar hitam)
 
   late AnimationController _animController;
 
@@ -39,22 +40,30 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   }
 
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    _audioPaths = prefs.getStringList('story_audio_playlist') ?? [];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _audioPaths = prefs.getStringList('story_audio_playlist') ?? [];
 
-    final albumsSnap = await FirebaseFirestore.instance
-        .collection('couples/${widget.coupleId}/albums')
-        .get();
+      // Timeout 12 dtk: jaringan jelek/rules error = tampilkan pesan, bukan
+      // spinner abadi (akar laporan owner: "loading trus background hitam")
+      final albumsSnap = await FirebaseFirestore.instance
+          .collection('couples/${widget.coupleId}/albums')
+          .get()
+          .timeout(const Duration(seconds: 12));
 
-    for (final album in albumsSnap.docs) {
-      final photosSnap = await FirebaseFirestore.instance
-          .collection('couples/${widget.coupleId}/albums/${album.id}/photos')
-          .limit(6)
-          .get();
-      for (final p in photosSnap.docs) {
-        final url = p.data()['url'] as String?;
-        if (url != null) _photoUrls.add(url);
+      for (final album in albumsSnap.docs) {
+        final photosSnap = await FirebaseFirestore.instance
+            .collection('couples/${widget.coupleId}/albums/${album.id}/photos')
+            .limit(6)
+            .get()
+            .timeout(const Duration(seconds: 12));
+        for (final p in photosSnap.docs) {
+          final url = p.data()['url'] as String?;
+          if (url != null) _photoUrls.add(url);
+        }
       }
+    } catch (e) {
+      _error = e.toString();
     }
 
     if (_photoUrls.isEmpty) {
@@ -143,14 +152,44 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.photo_library_outlined, color: Colors.white54, size: 64),
-              const SizedBox(height: 16),
-              const Text('Belum ada foto di album', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Kembali'),
+              Icon(
+                _error != null ? Icons.cloud_off_rounded : Icons.photo_library_outlined,
+                color: Colors.white54,
+                size: 64,
               ),
+              const SizedBox(height: 16),
+              Text(
+                _error != null ? 'Gagal memuat cerita' : 'Belum ada foto di album',
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text('Cek koneksi internet, lalu coba lagi.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                ),
+              ],
+              const SizedBox(height: 8),
+              if (_error != null)
+                FilledButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _loading = true;
+                      _error = null;
+                      _photoUrls = [];
+                    });
+                    _loadData();
+                  },
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Coba Lagi'),
+                )
+              else
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Kembali'),
+                ),
             ],
           ),
         ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -926,11 +927,17 @@ class _ChatScreenState extends State<ChatScreen> {
                           if (!_isRecording) return;
                           final dx = d.offsetFromOrigin.dx;
                           final dy = d.offsetFromOrigin.dy;
+                          final wasCancel = _dragCancel;
+                          final wasLock = _dragLock;
                           setState(() {
                             _dragOffset = Offset(dx.clamp(-90.0, 0.0), dy.clamp(-150.0, 0.0));
                             _dragCancel = dx < -70 && !_dragLock;
                             _dragLock = dy < -60 && !_dragCancel;
                           });
+                          // Haptic saat MASUK zona kunci/batal — jari "kerasakan"
+                          // perpindahan mode (feedback yang sebelumnya tidak ada)
+                          if (_dragLock && !wasLock) HapticFeedback.mediumImpact();
+                          if (_dragCancel && !wasCancel) HapticFeedback.lightImpact();
                         },
                         onLongPressEnd: (_) {
                           if (!_isRecording) return;
@@ -965,19 +972,30 @@ class _ChatScreenState extends State<ChatScreen> {
                             _dragLock = false;
                           });
                         },
-                        child: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: _isRecording
-                                ? (_dragCancel ? Colors.redAccent : (_dragLock ? DyKalTheme.primary : Colors.red))
-                                : DyKalTheme.primary.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _isRecording ? Icons.stop : Icons.mic_rounded,
-                            color: _isRecording ? Colors.white : DyKalTheme.primary,
-                            size: 20,
+                        child: AnimatedScale(
+                          scale: _isRecording ? 1.25 : 1.0,
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutBack,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: _isRecording
+                                  ? (_dragCancel ? Colors.redAccent : (_dragLock ? DyKalTheme.primary : Colors.red))
+                                  : DyKalTheme.primary.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                              boxShadow: _isRecording
+                                  ? [BoxShadow(color: Colors.red.withValues(alpha: 0.35), blurRadius: 18, spreadRadius: 2)]
+                                  : const [],
+                            ),
+                            child: Icon(
+                              _isRecording
+                                  ? (_dragLock ? Icons.lock_rounded : (_dragCancel ? Icons.delete_rounded : Icons.stop))
+                                  : Icons.mic_rounded,
+                              color: _isRecording ? Colors.white : DyKalTheme.primary,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),

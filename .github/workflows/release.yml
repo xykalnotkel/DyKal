@@ -60,10 +60,14 @@ jobs:
       - name: Build arm64 + armeabi
         run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm --android-skip-build-dependency-validation --dart-define=DYKAL_PUSH_KEY=${{ secrets.DYKAL_PUSH_KEY }}
 
+      - name: Build universal (1 APK semua ABI)
+        run: flutter build apk --release --android-skip-build-dependency-validation --dart-define=DYKAL_PUSH_KEY=${{ secrets.DYKAL_PUSH_KEY }}
+
       - name: Rename
         run: |
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk DyKal-arm64.apk
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk DyKal-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-release.apk DyKal-universal.apk
 
       - name: Baca versi dari pubspec.yaml
         id: ver
@@ -99,6 +103,8 @@ jobs:
             ## Download APK
             - **DyKal-arm64.apk** = HP 64-bit (mayoritas HP modern)
             - **DyKal-armeabi-v7a.apk** = HP 32-bit
+            - **DyKal-universal.apk** = satu file untuk semua HP (lebih besar ~1.5x;
+              pilih ini kalau kena peringatan Play Protect di varian split)
             - Updater in-app mulai v1.1.8 **otomatis memilih varian sesuai ABI HP**,
               jadi pengguna tidak perlu menebak-nebak.
 
@@ -109,5 +115,6 @@ jobs:
           files: |
             DyKal-arm64.apk
             DyKal-armeabi-v7a.apk
+            DyKal-universal.apk
           draft: false
           prerelease: false

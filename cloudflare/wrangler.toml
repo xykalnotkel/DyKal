@@ -3,9 +3,18 @@ main = "worker.js"
 compatibility_date = "2024-01-01"
 
 # PENTING: "name" harus SAMA dengan URL worker yang dipanggil app
-# (lib/services/push_service.dart -> https://dykal.<subdomain>.workers.dev).
-# Dulu tertulis "dykal-push" -> deploy menciptakan worker BARU dan URL lama
-# tidak pernah ter-update.
+# (lib/services/push_service.dart). Dulu tertulis "dykal-push" -> deploy
+# menciptakan worker BARU dan URL lama tidak pernah ter-update.
+#
+# Custom domain (config akun Cloudflare, BUKAN di file ini — deploy ulang
+# tidak akan menghapusnya): push.xystudio.my.id (dipakai app) &
+# api.xystudio.my.id (cadangan). Route workers.dev tetap hidup utk APK lama.
 #
 # Secrets di-set otomatis oleh GitHub Actions (lihat README.md):
 #   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY, DYKAL_PUSH_KEY
+
+# KV namespace "dykal-kv": rate limit anti-abuse + cache token OAuth
+# (KEAMANAN.md #3 & #12). Gratis: 1k tulis/hari — aplikasi pasangan jauh di bawah itu.
+[[kv_namespaces]]
+binding = "DYKAL_KV"
+id = "8bac426a83b54731baeca98bcc293360"

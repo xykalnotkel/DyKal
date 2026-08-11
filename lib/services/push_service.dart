@@ -7,8 +7,10 @@ import 'auth_service.dart';
 /// Berfungsi walau app pasangan di-kill (background push) — TANPA Blaze.
 /// Aktif setelah kamu deploy Worker & mengisi workerUrl di bawah.
 class PushService {
-  /// Ganti dengan URL Worker kamu (lihat cloudflare/README.md).
-  static const String workerUrl = 'https://dykal.akuntiktok76y.workers.dev';
+  /// Custom domain resmi (domain XYSTUDIO, TLS otomatis Cloudflare).
+  /// Route lama https://dykal.akuntiktok76y.workers.dev TETAP HIDUP di sisi
+  /// Cloudflare demi APK versi lama — jangan pernah minta dimatikan.
+  static const String workerUrl = 'https://push.xystudio.my.id';
 
   /// Shared key anti-abuse untuk Worker.
   /// Disuntik CI saat build via --dart-define=DYKAL_PUSH_KEY=... (nilainya = GitHub
@@ -16,8 +18,10 @@ class PushService {
   /// karena repo ini publik. Build manual/lokal tanpa dart-define -> kosong.
   static const String workerKey = String.fromEnvironment('DYKAL_PUSH_KEY');
 
+  // Jangan cek substring 'workers.dev' lagi: URL resmi sekarang custom domain.
+  // Cukup pastikan bukan placeholder contoh dan pakai https.
   static bool get _enabled =>
-      workerUrl.contains('workers.dev') && !workerUrl.contains('example');
+      workerUrl.startsWith('https://') && !workerUrl.contains('example');
 
   /// Panggil saat: kirim chat baru / mulai panggilan.
   static Future<void> notifyPartner({

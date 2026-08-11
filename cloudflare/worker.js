@@ -4,34 +4,58 @@
  * Mengirim FCM push (HTTP v1) ke device pasangan — dipanggil app DyKal
  * saat ada pesan/chat baru atau panggilan masuk. Gratis (Worker free tier).
  *
+ * Custom domain (dua-duanya nempel ke worker ini, setara):
+ *   https://push.xystudio.my.id  -> dipakai app
+ *   https://api.xystudio.my.id   -> dicadangkan untuk endpoint masa depan
+ * Route workers.dev (dykal.akuntiktok76y.workers.dev) SENGAJA tetap hidup:
+ * APK lama masih memanggilnya — mematikannya = bunuh notif user lama.
+ *
  * Secrets (set via dashboard atau `wrangler secret put`):
  *   FCM_PROJECT_ID    -> Project ID Firebase (Console > Project settings)
  *   FCM_CLIENT_EMAIL  -> client_email dari service account JSON
  *   FCM_PRIVATE_KEY   -> private_key dari service account JSON (PEM, biarkan \n)
+ *   DYKAL_PUSH_KEY    -> kunci bersama dgn app (disuntik via --dart-define saat build)
  *
- * Deploy: lihat README.md di folder ini.
+ * Binding KV (wrangler.toml): DYKAL_KV -> rate limit + cache token OAuth.
+ *
+ * Lapisan keamanan (sesuai KEAMANAN.md):
+ *   #2  auth header x-dykal-key        #3  rate limit 30 req/menit/IP (KV)
+ *   #4  validasi + whitelist input     #5  CORS diputus total (API non-browser)
+ *   #12 cache access token di KV       #13 security headers + rotasi via wrangler secret
  */
 
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
+const RL_LIMIT = 30;        // request per menit per IP
+const RL_WINDOW_MS = 60000; // jendela hitung 1 menit
 
 export default {
   async fetch(request, env) {
+    // #5 CORS: mati total. API ini hanya dipanggil app (bukan browser), jadi
+    // kita tidak pernah mengirim Access-Control-Allow-Origin. Preflight browser
+    // dari situs orang lain dijawab tegas 403.
+    if (request.method === 'OPTIONS') return json({ error: 'CORS dinonaktifkan: API ini bukan untuk browser' }, 403);
+
     if (request.method === 'GET') return json({ ok: true, service: 'dykal-push' });
     if (request.method !== 'POST') return json({ error: 'use POST' }, 405);
 
-    let body;
-    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    // #3 RATE LIMIT duluan (lebih murah dari auth) — juga melindungi endpoint
+    // dari brute-force API key. Fail-open dengan header penanda kalau KV gangguan.
+    if (await rateLimited(env, request)) {
+      return json({ error: 'terlalu banyak request, coba lagi sebentar' }, 429, { 'retry-after': '60' });
+    }
 
-    // KEAMANAN (opsional tapi dianjurkan): kalau secret DYKAL_PUSH_KEY di-set
-    // di Cloudflare (`wrangler secret put DYKAL_PUSH_KEY`), request WAJIB bawa
-    // header x-dykal-key yang sama — memblokir orang iseng yang menemukan URL
-    // worker lalu spam-push. Kalau secret tidak di-set: mode lama (terima semua).
+    // #2 AUTH: kalau DYKAL_PUSH_KEY di-set, request WAJIB bawa header cocok.
     if (env.DYKAL_PUSH_KEY && request.headers.get('x-dykal-key') !== env.DYKAL_PUSH_KEY) {
       return json({ error: 'unauthorized' }, 401);
     }
 
-    const { token, title, body: msgBody, data, type } = body || {};
-    if (!token || !title) return json({ error: 'token & title required' }, 400);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+
+    // #4 VALIDASI + WHITELIST: field asing dibuang, string dipotong, token dicek polanya.
+    const v = sanitizeBody(body);
+    if (v.error) return json({ error: v.error }, 400);
+    const { token, title, msgBody, data, type } = v.value;
 
     // Diagnostik: pastikan 3 secret sudah ter-set
     if (!env.FCM_PROJECT_ID || !env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY) {
@@ -44,7 +68,7 @@ export default {
       const message = {
         token,
         notification: { title, body: msgBody || '' },
-        data: normalizeData({ ...(data || {}), type }),
+        data,
         android: {
           priority: 'high',
           // collapse_key: banyak pesan beruntun -> 1 notif terbaru (anti numpuk)
@@ -63,26 +87,98 @@ export default {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ message }),
       });
-      return new Response(await r.text(), { status: r.status, headers: { 'content-type': 'application/json' } });
+      // Passthrough respons FCM, tapi tetap lewat header keamanan kita.
+      return new Response(await r.text(), { status: r.status, headers: baseHeaders() });
     } catch (e) {
       return json({ error: String(e) }, 500);
     }
   },
 };
 
-function json(o, s = 200) {
-  return new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
-}
-function normalizeData(d) {
-  const o = {};
-  if (d && typeof d === 'object') for (const k in d) o[k] = String(d[k]);
-  return o;
+/* ---------------- validasi & keamanan ---------------- */
+
+// #4 Whitelist ketat. Return {error} atau {value}.
+function sanitizeBody(body) {
+  if (!body || typeof body !== 'object') return { error: 'bad json' };
+  const { token, title, body: msgBodyRaw, data: dataRaw, type: typeRaw } = body;
+
+  if (typeof token !== 'string' || token.length < 70 || token.length > 400 || !/^[A-Za-z0-9_\-.:%]+$/.test(token)) {
+    return { error: 'token tidak valid' };
+  }
+  if (typeof title !== 'string' || title.trim() === '') return { error: 'title required' };
+
+  // type: whitelist, selain itu dipaksa 'chat' (bukan ditolak, demi kompatibilitas app lama)
+  const type = ['chat', 'call', 'letter'].includes(typeRaw) ? typeRaw : 'chat';
+
+  // data: hanya object polos, maks 12 key, key alfanumerik, nilai scalar -> string maks 200 char
+  const data = {};
+  if (dataRaw && typeof dataRaw === 'object' && !Array.isArray(dataRaw)) {
+    const keys = Object.keys(dataRaw).slice(0, 12);
+    for (const k of keys) {
+      if (!/^[A-Za-z0-9_]{1,32}$/.test(k)) continue;
+      const val = dataRaw[k];
+      if (val === null || ['string', 'number', 'boolean'].includes(typeof val)) {
+        data[k] = String(val).slice(0, 200);
+      }
+    }
+  }
+  data.type = type;
+
+  return {
+    value: {
+      token,
+      title: title.slice(0, 120),
+      msgBody: typeof msgBodyRaw === 'string' ? msgBodyRaw.slice(0, 500) : '',
+      data,
+      type,
+    },
+  };
 }
 
+// #3 Rate limit: counter per IP per menit di KV. Fail-open saat KV error.
+async function rateLimited(env, request) {
+  if (!env.DYKAL_KV) return false;
+  try {
+    const ip = request.headers.get('cf-connecting-ip') || 'anon';
+    const slot = Math.floor(Date.now() / RL_WINDOW_MS);
+    const key = `rl:${ip}:${slot}`;
+    const n = parseInt((await env.DYKAL_KV.get(key)) || '0', 10) + 1;
+    await env.DYKAL_KV.put(key, String(n), { expirationTtl: 120 });
+    return n > RL_LIMIT;
+  } catch (_) {
+    return false;
+  }
+}
+
+// #13 Header keamanan standar di SEMUA response. Tanpa ACAO = CORS terkunci.
+function baseHeaders() {
+  return {
+    'content-type': 'application/json',
+    'x-content-type-options': 'nosniff',
+    'cache-control': 'no-store',
+    'referrer-policy': 'no-referrer',
+    'strict-transport-security': 'max-age=31536000',
+  };
+}
+function json(o, s = 200, extra = {}) {
+  return new Response(JSON.stringify(o), { status: s, headers: { ...baseHeaders(), ...extra } });
+}
+
+/* ---------------- OAuth2 service account -> FCM v1 ---------------- */
+
+// #12 Access token (umur 1 jam) di-cache di KV: hemat latensi & kuota Google.
 async function getAccessToken(env) {
-  const now = Math.floor(Date.now() / 1000);
+  const now = Date.now();
+  if (env.DYKAL_KV) {
+    try {
+      const hit = await env.DYKAL_KV.get('oauth:access_token', { type: 'json' });
+      if (hit && hit.token && hit.exp > now + 60000) return hit.token;
+    } catch (_) { /* cache gagal -> minta token baru saja */ }
+  }
+
+  const sec = Math.floor(now / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
-  const claim = { iss: env.FCM_CLIENT_EMAIL, scope: SCOPE, aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600, sub: env.FCM_CLIENT_EMAIL };
+  const claim = { iss: env.FCM_CLIENT_EMAIL, scope: SCOPE, aud: 'https://oauth2.googleapis.com/token', iat: sec, exp: sec + 3600, sub: env.FCM_CLIENT_EMAIL };
   const enc = (o) => base64url(JSON.stringify(o));
   const unsigned = `${enc(header)}.${enc(claim)}`;
   const key = await importPkcs8(env.FCM_PRIVATE_KEY);
@@ -94,6 +190,14 @@ async function getAccessToken(env) {
     body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
   });
   const t = await r.json();
+  if (!t.access_token) throw new Error('gagal minta access token: ' + JSON.stringify(t).slice(0, 200));
+
+  if (env.DYKAL_KV) {
+    try {
+      // Simpan dengan margin 1 menit sebelum kadaluarsa asli
+      await env.DYKAL_KV.put('oauth:access_token', JSON.stringify({ token: t.access_token, exp: now + (t.expires_in || 3600) * 1000 - 60000 }), { expirationTtl: 3540 });
+    } catch (_) { /* abaikan */ }
+  }
   return t.access_token;
 }
 

@@ -5,9 +5,13 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
 
     // Hanya anggota couple yang boleh akses
+    // FIX #4 (v1.1.8): `get().exists` BUKAN properti valid di bahasa rules —
+    // akses properti ngawur = evaluasi error = deny diam-diam. Akibatnya member
+    // asli ditolak mengakses chats/calls/dll (permission-denied pasca-pairing).
+    // Cek eksistensi yang benar: fungsi exists(path), dipisah dari get().
     function isMember(coupleId) {
-      let doc = get(/databases/$(database)/documents/couples/$(coupleId));
-      return signedIn() && doc.exists && request.auth.uid in doc.data.members;
+      let path = /databases/$(database)/documents/couples/$(coupleId);
+      return signedIn() && exists(path) && request.auth.uid in get(path).data.members;
     }
 
     // Profil user — LONGGAR di fase auth/register (permintaan owner):

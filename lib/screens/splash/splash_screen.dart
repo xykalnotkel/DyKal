@@ -29,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _outro = AnimationController(vsync: this, duration: const Duration(milliseconds: 280), value: 1.0);
 
     _intro.forward();
-    _main.forward().whenComplete((_) => _finish(animated: true));
+    _main.forward().whenComplete(() => _finish(animated: true));
     // Pengaman: apa pun yang terjadi, jangan biarkan app menggantung di splash.
     _fallback = Timer(const Duration(seconds: 5), _finish);
   }

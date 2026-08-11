@@ -1,6 +1,10 @@
 name: Deploy Firestore Rules
 
 on:
+  # Otomatis deploy tiap firestore.rules berubah di main (tidak perlu klik manual lagi)
+  push:
+    branches: [ main ]
+    paths: [ firestore.rules ]
   workflow_dispatch:
 
 jobs:

@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.1.0+2   # v1.1.0: Update in-app (banner + changelog), kamera cover/mirror, floating bubble, edit profil lengkap
+version: 1.1.1+3   # v1.1.1: FIX firestore.rules (pairing user ke-2 + app_config) & naikkan firebase_auth min ^4.20.0 (bug "PigeonUserDetails" cast)
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -12,10 +12,14 @@ dependencies:
   cupertino_icons: ^1.0.6
 
   # --- Firebase (Tanpa Storage, Tanpa App Check) ---
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  cloud_firestore: ^4.15.8
-  firebase_messaging: ^14.7.10
+  # PENTING: minimum dinaikkan supaya pubspec.lock RE-RESOLVE.
+  # firebase_auth 4.16.0 (lockfile lama) punya bug pigeon:
+  # "type 'List<Object?>' is not a subtype of type 'PigeonUserDetails?' in type cast"
+  # saat login/register. Fix sudah ada di 4.17.9+, jadi patok min 4.20.0 (ujung 4.x).
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.5
+  firebase_messaging: ^14.9.4
 
   # --- Cloudinary (Ganti Firebase Storage, NO CC) ---
   cloudinary_public: ^0.21.0

@@ -16,32 +16,36 @@ service cloud.firestore {
     // Gunakan ekspresi boolean dengan let (short-circuit mencegah get() di path null).
     function isPartner(uid) {
       let myUser = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return request.auth.uid == uid || (
+      return signedIn() && (request.auth.uid == uid || (
         myUser.exists &&
         myUser.data.coupleId != null &&
         uid in get(/databases/$(database)/documents/couples/$(myUser.data.coupleId)).data.members
-      );
+      ));
     }
 
     // Profil user — hanya diri sendiri dan pasangan
     match /users/{uid} {
-      allow read: if signedIn() && isPartner(uid);
+      allow read: if isPartner(uid);
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
     // Presence (online / typing / last seen) — hanya diri sendiri dan pasangan
     match /presence/{uid} {
-      allow read: if signedIn() && isPartner(uid);
+      allow read: if isPartner(uid);
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
-    // Invite code pairing — hanya pembuat atau anggota couple terkait
+    // Invite code pairing
+    // FIX #1: user ke-2 (pasangan) HARUS bisa baca kode SEBELUM join.
+    // Rules lama menolak karena dia belum member -> permission-denied di
+    // joinWithCode(). Kode itu sendiri rahasianya (acak, 24 jam, sekali pakai),
+    // jadi 'get' (baca SATU dok by id) aman untuk semua user yang login.
+    // 'list' (query semua kode) tetap dilarang biar kode orang tidak bisa di-dump.
     match /inviteCodes/{code} {
-      allow read: if signedIn() && (
-        resource.data.createdBy == request.auth.uid ||
-        isMember(resource.data.coupleId)
-      );
+      allow get: if signedIn();
+      allow list: if false;
       allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if false;
       allow delete: if signedIn() && (
         resource.data.createdBy == request.auth.uid ||
         isMember(resource.data.coupleId)
@@ -51,7 +55,16 @@ service cloud.firestore {
     // Metadata Couple — hanya anggota
     match /couples/{coupleId} {
       allow create: if signedIn() && request.auth.uid in request.resource.data.members;
-      allow read: if isMember(coupleId);
+
+      // FIX #2: saat joinWithCode(), pasangan membaca doc couple SEBELUM jadi
+      // member -> rules lama menolak. Sekarang: anggota boleh baca, dan user
+      // login manapun boleh GET doc couple yang masih kurang dari 2 anggota
+      // (masih "joinable"). 'list' dilarang -> tidak bisa dump semua couple.
+      allow get: if isMember(coupleId) || (
+        signedIn() && resource.data.members.size() < 2
+      );
+      allow list: if false;
+
       allow update: if signedIn() && (
         request.auth.uid in resource.data.members ||
         (request.auth.uid in request.resource.data.members && request.resource.data.members.size() <= 2)
@@ -78,6 +91,15 @@ service cloud.firestore {
       match /{document=**} {
         allow read, write: if isMember(coupleId);
       }
+    }
+
+    // Info update aplikasi (dibaca UpdateService.checkForUpdate di semua device)
+    // FIX #3: koleksi ini sebelumnya TIDAK ADA di rules -> selalu permission-denied.
+    // Isinya cuma info versi + link APK (tidak sensitif), jadi baca bebas;
+    // tulis cuma dari Firebase Console.
+    match /app_config/{doc} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'   # wrangler 4.x butuh Node >=22
 
       # Sinkron 4 worker secret dari GitHub Secrets -> `wrangler secret put`
       # (idempotent, aman diulang). Butuh 1 secret buatan user: CLOUDFLARE_API_TOKEN

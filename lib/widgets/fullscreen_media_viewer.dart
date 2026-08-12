@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'offline_first_image.dart';
 import 'inline_video_player.dart';
 import 'package:share_plus/share_plus.dart';
@@ -51,9 +52,27 @@ class FullscreenMediaViewer extends StatefulWidget {
 }
 
 class _FullscreenMediaViewerState extends State<FullscreenMediaViewer> {
+  static const _secCh = MethodChannel('dykal/secure_screen');
+
   bool _showControls = true;
   double _verticalOffset = 0;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.fromName == 'Foto Sekali Lihat') {
+      try { _secCh.invokeMethod('enable'); } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.fromName == 'Foto Sekali Lihat') {
+      try { _secCh.invokeMethod('disable'); } catch (_) {}
+    }
+    super.dispose();
+  }
 
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
@@ -211,29 +230,41 @@ class _FullscreenMediaViewerState extends State<FullscreenMediaViewer> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildActionButton(
-                      icon: Icons.download_rounded,
-                      label: 'Simpan',
-                      loading: _isSaving,
-                      onTap: _saveToGallery,
-                    ),
-                    _buildActionButton(
-                      icon: Icons.share_rounded,
-                      label: 'Bagikan',
-                      onTap: _shareMedia,
-                    ),
-                    if (widget.onDelete != null)
-                      _buildActionButton(
-                        icon: Icons.delete_outline_rounded,
-                        label: 'Hapus',
-                        color: Colors.redAccent,
-                        onTap: () {
-                          Navigator.pop(context);
-                          widget.onDelete!();
-                        },
-                      ),
-                  ],
+                  children: widget.fromName == 'Foto Sekali Lihat'
+                      ? [
+                          _buildActionButton(
+                            icon: Icons.check_circle_outline,
+                            label: 'Tutup & Hapus',
+                            color: const Color(0xFF00D68F),
+                            onTap: () {
+                              Navigator.pop(context);
+                              if (widget.onDelete != null) widget.onDelete!();
+                            },
+                          ),
+                        ]
+                      : [
+                          _buildActionButton(
+                            icon: Icons.download_rounded,
+                            label: 'Simpan',
+                            loading: _isSaving,
+                            onTap: _saveToGallery,
+                          ),
+                          _buildActionButton(
+                            icon: Icons.share_rounded,
+                            label: 'Bagikan',
+                            onTap: _shareMedia,
+                          ),
+                          if (widget.onDelete != null)
+                            _buildActionButton(
+                              icon: Icons.delete_outline_rounded,
+                              label: 'Hapus',
+                              color: Colors.redAccent,
+                              onTap: () {
+                                Navigator.pop(context);
+                                widget.onDelete!();
+                              },
+                            ),
+                        ],
                 ),
               ),
             ),

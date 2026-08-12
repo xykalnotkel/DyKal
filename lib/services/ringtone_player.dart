@@ -1,24 +1,24 @@
 import 'package:just_audio/just_audio.dart';
+import 'ringtone_service.dart';
 
 /// Putar ringtone "tuuut" berulang saat panggilan masuk / sedang memanggil.
 class RingtonePlayer {
-  static final _p = AudioPlayer();
   static bool _on = false;
 
   static Future<void> start() async {
     if (_on) return;
     _on = true;
     try {
-      await _p.setLoopMode(LoopMode.one);
-      await _p.setVolume(0.9);
-      await _p.setAsset('assets/sounds/ringtone.wav');
-      await _p.play();
+      await RingtoneService.playDefaultRingtone();
+      await RingtoneService.vibrateCall();
     } catch (_) {}
   }
 
   static Future<void> stop() async {
     _on = false;
-    try { await _p.stop(); } catch (_) {}
+    try {
+      await RingtoneService.stop();
+    } catch (_) {}
   }
 
   // ============ Nada sambung panggilan KELUAR (Batch H) ============
@@ -67,11 +67,7 @@ class RingtonePlayer {
 
   static Future<void> playNotif() async {
     try {
-      await _s.stop();
-      await _s.setLoopMode(LoopMode.off);
-      await _s.setVolume(0.8);
-      await _s.setAsset('assets/sounds/notif.wav');
-      await _s.play();
+      await RingtoneService.playDefaultNotification();
     } catch (_) {}
   }
 

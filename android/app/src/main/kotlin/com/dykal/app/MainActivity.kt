@@ -66,6 +66,66 @@ class MainActivity : FlutterActivity() {
                         currentRingtone = null
                         result.success(null)
                     }
+                    "playDefaultRingtone" -> {
+                        try {
+                            currentRingtone?.stop()
+                            val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                            currentRingtone = RingtoneManager.getRingtone(this, defaultUri)
+                            currentRingtone?.play()
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("PLAY_DEFAULT_RINGTONE_ERR", e.message, null)
+                        }
+                    }
+                    "playDefaultNotification" -> {
+                        try {
+                            val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                            val r = RingtoneManager.getRingtone(this, defaultUri)
+                            r?.play()
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("PLAY_DEFAULT_NOTIF_ERR", e.message, null)
+                        }
+                    }
+                    "vibrateCall" -> {
+                        try {
+                            val vibrator = getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                val pattern = longArrayOf(0, 1000, 1000)
+                                vibrator.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
+                            } else {
+                                vibrator.vibrate(longArrayOf(0, 1000, 1000), 0)
+                            }
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("VIBRATE_ERR", e.message, null)
+                        }
+                    }
+                    "stopVibrate" -> {
+                        try {
+                            val vibrator = getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+                            vibrator.cancel()
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("VIBRATE_ERR", e.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // Secure Screen Handler (Anti-Screenshot untuk ViewOnce)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dykal/secure_screen")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "enable" -> {
+                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        result.success(null)
+                    }
+                    "disable" -> {
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

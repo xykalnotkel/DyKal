@@ -334,7 +334,10 @@ class _ViewProfileScreenState extends State<ViewProfileScreen> with SingleTicker
           .where('type', isEqualTo: 'image')
           .snapshots(),
       builder: (context, snap) {
-        final docs = snap.data?.docs ?? [];
+        final docs = (snap.data?.docs ?? []).where((d) {
+          final m = d.data() as Map<String, dynamic>;
+          return (m['isViewOnce'] != true) && (m['type'] != 'viewOnce');
+        }).toList();
         if (docs.isEmpty) {
           return Center(
             child: Text('Belum ada media foto/video', style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 12)),

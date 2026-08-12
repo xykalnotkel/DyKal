@@ -20,7 +20,26 @@ class RingtoneService {
     try { await _ch.invokeMethod('play', {'uri': uri}); } catch (_) {}
   }
 
+  static Future<void> playDefaultRingtone() async {
+    try { await _ch.invokeMethod('playDefaultRingtone'); } catch (_) {}
+  }
+
+  static Future<void> playDefaultNotification() async {
+    try { await _ch.invokeMethod('playDefaultNotification'); } catch (_) {}
+  }
+
+  static Future<void> vibrateCall() async {
+    try { await _ch.invokeMethod('vibrateCall'); } catch (_) {}
+  }
+
+  static Future<void> stopVibrate() async {
+    try { await _ch.invokeMethod('stopVibrate'); } catch (_) {}
+  }
+
   static Future<void> stop() async {
-    try { await _ch.invokeMethod('stop'); } catch (_) {}
+    try {
+      await _ch.invokeMethod('stop');
+      await _ch.invokeMethod('stopVibrate');
+    } catch (_) {}
   }
 }

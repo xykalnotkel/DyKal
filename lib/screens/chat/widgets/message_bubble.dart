@@ -541,7 +541,11 @@ class MessageBubble extends StatelessWidget {
       FirebaseFirestore.instance
           .collection('chats/$cid/messages')
           .doc(message.id)
-          .update({'viewOnceOpened': true});
+          .update({
+            'viewOnceOpened': true,
+            'imageUrl': null,
+            'text': 'Foto sekali lihat telah dibuka',
+          });
     }
   }
 

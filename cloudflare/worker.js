@@ -65,6 +65,10 @@ export default {
     try {
       const accessToken = await getAccessToken(env);
       const isCall = type === 'call';
+      // Batch D: channel notif panggilan dipisah audio vs video — user bisa
+      // bedakan dering/getar keduanya di pengaturan sistem Android.
+      const callChannel = data && data.callType === 'audio' ? 'dykal_call_audio' : 'dykal_call_video';
+      const targetChannel = isCall ? callChannel : 'dykal_chat';
       const message = {
         token,
         notification: { title, body: msgBody || '' },
@@ -78,7 +82,7 @@ export default {
           ttl: isCall ? '45s' : '86400s',
           // icon: ic_notification = siluet hati resmi (drawable), BUKAN ic_launcher
           // (launcher icon ber-latar putih jadi kotak buram kalau dipaksa jadi icon status bar)
-          notification: { icon: 'ic_notification', color: '#FF6B8A', channel_id: isCall ? 'dykal_call' : 'dykal_chat', sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
+          notification: { icon: 'ic_notification', color: '#FF6B8A', channel_id: targetChannel, sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
         },
         apns: { payload: { aps: { sound: 'default' } } },
       };

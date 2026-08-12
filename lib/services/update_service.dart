@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'fcm_service.dart';
 
 class UpdateInfo {
   final String versionName;
@@ -111,6 +112,11 @@ class UpdateService extends ChangeNotifier {
     notifyListeners();
     try {
       availableUpdate = await _checkGithubRelease() ?? await _checkFirestoreConfig();
+      // Batch D: update realtime — bukan cuma banner di home, muncul juga
+      // sebagai NOTIFIKASI SISTEM dengan aksi "Unduh Sekarang".
+      if (availableUpdate != null) {
+        try { await FCMService().showUpdateNotif(availableUpdate!.versionName); } catch (_) {}
+      }
     } catch (_) {
       availableUpdate = null;
     } finally {

@@ -20,8 +20,12 @@ class FCMService {
   final _local = FlutterLocalNotificationsPlugin();
   final _db = FirebaseFirestore.instance;
   static GlobalKey<NavigatorState>? navKey; // di-set dari main.dart -> navigasi dari aksi notif
+  /// Callback unduh update dari aksi notif — diisi main.dart
+  /// (memutus siklus import update_service <-> fcm_service).
+  static Future<void> Function()? onUpdateDownload;
   String? _callType;     // 'audio'/'video' notif call terakhir
   String? _callCoupleId;
+  bool _localReady = false; // plugin lokal siap dipakai (setelah init)
 
   /// Dipanggil dari AuthGate setelah login (idempoten)
   void ensureInit() {
@@ -41,24 +45,31 @@ class FCMService {
       InitializationSettings(android: android, iOS: ios),
       onDidReceiveNotificationResponse: _onNotifResponse,
     );
+    _localReady = true;
 
-    // FIX #1: channel panggilan (high priority + fullScreenIntent + badge + sound)
-    const callChannel = AndroidNotificationChannel(
-      'dykal_call', 'Panggilan DyKal',
-      description: 'Notifikasi panggilan masuk',
-      importance: Importance.high,
-      playSound: true,
-      enableVibration: true,
-      showBadge: true,
-    );
-    await _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(callChannel);
-
-    // FIX FCM: channel CHAT dibuat explicit (biar notif pas app killed muncul) + request POST_NOTIFICATIONS runtime (Android 13+)
-    const chatChannel = AndroidNotificationChannel('dykal_chat', 'DyKal Chat', description: 'Notifikasi chat, surat & media', importance: Importance.high, playSound: true, showBadge: true);
-    final _loc = _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    if (_loc != null) {
-      await _loc.createNotificationChannel(chatChannel);
-      await _loc.requestNotificationsPermission();
+    // CHANNEL LENGKAP (Batch D — notifikasi all-in).
+    // PENTING: nama/level channel Android DIKUNCI saat pertama dibuat,
+    // jadi semua channel didaftarkan di sini sejak awal, bukan menunggu
+    // notif pertama muncul. Channel lama 'dykal_call' dipertahankan demi
+    // payload worker lama.
+    final loc = _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (loc != null) {
+      const channels = <AndroidNotificationChannel>[
+        AndroidNotificationChannel('dykal_call', 'Panggilan DyKal', description: 'Panggilan masuk (kompat lama)', importance: Importance.max, playSound: true, enableVibration: true, showBadge: true),
+        AndroidNotificationChannel('dykal_call_audio', 'Panggilan Suara DyKal', description: 'Panggilan suara masuk', importance: Importance.max, playSound: true, enableVibration: true, showBadge: true),
+        AndroidNotificationChannel('dykal_call_video', 'Panggilan Video DyKal', description: 'Panggilan video masuk', importance: Importance.max, playSound: true, enableVibration: true, showBadge: true),
+        AndroidNotificationChannel('dykal_chat', 'DyKal Chat', description: 'Notifikasi chat, surat & media', importance: Importance.high, playSound: true, showBadge: true),
+        AndroidNotificationChannel('dykal_chat_realtime', 'DyKal Realtime', description: 'Notifikasi realtime lokal (mode hemat)', importance: Importance.high, playSound: true, showBadge: true),
+        AndroidNotificationChannel('dykal_birthday', 'DyKal Moment', description: 'Pengingat ultah & anniversary', importance: Importance.high, playSound: true, showBadge: true),
+        AndroidNotificationChannel('dykal_update', 'Info Update DyKal', description: 'Versi & pembaruan aplikasi terbaru', importance: Importance.high, playSound: true, showBadge: true),
+      ];
+      for (final ch in channels) {
+        await loc.createNotificationChannel(ch);
+      }
+      await loc.requestNotificationsPermission();
+      // Izin FULL SCREEN INTENT (Android 14+ minta terpisah) — kunci agar
+      // panggilan masuk bisa tampil sebagai layar dering penuh.
+      try { await loc.requestFullScreenIntentPermission(); } catch (_) {}
     }
 
     // 3. Dapatkan & simpan token
@@ -131,8 +142,12 @@ class FCMService {
     final callType = msg.data['callType'] ?? 'video';
     _callType = callType;
     _callCoupleId = msg.data['coupleId'];
+    // Channel khusus per jenis panggilan (Batch D): user bisa atur dering/
+    // getar panggilan SUARA vs VIDEO secara terpisah di pengaturan Android.
+    final channelId = callType == 'audio' ? 'dykal_call_audio' : 'dykal_call_video';
+    final channelName = callType == 'audio' ? 'Panggilan Suara DyKal' : 'Panggilan Video DyKal';
     final androidDetails = AndroidNotificationDetails(
-      'dykal_call', 'Panggilan DyKal',
+      channelId, channelName,
       importance: Importance.max,
       priority: Priority.max,
       playSound: true,
@@ -167,6 +182,9 @@ class FCMService {
       await _markChatRead();
     } else if (r.actionId == 'mute') {
       await _muteChat();
+    } else if (r.actionId == 'download_update') {
+      final cb = onUpdateDownload;
+      if (cb != null) await cb();
     }
   }
 
@@ -246,13 +264,20 @@ class FCMService {
     _db.collection('chats').doc(coupleId).collection('messages')
       .limit(1)
       .snapshots()
-      .listen((snap) {
+      .listen((snap) async {
         if (snap.docs.isEmpty) return;
         final doc = snap.docs.first;
         final data = doc.data();
         final fromId = data['fromId'];
         // Jangan notif pesan sendiri
         if (fromId == myUid) return;
+        // Hormati toggle "Notifikasi Chat Masuk" milik user (Batch D fix:
+        // dulu fallback realtime mem-bypass preferensi dan tetap bunyi).
+        try {
+          final me = await _db.doc('users/$myUid').get();
+          final prefs = me.data()?['notifPrefs'] as Map<String, dynamic>?;
+          if (prefs != null && prefs['chat'] == false) return;
+        } catch (_) {}
         // Cek apakah app sedang di chat screen? bisa skip
         // Tampilkan local notif
         final text = data['text'] ?? (data['imageUrl'] != null ? 'Foto' : 'Pesan baru');
@@ -261,20 +286,50 @@ class FCMService {
   }
 
   Future<void> _showLocalChatNotif(String title, String body) async {
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'dykal_chat_realtime',
       'DyKal Realtime',
       channelDescription: 'Notifikasi realtime lokal',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
-      color: Color(0xFFFF6B8A),
+      color: const Color(0xFFFF6B8A),
+      // Fallback realtime juga bisa dibalas langsung dari notif (Batch D,
+      // sebelumnya aksi cuma ada di jalur FCM foreground).
+      actions: [
+        AndroidNotificationAction('reply', 'Balas', inputs: [AndroidNotificationActionInput(label: 'Ketik balasan...')], showsUserInterface: false, cancelNotification: false),
+        AndroidNotificationAction('mark_read', 'Tanda Dibaca', showsUserInterface: false, cancelNotification: true),
+      ],
     );
     await _local.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,
       body,
       NotificationDetails(android: androidDetails),
+    );
+  }
+
+  /// Notifikasi "ada versi baru" — dipicu UpdateService begitu menemukan
+  /// rilis terbaru (Batch D: update realtime, tak cuma banner di home).
+  Future<void> showUpdateNotif(String versionName) async {
+    if (!_localReady) return; // plugin belum init -> banner home tetap tampil
+    final androidDetails = AndroidNotificationDetails(
+      'dykal_update',
+      'Info Update DyKal',
+      channelDescription: 'Versi & pembaruan aplikasi terbaru',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: const Color(0xFFFF6B8A),
+      actions: [
+        AndroidNotificationAction('download_update', 'Unduh Sekarang', showsUserInterface: true, cancelNotification: true),
+      ],
+    );
+    await _local.show(
+      880001,
+      'DyKal v$versionName tersedia',
+      'Ada pembaruan baru. Sentuh untuk mengunduh.',
+      NotificationDetails(android: androidDetails),
+      payload: 'update',
     );
   }
 

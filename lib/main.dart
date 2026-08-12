@@ -31,6 +31,7 @@ import 'services/floating_service.dart';
 import 'services/theme_controller.dart';
 import 'services/bubble_style.dart';
 import 'services/wallpaper_settings.dart';
+import 'services/update_service.dart';
 import 'widgets/update_banner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -101,6 +102,9 @@ Future<void> _initNonFirebase() async {
     final high = modes.reduce((a, b) => a.refreshRate > b.refreshRate ? a : b);
     await FlutterDisplayMode.setPreferredMode(high);
   } catch (_) {}
+  // Aksi "Unduh Sekarang" dari notif update (diputus via callback agar
+  // fcm_service tidak import update_service -> siklus).
+  FCMService.onUpdateDownload = () => UpdateService.instance.downloadAndInstall();
   try { await ThemeController.instance.load(); } catch (_) {}
   try { await BubbleStyle.instance.load(); } catch (_) {}
   try { await WallpaperSettings.instance.load(); } catch (_) {}

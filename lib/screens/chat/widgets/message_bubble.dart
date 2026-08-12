@@ -351,7 +351,11 @@ class MessageBubble extends StatelessWidget {
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
           onLongPress: () => _showOptions(context),
-          child: Stack(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+          Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
@@ -442,6 +446,7 @@ class MessageBubble extends StatelessWidget {
                       _VoicePlayer(
                         url: message.voiceUrl!,
                         duration: message.voiceDuration ?? 0,
+                        wave: message.voiceWave,
                         accent: isMe ? Colors.white : DyKalTheme.primary,
                         trackColor: isMe ? Colors.white70 : DyKalTheme.textSecondaryOf(context),
                       ),
@@ -492,30 +497,31 @@ class MessageBubble extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (message.isEdited)
+                    if (BubbleStyle.instance.metaInside)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (message.isEdited)
+                            Text(
+                              'diedit • ',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isMe ? Colors.white70 : DyKalTheme.textSecondaryOf(context),
+                              ),
+                            ),
                           Text(
-                            'diedit • ',
+                            _formatTime(message.createdAt),
                             style: TextStyle(
                               fontSize: 10,
                               color: isMe ? Colors.white70 : DyKalTheme.textSecondaryOf(context),
                             ),
                           ),
-                        Text(
-                          _formatTime(message.createdAt),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isMe ? Colors.white70 : DyKalTheme.textSecondaryOf(context),
-                          ),
-                        ),
-                        if (isMe) ...[
-                          const SizedBox(width: 4),
-                          _statusIcon(),
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            _statusIcon(),
+                          ],
                         ],
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               ),
@@ -553,9 +559,51 @@ class MessageBubble extends StatelessWidget {
                 ),
             ],
           ),
+          // META DI LUAR BUBBLE (mode iOS) — status terkirim + waktu di bawah
+          // bubble. Dipilih pengguna via Settings > Tampilan.
+          if (!BubbleStyle.instance.metaInside)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (message.isEdited)
+                    Text(
+                      'diedit • ',
+                      style: TextStyle(fontSize: 10, color: DyKalTheme.textSecondaryOf(context)),
+                    ),
+                  Text(
+                    _formatTime(message.createdAt),
+                    style: TextStyle(fontSize: 10, color: DyKalTheme.textSecondaryOf(context)),
+                  ),
+                  if (isMe) ...[
+                    const SizedBox(width: 4),
+                    _outsideStatusIcon(),
+                  ],
+                ],
+              ),
+            ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// Ikon status versi luar-bubble (warna tema — bukan putih, biar terbaca
+  /// di atas wallpaper terang).
+  Widget _outsideStatusIcon() {
+    final base = DyKalTheme.textSecondaryOf(context);
+    switch (message.status) {
+      case MessageStatus.sending:
+        return Icon(Icons.schedule, size: 12, color: base);
+      case MessageStatus.sent:
+        return Icon(Icons.check, size: 12, color: base);
+      case MessageStatus.delivered:
+        return Icon(Icons.done_all, size: 12, color: base);
+      case MessageStatus.read:
+        return const Icon(Icons.done_all, size: 12, color: DyKalTheme.online);
+    }
   }
 
   void _markViewOnceOpened() {
@@ -731,7 +779,14 @@ class MessageBubble extends StatelessWidget {
                   style: FilledButton.styleFrom(backgroundColor: DyKalTheme.primary),
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    final p = await StickerStore.addFromUrl(message.imageUrl!);
+                    String? p;
+                    if (E2EService.isEncryptedUrl(message.imageUrl)) {
+                      // Stiker E2E: unduh cipher -> dekripsi -> impor file lokal
+                      final plain = await E2EService.downloadDecrypted(message.imageUrl!, ext: 'webp');
+                      if (plain != null) p = await StickerStore.add(File(plain));
+                    } else {
+                      p = await StickerStore.addFromUrl(message.imageUrl!);
+                    }
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(p == null ? 'Gagal menyimpan stiker' : 'Stiker ditambahkan ke Koleksi Favorit')),
@@ -784,7 +839,8 @@ class _VoicePlayer extends StatefulWidget {
   final int duration;
   final Color accent;
   final Color trackColor;
-  const _VoicePlayer({required this.url, required this.duration, required this.accent, required this.trackColor});
+  final List<int>? wave; // sampel gelombang asli (0-100) dari perekam
+  const _VoicePlayer({required this.url, required this.duration, required this.accent, required this.trackColor, this.wave});
 
   @override
   State<_VoicePlayer> createState() => _VoicePlayerState();
@@ -835,6 +891,50 @@ class _VoicePlayerState extends State<_VoicePlayer> {
     super.dispose();
   }
 
+  String _fmt(int sec) => '${sec ~/ 60}:${(sec % 60).toString().padLeft(2, '0')}';
+
+  /// GELOMBANG ASLI ala WA (permintaan owner): bar dibangun dari sampel
+  /// amplitudo yang ditangkap saat merekam — bukan garis lurus statis.
+  /// Bagian yang sudah diputar diwarnai aksen, sisanya warna track.
+  Widget _waveform(double progress) {
+    // Maksimum 30 bar: downsample sampel mentah (maks 90) dengan rata-rata.
+    const barCount = 30;
+    final src = (widget.wave != null && widget.wave!.isNotEmpty)
+        ? widget.wave!
+        : List.generate(barCount, (i) => 25 + ((i * 41) % 50)); // fallback sintetis utk VN lama
+    final samples = List<int>.generate(barCount, (i) {
+      final start = (i * src.length / barCount).floor();
+      var end = ((i + 1) * src.length / barCount).floor();
+      if (end <= start) end = start + 1;
+      var sum = 0;
+      var n = 0;
+      for (var j = start; j < end && j < src.length; j++) {
+        sum += src[j];
+        n++;
+      }
+      return n == 0 ? 20 : (sum / n).round();
+    });
+    final playedBars = (progress * barCount).clamp(0, barCount).floor();
+    return SizedBox(
+      height: 26,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          for (var i = 0; i < barCount; i++)
+            Container(
+              width: 3,
+              height: 4 + (samples[i].clamp(8, 100) / 100) * 22,
+              decoration: BoxDecoration(
+                color: i < playedBars ? widget.accent : widget.trackColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -867,29 +967,21 @@ class _VoicePlayerState extends State<_VoicePlayer> {
                 stream: _player.positionStream,
                 builder: (_, s) {
                   final pos = s.data ?? Duration.zero;
-                  final curSec = pos.inSeconds;
+                  final total = widget.duration;
+                  return _waveform(total > 0 ? (pos.inMilliseconds / (total * 1000)).clamp(0.0, 1.0) : 0.0);
+                },
+              ),
+              const SizedBox(height: 2),
+              StreamBuilder<Duration>(
+                stream: _player.positionStream,
+                builder: (_, s) {
+                  final pos = s.data ?? Duration.zero;
+                  // DURASI REAL: posisi jalan / total mm:ss
                   return Text(
-                    '${curSec ~/ 60}:${(curSec % 60).toString().padLeft(2, '0')} / ${widget.duration}s',
+                    '${_fmt(pos.inSeconds)} / ${_fmt(widget.duration)}',
                     style: TextStyle(fontSize: 11, color: widget.trackColor),
                   );
                 },
-              ),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: StreamBuilder<Duration>(
-                  stream: _player.positionStream,
-                  builder: (_, s) {
-                    final pos = s.data?.inMilliseconds ?? 0;
-                    final total = (widget.duration > 0 ? widget.duration * 1000 : 1);
-                    return LinearProgressIndicator(
-                      value: (pos / total).clamp(0.0, 1.0),
-                      backgroundColor: widget.trackColor.withValues(alpha: 0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(widget.accent),
-                      minHeight: 3,
-                    );
-                  },
-                ),
               ),
             ],
           ),

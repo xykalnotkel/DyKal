@@ -4,6 +4,7 @@ import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/push_service.dart';
 import 'letter_detail_screen.dart';
+import '../../widgets/dykal_loading.dart';
 
 class LetterScreen extends StatelessWidget {
   const LetterScreen({super.key});
@@ -22,7 +23,7 @@ class LetterScreen extends StatelessWidget {
         StreamBuilder<QuerySnapshot>(
           stream: coupleId == null ? null : FirebaseFirestore.instance.collection('couples/$coupleId/letters').snapshots(),
           builder: (context, snap) {
-            if (!snap.hasData) return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(0xFFFF6B8A)))));
+            if (!snap.hasData) return const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(40), child: DyKalSpinner()));
             final docs = snap.data!.docs;
             if (docs.isEmpty) return SliverFillRemaining(child: _empty());
             return SliverList.builder(

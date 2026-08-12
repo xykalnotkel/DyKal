@@ -483,6 +483,7 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
   StreamSubscription? _callSub;
   StreamSubscription? _connSub;
   StreamSubscription? _deliveredSub;
+  String _lastNet = 'none'; // jenis koneksi terakhir (wifi/mobile/none)
 
   @override
   void initState() {
@@ -492,6 +493,15 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     _setPresenceOnline(true);
     _connSub = Connectivity().onConnectivityChanged.listen((res) {
       final offline = res.isEmpty || res.every((e) => e == ConnectivityResult.none);
+      String net = 'none';
+      if (res.contains(ConnectivityResult.wifi)) {
+        net = 'wifi';
+      } else if (res.contains(ConnectivityResult.mobile)) {
+        net = 'mobile';
+      } else if (!offline) {
+        net = 'other';
+      }
+      _lastNet = net;
       _setPresenceOnline(!offline);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -518,6 +528,9 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
     if (uid.isEmpty) return;
     FirebaseFirestore.instance.doc('presence/$uid').set({
       'isOnline': online,
+      // Jenis koneksi ikut dilaporkan -> pasangan bisa bedakan "online via
+      // WiFi/Seluler" vs status offline (terakhir dilihat) di header chat.
+      'net': online ? _lastNet : 'none',
       if (!online) 'lastSeen': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -526,10 +539,20 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _setPresenceOnline(true);
+      _openPendingBubbleRoute();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached ||
         state == AppLifecycleState.hidden) {
       _setPresenceOnline(false);
+    }
+  }
+
+  /// Menu bubble "Buka Chat" menitipkan rute via shared prefs (native);
+  /// konsumsi di sini saat app resume.
+  Future<void> _openPendingBubbleRoute() async {
+    final route = await FloatingService.consumePendingRoute();
+    if (route == 'chat' && mounted) {
+      Navigator.of(context).pushNamed('/chat');
     }
   }
 

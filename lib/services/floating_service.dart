@@ -1,6 +1,7 @@
 
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service untuk floating bubble (chat overlay + video call overlay).
 /// Butuh permission SYSTEM_ALERT_WINDOW (sudah di manifest).
@@ -35,5 +36,20 @@ class FloatingService {
     try {
       await _platform.invokeMethod('hideBubble');
     } catch (_) {}
+  }
+
+  /// Rute tertunda dari menu bubble ("Buka Chat") — ditulis native ke
+  /// FlutterSharedPreferences ('pending_route'), dibaca & dibersihkan
+  /// sekali saat app resume (mis. dari MainNav).
+  static Future<String?> consumePendingRoute() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final route = prefs.getString('pending_route');
+      if (route != null) {
+        await prefs.remove('pending_route');
+        return route;
+      }
+    } catch (_) {}
+    return null;
   }
 }

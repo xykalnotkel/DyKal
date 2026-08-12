@@ -12,6 +12,7 @@ class ChatMessage {
   final String? imageUrl; // dari Cloudinary
   final String? voiceUrl;
   final int? voiceDuration; // detik
+  final List<int>? voiceWave; // sampel gelombang 0-100 (ditangkap saat merekam)
   final String? replyToId;
   final String? replyToText;
   final String? replyToName;
@@ -34,6 +35,7 @@ class ChatMessage {
     this.imageUrl,
     this.voiceUrl,
     this.voiceDuration,
+    this.voiceWave,
     this.replyToId,
     this.replyToText,
     this.replyToName,
@@ -57,6 +59,7 @@ class ChatMessage {
     'imageUrl': imageUrl,
     'voiceUrl': voiceUrl,
     'voiceDuration': voiceDuration,
+    'voiceWave': voiceWave,
     'replyToId': replyToId,
     'replyToText': replyToText,
     'replyToName': replyToName,
@@ -80,6 +83,7 @@ class ChatMessage {
     imageUrl: m['imageUrl'],
     voiceUrl: m['voiceUrl'],
     voiceDuration: m['voiceDuration'],
+    voiceWave: (m['voiceWave'] as List?)?.map((e) => (e as num).toInt()).toList(),
     replyToId: m['replyToId'],
     replyToText: m['replyToText'],
     replyToName: m['replyToName'],

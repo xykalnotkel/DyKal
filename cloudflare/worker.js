@@ -55,7 +55,7 @@ export default {
     // #4 VALIDASI + WHITELIST: field asing dibuang, string dipotong, token dicek polanya.
     const v = sanitizeBody(body);
     if (v.error) return json({ error: v.error }, 400);
-    const { token, title, msgBody, data, type } = v.value;
+    const { token, topic, title, msgBody, data, type } = v.value;
 
     // Diagnostik: pastikan 3 secret sudah ter-set
     if (!env.FCM_PROJECT_ID || !env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY) {
@@ -65,18 +65,20 @@ export default {
     try {
       const accessToken = await getAccessToken(env);
       const isCall = type === 'call';
+      const isUpdate = type === 'update';
       // Batch D: channel notif panggilan dipisah audio vs video — user bisa
       // bedakan dering/getar keduanya di pengaturan sistem Android.
       const callChannel = data && data.callType === 'audio' ? 'dykal_call_audio' : 'dykal_call_video';
-      const targetChannel = isCall ? callChannel : 'dykal_chat';
+      const targetChannel = isCall ? callChannel : (isUpdate ? 'dykal_update' : 'dykal_chat');
       const message = {
-        token,
+        // Target: topic whitelist (broadcast) ATAU token device — tidak dua2nya.
+        ...(topic ? { topic } : { token }),
         notification: { title, body: msgBody || '' },
         data,
         android: {
           priority: 'high',
           // collapse_key: banyak pesan beruntun -> 1 notif terbaru (anti numpuk)
-          collapse_key: isCall ? 'dykal_call' : 'dykal_chat',
+          collapse_key: isCall ? 'dykal_call' : (isUpdate ? 'dykal_update' : 'dykal_chat'),
           // ttl: notif panggilan basi setelah 45 dtk (telepon tak diangkat),
           // chat bertahan 24 jam kalau HP pasangan offline.
           ttl: isCall ? '45s' : '86400s',
@@ -104,15 +106,21 @@ export default {
 // #4 Whitelist ketat. Return {error} atau {value}.
 function sanitizeBody(body) {
   if (!body || typeof body !== 'object') return { error: 'bad json' };
-  const { token, title, body: msgBodyRaw, data: dataRaw, type: typeRaw } = body;
+  const { token, title, body: msgBodyRaw, data: dataRaw, type: typeRaw, topic: topicRaw } = body;
 
-  if (typeof token !== 'string' || token.length < 70 || token.length > 400 || !/^[A-Za-z0-9_\-.:%]+$/.test(token)) {
+  // Batch: dukung TARGET TOPIC (whitelist ketat) untuk broadcast CI, mis.
+  // notif update realtime ke semua device. Kalau topic dipakai, token diabaikan.
+  let topic = null;
+  if (typeof topicRaw === 'string' && ['app_updates'].includes(topicRaw)) {
+    topic = topicRaw;
+  }
+  if (!topic && (typeof token !== 'string' || token.length < 70 || token.length > 400 || !/^[A-Za-z0-9_\-.:%]+$/.test(token))) {
     return { error: 'token tidak valid' };
   }
   if (typeof title !== 'string' || title.trim() === '') return { error: 'title required' };
 
   // type: whitelist, selain itu dipaksa 'chat' (bukan ditolak, demi kompatibilitas app lama)
-  const type = ['chat', 'call', 'letter'].includes(typeRaw) ? typeRaw : 'chat';
+  const type = ['chat', 'call', 'letter', 'update'].includes(typeRaw) ? typeRaw : 'chat';
 
   // data: hanya object polos, maks 12 key, key alfanumerik, nilai scalar -> string maks 200 char
   const data = {};
@@ -130,7 +138,8 @@ function sanitizeBody(body) {
 
   return {
     value: {
-      token,
+      token: topic ? '' : token,
+      topic,
       title: title.slice(0, 120),
       msgBody: typeof msgBodyRaw === 'string' ? msgBodyRaw.slice(0, 500) : '',
       data,

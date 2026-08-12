@@ -115,7 +115,7 @@ class UpdateService extends ChangeNotifier {
       // Batch D: update realtime — bukan cuma banner di home, muncul juga
       // sebagai NOTIFIKASI SISTEM dengan aksi "Unduh Sekarang".
       if (availableUpdate != null) {
-        try { await FCMService().showUpdateNotif(availableUpdate!.versionName); } catch (_) {}
+        try { await FCMService().showUpdateNotif('DyKal v${availableUpdate!.versionName} tersedia'); } catch (_) {}
       }
     } catch (_) {
       availableUpdate = null;
@@ -220,18 +220,23 @@ class UpdateService extends ChangeNotifier {
           if (total > 0) {
             downloadProgress = (received / total).clamp(0.0, 1.0);
             notifyListeners();
+            // Persen live juga ke TRAY Android (permintaan owner:
+            // "notifikasi unduhan"), bukan cuma di dalam app.
+            FCMService().showDownloadProgress((downloadProgress * 100).round());
           }
         },
       );
 
       isDownloading = false;
       notifyListeners();
+      await FCMService().cancelDownloadNotif();
 
       // Trigger native installer (FileProvider sudah dikonfigurasi di MainActivity)
       await _installerChannel.invokeMethod('installApk', {'filePath': savePath});
     } catch (e) {
       isDownloading = false;
       notifyListeners();
+      await FCMService().cancelDownloadNotif();
     }
   }
 }

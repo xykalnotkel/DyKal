@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/theme.dart';
 import '../../services/update_service.dart';
+import '../../widgets/dykal_loading.dart';
 
 /// Pusat Notifikasi — permintaan owner: menu baru di topbar untuk info
 /// update & pengumuman. Isinya:
@@ -184,7 +185,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: DyKalTheme.primary)),
+            child: DyKalSpinner(size: 28),
           );
         }
         final docs = snap.data?.docs ?? [];

@@ -8,6 +8,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart'; // FIX #15: preview VN sebelum kirim
+import 'package:dio/dio.dart'; // uji koneksi beneran (probe /health)
 import '../../config/theme.dart';
 import '../../models/chat_message.dart';
 import '../../services/app_logger.dart';
@@ -43,6 +44,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
   final _recorder = AudioRecorder();
+  Timer? _ampTimer;             // sampler amplitudo -> waveform VN asli
+  final List<int> _recWave = []; // sampel 0-100 per 200ms
+  List<int>? _lastWave;         // sampel rekam terakhir (dipakai saat kirim)
   Timer? _recTimer;
   ChatMessage? _replyTo;
   bool _isTyping = false;
@@ -200,6 +204,7 @@ class _ChatScreenState extends State<ChatScreen> {
     required Future<String?> Function() upload,
     String? caption,
     int? voiceDuration,
+    List<int>? voiceWave,
     bool viewOnce = false,
   }) async {
     final msg = ChatMessage(
@@ -211,6 +216,7 @@ class _ChatScreenState extends State<ChatScreen> {
       imageUrl: null,
       voiceUrl: null,
       voiceDuration: voiceDuration,
+      voiceWave: voiceWave,
       replyToId: _replyTo?.id,
       replyToText: _replyTo == null ? null : _replyPreviewText(_replyTo!),
       replyToName: _replyTo == null ? null : (_replyTo!.fromId == _myId ? AuthService().myName : _partnerName),
@@ -262,15 +268,28 @@ class _ChatScreenState extends State<ChatScreen> {
     PushService.notifyPartner(title: AuthService().myName, body: preview);
   }
 
+  /// LOGIKA BARU (revisi owner): popup JANGAN tampil saat user sengaja
+  /// mematikan internet (ConnectivityResult.none) — itu hak dia. Popup hanya
+  /// muncul saat interface NYALA (wifi/seluler) TAPI paket benar-benar tidak
+  /// tembus (kuota habis, sinyal bohong, dsb) = koneksi "nyala palsu".
   Future<void> _checkConn() async {
     try {
       final r = await Connectivity().checkConnectivity();
-      final offline = r.isEmpty || r.every((e) => e == ConnectivityResult.none);
-      if (offline && mounted) {
+      final noInterface = r.isEmpty || r.every((e) => e == ConnectivityResult.none);
+      if (noInterface) return; // user mematikan koneksi -> diamkan (offline mode WA)
+
+      // Interface nyala -> UJI KONEKSI BENERAN ke server kita (bukan cuma
+      // nanya OS, karena OS bilang "connected" walau kuota habis).
+      final ok = await Dio()
+          .head('https://push.xystudio.my.id/health')
+          .timeout(const Duration(seconds: 4))
+          .then((_) => true)
+          .catchError((_) => false);
+      if (!ok && mounted) {
         showDialog(context: context, builder: (_) => AlertDialog(
-          icon: const Icon(Icons.wifi_off, color: Color(0xFFFF6B8A), size: 40),
-          title: const Text('Tidak ada koneksi internet'),
-          content: const Text('Pesan tertahan (ikon jam). Nyalakan data seluler atau sambungkan ke WiFi — pesan terkirim otomatis saat online.'),
+          icon: const Icon(Icons.wifi_tethering_off, color: Color(0xFFFF6B8A), size: 40),
+          title: const Text('Internet nyala tapi tak tembus'),
+          content: const Text('WiFi/data nyala tapi paket tidak sampai — kemungkinan kuota habis atau jaringan macet. Pesan tertahan (ikon jam) dan terkirim otomatis saat akses pulih.'),
           actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
         ));
       }
@@ -321,7 +340,9 @@ class _ChatScreenState extends State<ChatScreen> {
     await _sendWithUpload(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: MessageType.sticker,
-      upload: () => CloudinaryService().uploadImage(f, folder: 'dykal/stiker'),
+      // Stiker ikut E2E (owner): di lokal sudah .webp.crypt15, ke Cloudinary
+      // sekarang juga terenkripsi — bukan lagi webp polos.
+      upload: () => _uploadMaybeE2E(f, kind: 'image', plainFolder: 'dykal/stiker'),
     );
   }
 
@@ -347,6 +368,17 @@ class _ChatScreenState extends State<ChatScreen> {
     await _recorder.start(RecordConfig(encoder: AudioEncoder.aacLc), path: _recPath!);
     setState(() { _isRecording = true; _recSecs = 0; _locked = false; });
     _recTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _recSecs++));
+    // Sampel amplitudo setiap 200ms -> GELOMBANG ASLI di gelembung VN
+    // (permintaan owner; dulu geometri statis). dBFS -50..0 dinormalisasi 0-100.
+    _recWave.clear();
+    _ampTimer?.cancel();
+    _ampTimer = Timer.periodic(const Duration(milliseconds: 200), (_) async {
+      try {
+        final a = await _recorder.getAmplitude();
+        final norm = ((a.current + 50) / 50).clamp(0.0, 1.0);
+        if (_recWave.length < 90) _recWave.add((norm * 100).round());
+      } catch (_) {}
+    });
     _setRecording(true);
   }
 
@@ -354,6 +386,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!_isRecording) return;
     await _playSound('assets/sounds/vn_cancel.wav');
     _recTimer?.cancel();
+    _ampTimer?.cancel();
     try { await _recorder.stop(); } catch (_) {}
     setState(() { _isRecording = false; _locked = false; });
     _setRecording(false);
@@ -367,6 +400,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _stopRec({bool send = true}) async {
     if (!_isRecording) return;
     _recTimer?.cancel();
+    _ampTimer?.cancel();
+    _lastWave = List.of(_recWave);
     final path = await _recorder.stop();
     final secs = _recSecs;
     setState(() { _isRecording = false; _locked = false; });
@@ -379,6 +414,7 @@ class _ChatScreenState extends State<ChatScreen> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         type: MessageType.voice,
         voiceDuration: secs,
+        voiceWave: _lastWave,
         upload: () => _uploadMaybeE2E(File(path), kind: 'audio'),
       );
     } else {
@@ -449,6 +485,7 @@ class _ChatScreenState extends State<ChatScreen> {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: MessageType.voice,
       voiceDuration: secs,
+      voiceWave: _lastWave,
       upload: () => _uploadMaybeE2E(File(path), kind: 'audio'),
     );
   }
@@ -578,7 +615,25 @@ class _ChatScreenState extends State<ChatScreen> {
               final online = data?['isOnline'] ?? false;
               final typing = data?['isTyping'] ?? false;
               final rec = data?['isRecording'] ?? false;
-              String sub = typing ? 'mengetik...' : rec ? 'merekam audio...' : online ? 'online' : 'offline';
+              final net = data?['net'] as String? ?? 'none'; // wifi/mobile/none
+              final lastSeen = data?['lastSeen'];
+              // Status pintar (permintaan owner):
+              // - online + jenis koneksi (WiFi/Seluler)
+              // - offline jujur: "Terakhir dilihat ..." (kemungkinan data mati)
+              String sub;
+              if (typing) {
+                sub = 'mengetik...';
+              } else if (rec) {
+                sub = 'merekam audio...';
+              } else if (online) {
+                final via = net == 'wifi' ? 'WiFi' : (net == 'mobile' ? 'data seluler' : 'online');
+                sub = 'Online · $via';
+              } else if (lastSeen is Timestamp) {
+                final dt = lastSeen.toDate();
+                sub = 'Terakhir dilihat ${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+              } else {
+                sub = 'offline';
+              }
               return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Text(_partnerName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(width: 6), Icon(Icons.favorite, color: DyKalTheme.primary, size: 14)]),
                 if (typing)

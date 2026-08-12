@@ -11,13 +11,20 @@ class BubbleStyle extends ChangeNotifier {
   static final BubbleStyle instance = BubbleStyle._();
 
   static const key = 'bubble_style';
+  static const metaKey = 'bubble_meta_inside';
   int _style = 0;
   int get style => _style;
+
+  /// Posisi status terkirim & waktu (permintaan owner):
+  /// true = di DALAM bubble (ala WA), false = di LUAR bawah bubble (ala iOS).
+  bool _metaInside = true;
+  bool get metaInside => _metaInside;
 
   Future<void> load() async {
     try {
       final p = await SharedPreferences.getInstance();
       _style = p.getInt(key) ?? 0;
+      _metaInside = p.getBool(metaKey) ?? true;
       notifyListeners();
     } catch (_) {}
   }
@@ -28,6 +35,15 @@ class BubbleStyle extends ChangeNotifier {
     try {
       final p = await SharedPreferences.getInstance();
       await p.setInt(key, s);
+    } catch (_) {}
+  }
+
+  Future<void> setMetaInside(bool inside) async {
+    _metaInside = inside;
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(metaKey, inside);
     } catch (_) {}
   }
 

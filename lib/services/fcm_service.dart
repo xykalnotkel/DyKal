@@ -93,6 +93,10 @@ class FCMService {
         await _messaging.subscribeToTopic(coupleId);
       }
     }
+    // BATCH: topic 'app_updates' — CI membroadcast push ke topic ini setiap
+    // rilis baru (jadi notif update NEMBAK BENERAN, bukan cuma dicek saat
+    // app dibuka). Worker route topic sudah disiapkan.
+    try { await _messaging.subscribeToTopic('app_updates'); } catch (_) {}
   }
 
   Future<void> _saveToken({String? token}) async {
@@ -113,6 +117,14 @@ class FCMService {
   void _handleForegroundMessage(RemoteMessage msg) async {
     // FIX #1: panggilan -> notif khusus (accept/decline + fullScreenIntent + nama)
     if (msg.data['type'] == 'call') { _handleCallMessage(msg); return; }
+    // BATCH: push update realtime dari CI (topic app_updates) -> notif kanal
+    // dykal_update lengkap dengan tombol Unduh Sekarang.
+    if (msg.data['type'] == 'update') {
+      final title = msg.notification?.title ?? 'DyKal versi terbaru';
+      final body = msg.notification?.body ?? 'Ada pembaruan baru. Sentuh untuk mengunduh.';
+      await showUpdateNotif(title, body: body);
+      return;
+    }
     final notif = msg.notification;
     if (notif == null) return;
     final androidDetails = AndroidNotificationDetails(
@@ -310,8 +322,8 @@ class FCMService {
   }
 
   /// Notifikasi "ada versi baru" — dipicu UpdateService begitu menemukan
-  /// rilis terbaru (Batch D: update realtime, tak cuma banner di home).
-  Future<void> showUpdateNotif(String versionName) async {
+  /// rilis terbaru (lokal) & push topic app_updates dari CI (realtime).
+  Future<void> showUpdateNotif(String title, {String body = 'Ada pembaruan baru. Sentuh untuk mengunduh.'}) async {
     if (!_localReady) return; // plugin belum init -> banner home tetap tampil
     final androidDetails = AndroidNotificationDetails(
       'dykal_update',
@@ -326,11 +338,41 @@ class FCMService {
     );
     await _local.show(
       880001,
-      'DyKal v$versionName tersedia',
-      'Ada pembaruan baru. Sentuh untuk mengunduh.',
+      title,
+      body,
       NotificationDetails(android: androidDetails),
       payload: 'update',
     );
+  }
+
+  /// PROGRESS UNDUHAN sebagai notifikasi Android (permintaan owner):
+  /// persen berjalan live di tray, id tetap 880002 (update, bukan numpuk).
+  Future<void> showDownloadProgress(int pct) async {
+    if (!_localReady) return;
+    final androidDetails = AndroidNotificationDetails(
+      'dykal_update',
+      'Info Update DyKal',
+      channelDescription: 'Versi & pembaruan aplikasi terbaru',
+      importance: Importance.low, // senyap — progress tidak perlu bunyi
+      priority: Priority.low,
+      showProgress: true,
+      maxProgress: 100,
+      progress: pct.clamp(0, 100),
+      onlyAlertOnce: true,
+      ongoing: true,
+      color: const Color(0xFFFF6B8A),
+    );
+    await _local.show(
+      880002,
+      'Mengunduh update DyKal',
+      '$pct%',
+      NotificationDetails(android: androidDetails),
+    );
+  }
+
+  Future<void> cancelDownloadNotif() async {
+    if (!_localReady) return;
+    try { await _local.cancel(880002); } catch (_) {}
   }
 
   // Top-level handler untuk background (harus di luar class, daftarkan di main.dart)

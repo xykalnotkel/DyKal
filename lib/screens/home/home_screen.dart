@@ -18,17 +18,30 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   /// Cap waktu terakhir pusat notifikasi dibaca — dasar badge lonceng.
   int _notifSeenMs = 0;
+
+  /// Animasi bubble tip pada lonceng (permintaan owner): keluar-masuk
+  /// berulang untuk kabar PENTING (update app / pengumuman) sampai ditindak.
+  late final AnimationController _tipCtrl;
 
   @override
   void initState() {
     super.initState();
+    _tipCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1900))
+      ..repeat();
+
     SharedPreferences.getInstance().then((p) {
       final v = p.getInt(NotificationsScreen.seenKey) ?? 0;
       if (mounted) setState(() => _notifSeenMs = v);
     });
+  }
+
+  @override
+  void dispose() {
+    _tipCtrl.dispose();
+    super.dispose();
   }
 
   /// Nama pasangan: jika saya member A (pembuat couple), pasangan ada di
@@ -292,32 +305,111 @@ class _HomeScreenState extends State<HomeScreen> {
               .limit(10)
               .snapshots(),
           builder: (context, snap) {
-            var unseen = updateCount;
+            var unseenAnn = 0;
             for (final d in snap.data?.docs ?? const <QueryDocumentSnapshot>[]) {
               final ts = (d.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
-              if (ts != null && ts.millisecondsSinceEpoch > _notifSeenMs) unseen++;
+              if (ts != null && ts.millisecondsSinceEpoch > _notifSeenMs) unseenAnn++;
             }
-            return IconButton(
-              tooltip: 'Notifikasi',
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                );
-                // Refresh badge setelah layar notif ditutup.
-                final p = await SharedPreferences.getInstance();
-                if (mounted) setState(() => _notifSeenMs = p.getInt(NotificationsScreen.seenKey) ?? 0);
-              },
-              icon: Badge(
-                isLabelVisible: unseen > 0,
-                label: Text('$unseen'),
-                backgroundColor: DyKalTheme.primary,
-                child: Icon(Icons.notifications_outlined, color: DyKalTheme.textPrimaryOf(context)),
-              ),
+            final unseen = updateCount + unseenAnn;
+            // Teks bubble tip: prioritaskan UPDATE (permintaan owner).
+            final String? tip = updateCount > 0
+                ? 'Ada Update Aplikasi Terbaru'
+                : (unseenAnn > 0 ? 'Ada pengumuman baru' : null);
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  tooltip: 'Notifikasi',
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    );
+                    // Refresh badge setelah layar notif ditutup.
+                    final p = await SharedPreferences.getInstance();
+                    if (mounted) setState(() => _notifSeenMs = p.getInt(NotificationsScreen.seenKey) ?? 0);
+                  },
+                  icon: Badge(
+                    isLabelVisible: unseen > 0,
+                    label: Text('$unseen'),
+                    backgroundColor: DyKalTheme.primary,
+                    child: Icon(Icons.notifications_outlined, color: DyKalTheme.textPrimaryOf(context)),
+                  ),
+                ),
+                if (tip != null) _tipBubble(tip),
+              ],
             );
           },
         );
       },
+    );
+  }
+
+  /// Bubble tip beranimasi keluar-masuk dari ikon lonceng: gelembung dengan
+  /// EKOR TAJAM mengarah ke lonceng. Loop terus sampai kabar penting
+  /// ditindak (update terinstal / pengumuman dibaca).
+  Widget _tipBubble(String text) {
+    return Positioned(
+      top: 46,
+      right: 0,
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _tipCtrl,
+          builder: (context, _) {
+            // 0.0-0.35 tumbuh keluar, 0.35-0.7 diam, 0.7-1.0 menyusut masuk.
+            final t = _tipCtrl.value;
+            double s;
+            if (t < 0.35) {
+              s = Curves.easeOutBack.transform(t / 0.35);
+            } else if (t < 0.7) {
+              s = 1.0;
+            } else {
+              s = 1.0 - Curves.easeIn.transform((t - 0.7) / 0.3);
+            }
+            return Opacity(
+              opacity: s.clamp(0.0, 1.0),
+              child: Transform.scale(
+                scale: s.clamp(0.05, 1.2),
+                alignment: Alignment.topRight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Ekor tajam segitiga menunjuk ke lonceng
+                    Padding(
+                      padding: const EdgeInsets.only(right: 14),
+                      child: CustomPaint(
+                        size: const Size(12, 7),
+                        painter: _TipTailPainter(DyKalTheme.primary),
+                      ),
+                    ),
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 190),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: DyKalTheme.dykalGradient,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(14),
+                          topRight: Radius.circular(4), // sisi ekor tajam
+                          bottomLeft: Radius.circular(14),
+                          bottomRight: Radius.circular(14),
+                        ),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: Text(
+                        text,
+                        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -579,4 +671,24 @@ class SliverToBoxHeader extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Painter ekor tajam segitiga untuk bubble tip lonceng notifikasi.
+class _TipTailPainter extends CustomPainter {
+  final Color color;
+  const _TipTailPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(size.width, 0) // pangkal kanan (sisi ekor)
+      ..lineTo(size.width - size.height, size.height) // turun ke kiri
+      ..lineTo(size.width - size.height * 2, 0) // kembali ke atas
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TipTailPainter oldDelegate) => oldDelegate.color != color;
 }

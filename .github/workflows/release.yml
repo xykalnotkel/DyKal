@@ -118,3 +118,18 @@ jobs:
             DyKal-universal.apk
           draft: false
           prerelease: false
+
+      # BROADCAST PUSH REALTIME (permintaan owner): begitu release kebuat,
+      # semua device DyKal subscriber topic 'app_updates' langsung nge-push
+      # notif 'Ada Update' — bukan nunggu user buka app. Gagal broadcast
+      # TIDAK menggagalkan rilis (|| true).
+      - name: Broadcast push update ke semua device (topic app_updates)
+        env:
+          DYKAL_PUSH_KEY: ${{ secrets.DYKAL_PUSH_KEY }}
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          curl -sS -X POST "https://push.xystudio.my.id" \
+            -H "Content-Type: application/json" \
+            -H "x-dykal-key: $DYKAL_PUSH_KEY" \
+            -d "{\"topic\":\"app_updates\",\"title\":\"DyKal v$V terbaru rilis\",\"body\":\"Ada update aplikasi terbaru — ketuk untuk unduh sekarang.\",\"type\":\"update\",\"data\":{\"type\":\"update\",\"version\":\"$V\"}}" \
+            | head -c 200 || true

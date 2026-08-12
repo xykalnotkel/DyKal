@@ -4,6 +4,7 @@ import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/photo_shape.dart';
 import 'album_detail_screen.dart';
+import '../../widgets/dykal_loading.dart';
 
 class AlbumScreen extends StatelessWidget {
   const AlbumScreen({super.key});
@@ -125,7 +126,7 @@ class AlbumScreen extends StatelessWidget {
               if (_coupleId.isEmpty || snap.hasError) {
                 return SliverFillRemaining(child: Center(child: Padding(padding: const EdgeInsets.all(20), child: Text('Belum ada album. Tap + untuk membuat.', style: TextStyle(color: DyKalTheme.textGrey)))));
               }
-              if (!snap.hasData) return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(0xFFFF6B8A)))));
+              if (!snap.hasData) return const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(40), child: DyKalSpinner()));
               final docs = snap.data!.docs;
               if (docs.isEmpty) return SliverFillRemaining(child: _empty(context));
               return SliverPadding(

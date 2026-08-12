@@ -41,7 +41,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<String> _storyAudioPaths = [];
   int _bubbleStyle = 0;
   int _mediaVisibility = 0;
-  String _cacheSize = '0 MB';
+  // Statistik penyimpanan per kategori (label -> bytes) — UI bar bersegmen.
+  Map<String, int> _storage = {};
+  int _storageTotal = 0;
   bool _bubbleEnabled = false;
 
   @override
@@ -128,24 +130,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _bubbleEnabled = enable);
   }
 
+  /// Hitung ukuran per kategori: cache, foto, video, audio/VN, stiker,
+  /// wallpaper. Sumber: tempDir + struktur MediaSaver + folder wallpaper.
   Future<void> _calculateCacheSize() async {
     try {
-      final tempDir = await getTemporaryDirectory();
-      int totalBytes = 0;
-      if (await tempDir.exists()) {
-        await for (final file in tempDir.list(recursive: true, followLinks: false)) {
-          if (file is File) {
-            final stat = await file.stat();
-            totalBytes += stat.size;
-          }
+      final m = <String, int>{};
+
+      int? tempBytes;
+      Future<int> dirSize(String path) async {
+        var total = 0;
+        final d = Directory(path);
+        if (!await d.exists()) return 0;
+        await for (final e in d.list(recursive: true, followLinks: false)) {
+          if (e is File) total += (await e.stat()).size;
         }
+        return total;
       }
+
+      final tempDir = await getTemporaryDirectory();
+      tempBytes = await dirSize(tempDir.path);
+      m['Cache sementara'] = tempBytes;
+
+      const root = '/storage/emulated/0/Android/media/com.dykal.app/Dykal/Media';
+      m['Foto & Gambar'] = await dirSize('$root/Dykal Images');
+      m['Video'] = await dirSize('$root/Dykal Video');
+      m['Audio & Voice Note'] = await dirSize('$root/Dykal Audio');
+      m['Stiker'] = await dirSize('$root/Dykal Stickers');
+
+      final docs = await getApplicationDocumentsDirectory();
+      m['Wallpaper kustom'] = await dirSize('${docs.path}/wallpapers');
+
+      final total = m.values.fold<int>(0, (a, b) => a + b);
       if (mounted) {
         setState(() {
-          _cacheSize = '${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+          _storage = m;
+          _storageTotal = total;
         });
       }
     } catch (_) {}
+  }
+
+  String _fmtBytes(int b) {
+    if (b < 1024) return '$b B';
+    final kb = b / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(0)} KB';
+    final mb = kb / 1024;
+    if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+    return '${(mb / 1024).toStringAsFixed(2)} GB';
   }
 
   Future<void> _clearCache() async {
@@ -376,6 +407,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 4),
+              ListenableBuilder(
+                listenable: BubbleStyle.instance,
+                builder: (context, _) => SwitchListTile(
+                  secondary: Icon(Icons.format_indent_decrease, color: DyKalTheme.textSecondaryOf(context), size: 20),
+                  title: const Text('Status & Waktu di Dalam Bubble', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  subtitle: Text(
+                    BubbleStyle.instance.metaInside ? 'Ala WhatsApp (mepet teks)' : 'Ala iOS (di bawah bubble)',
+                    style: TextStyle(fontSize: 11, color: DyKalTheme.textSecondaryOf(context)),
+                  ),
+                  value: BubbleStyle.instance.metaInside,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: DyKalTheme.primary,
+                  onChanged: (v) => BubbleStyle.instance.setMetaInside(v),
+                ),
+              ),
               const Divider(height: 20),
               ListenableBuilder(
                 listenable: WallpaperSettings.instance,
@@ -473,15 +520,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Lokasi Scoped Media',
                 'Android/media/com.dykal.app/Dykal/Media/',
               ),
-              ListTile(
-                leading: const Icon(Icons.cleaning_services_outlined, color: Colors.redAccent),
-                title: const Text('Bersihkan Berkas Sementara', style: TextStyle(fontSize: 14)),
-                subtitle: Text('Ukuran cache saat ini: $_cacheSize', style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context))),
-                trailing: TextButton(
-                  onPressed: _clearCache,
-                  child: const Text('Bersihkan', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              // --- STATISTIK PENYIMPANAN (permintaan owner: UI bagus + statistik) ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Total: ${_fmtBytes(_storageTotal)}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _clearCache,
+                      icon: const Icon(Icons.cleaning_services_outlined, size: 15, color: Colors.redAccent),
+                      label: const Text('Bersihkan Cache', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600, fontSize: 12)),
+                    ),
+                  ],
                 ),
               ),
+              _storageBar(),
+              ..._storageLegend(),
+              const SizedBox(height: 8),
             ],
           ),
 
@@ -581,38 +641,107 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// REVISI OWNER: judul section DI LUAR card, isi tetap di dalam card.
+  /// (Pola settings modern — judul melayang di atas kontennya.)
   Widget _sectionCard({
     required String title,
     required IconData icon,
     required List<Widget> children,
   }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: DyKalTheme.cardOf(context),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: DyKalTheme.borderOf(context)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+          child: Row(
+            children: [
+              Icon(icon, color: DyKalTheme.primary, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: DyKalTheme.primary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: DyKalTheme.cardOf(context),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: DyKalTheme.borderOf(context)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static const _storageColors = <String, Color>{
+    'Cache sementara': Colors.orange,
+    'Foto & Gambar': Color(0xFFFF6B8A),
+    'Video': Color(0xFF7B6CF6),
+    'Audio & Voice Note': Color(0xFF00BFA5),
+    'Stiker': Color(0xFFFFC857),
+    'Wallpaper kustom': Color(0xFF64B5F6),
+  };
+
+  /// Bar bersegmen proporsional per kategori (ala storage usage WA).
+  Widget _storageBar() {
+    final entries = _storage.entries.where((e) => e.value > 0).toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          height: 12,
+          child: entries.isEmpty
+              ? Container(color: DyKalTheme.borderOf(context))
+              : Row(
+                  children: [
+                    for (final e in entries)
+                      Expanded(
+                        flex: ((e.value / _storageTotal) * 1000).round().clamp(1, 1000),
+                        child: Container(color: _storageColors[e.key] ?? DyKalTheme.primary),
+                      ),
+                  ],
+                ),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    );
+  }
+
+  List<Widget> _storageLegend() {
+    return [
+      for (final e in _storage.entries)
+        if (e.value > 0)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
             child: Row(
               children: [
-                Icon(icon, color: DyKalTheme.primary, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: DyKalTheme.primary),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: _storageColors[e.key] ?? DyKalTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(e.key, style: const TextStyle(fontSize: 12))),
+                Text(_fmtBytes(e.value), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: DyKalTheme.textSecondaryOf(context))),
               ],
             ),
           ),
-          ...children,
-        ],
-      ),
-    );
+    ];
   }
 
   Widget _toggle(IconData icon, String title, bool value, ValueChanged<bool>? onChanged) {
@@ -735,35 +864,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ...systemList,
     ];
 
+    // FIX (owner): nada harus bisa DIPUTAR dulu sebelum dipilih. Channel
+    // native dykal/ringtone sudah support play/stop — tinggal disambungkan.
+    String? playingUri;
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Pilih Nada', style: TextStyle(fontSize: 16)),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: options.length,
-            itemBuilder: (_, i) {
-              final item = options[i];
-              final title = (item['title'] as String?) ?? 'Nada';
-              final isSelected = title == currentVal;
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Pilih Nada', style: TextStyle(fontSize: 16)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: options.length,
+              itemBuilder: (_, i) {
+                final item = options[i];
+                final title = (item['title'] as String?) ?? 'Nada';
+                final uri = (item['uri'] as String?) ?? '';
+                final isSelected = title == currentVal;
+                final isPlaying = playingUri == uri && uri.isNotEmpty && uri != 'asset:default';
+                final canPreview = uri.isNotEmpty && uri != 'asset:default';
 
-              return ListTile(
-                dense: true,
-                title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: 13)),
-                trailing: isSelected ? const Icon(Icons.check, color: DyKalTheme.primary, size: 18) : null,
-                onTap: () async {
-                  await _saveLocalPref(prefKey, title);
-                  onSelect(title);
-                  Navigator.pop(ctx);
-                },
-              );
-            },
+                return ListTile(
+                  dense: true,
+                  title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: 13)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (canPreview)
+                        IconButton(
+                          icon: Icon(isPlaying ? Icons.stop_circle : Icons.play_circle_outline, size: 22, color: DyKalTheme.primary),
+                          tooltip: isPlaying ? 'Stop' : 'Putar preview',
+                          onPressed: () async {
+                            if (isPlaying) {
+                              await RingtoneService.stop();
+                              setS(() => playingUri = null);
+                            } else {
+                              await RingtoneService.stop();
+                              await RingtoneService.play(uri);
+                              setS(() => playingUri = uri);
+                            }
+                          },
+                        ),
+                      if (isSelected) const Icon(Icons.check, color: DyKalTheme.primary, size: 18),
+                    ],
+                  ),
+                  onTap: () async {
+                    await RingtoneService.stop();
+                    playingUri = null;
+                    await _saveLocalPref(prefKey, title);
+                    onSelect(title);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),
     );
+    // Safety: hentikan preview saat dialog tertutup dengan cara apa pun.
+    await RingtoneService.stop();
   }
 
   /// Dialog wallpaper chat: Default / Warna solid / Foto galeri (Batch C).

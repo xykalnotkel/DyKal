@@ -70,6 +70,12 @@ class DyKalCallService extends ChangeNotifier {
   bool get _amCaller => _callerFlag;
   bool _callerFlag = true;
 
+  // --- Riwayat panggilan detail (Batch: "log panggilan jelas & detail") ---
+  DateTime? _callStartedAt;
+  DateTime? _answeredAt;
+  bool _historyWritten = false;
+  bool _declinedFlag = false;
+
   Future<void> _addLocalTracks() async {
     if (localStream == null) return;
     for (final t in localStream!.getTracks()) {
@@ -97,6 +103,10 @@ class DyKalCallService extends ChangeNotifier {
   // ---------- CALLER ----------
   Future<void> startOutgoing(String type) async {
     _callerFlag = true;
+    _callStartedAt = DateTime.now();
+    _answeredAt = null;
+    _historyWritten = false;
+    _declinedFlag = false;
     await _openMedia(type == 'video');
     await _createPc();
     await _addLocalTracks();
@@ -126,6 +136,8 @@ class DyKalCallService extends ChangeNotifier {
     _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
       final data = doc.data();
       if (data == null) return;
+      if (data['status'] == 'answered' && _answeredAt == null) _answeredAt = DateTime.now();
+      if (data['declined'] == true) _declinedFlag = true;
       if (data['status'] == 'ended') { await _cleanup(); return; }
       final pf = data['calleeFilter'] as String?;
       if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
@@ -336,7 +348,9 @@ class DyKalCallService extends ChangeNotifier {
 
   Future<void> declineIncoming() async {
     try {
-      await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()});
+      // 'declined: true' -> sisi caller mencatat riwayat sebagai DITOLAK,
+      // bukan sekadar "tak terjawab".
+      await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp(), 'declined': true});
     } catch (_) {}
     await _cleanup();
   }
@@ -358,6 +372,36 @@ class DyKalCallService extends ChangeNotifier {
     // pernah nemu 218 dok busuk di satu couple. ICE yang sudah terpakai
     // tidak berguna lagi, jadi auto-dibersihkan tiap panggilan berakhir.
     unawaited(_deleteSignalingDocs());
+    // Riwayat panggilan detail ditulis SEKALI oleh pihak caller.
+    unawaited(_writeCallHistory());
+  }
+
+  /// Tulis riwayat ke couples/{coupleId}/callHistory — penuh detail:
+  /// jenis (audio/video), pemanggil, status (answered/declined/missed),
+  /// waktu mulai-selesai, dan DURASI jawab. Hanya caller yang menulis
+  /// (riwayat couple dibaca kedua pihak; rules: subkoleksi couple = member).
+  Future<void> _writeCallHistory() async {
+    if (!_callerFlag || _callStartedAt == null || _historyWritten) return;
+    _historyWritten = true;
+    try {
+      final end = DateTime.now();
+      final start = _callStartedAt!;
+      final answered = _answeredAt != null;
+      await _db.collection('couples/$coupleId/callHistory').add({
+        'type': callType,
+        'callerId': myId,
+        'callerName': AuthService().myName,
+        'partnerId': partnerId,
+        'status': answered ? 'answered' : (_declinedFlag ? 'declined' : 'missed'),
+        'startedAt': Timestamp.fromDate(start),
+        'endedAt': Timestamp.fromDate(end),
+        'durationSec': answered ? end.difference(_answeredAt!).inSeconds : 0,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+    _callStartedAt = null;
+    _answeredAt = null;
+    _declinedFlag = false;
   }
 
   Future<void> _deleteSignalingDocs() async {

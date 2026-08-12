@@ -1,7 +1,7 @@
 name: dykal
 description: DyKal - Aplikasi Private untuk Kamu & Dia. Chat, Album, Surat, Home & Call.
 publish_to: 'none'
-version: 1.1.9+11   # v1.1.9: splash statik (logo + DyKal berdampingan + 'Dyaa & Kall'), semua animasi splash dihapus
+version: 1.2.0+12   # v1.2.0: E2EE media chat (X25519+AES-GCM), pusat notifikasi, banner update kecil di atas bottomnav
 
 environment:
   # SDK min dinaikkan ke 3.6.0: syarat firebase_core ^4.x (CI pakai Flutter 3.44.9, aman)

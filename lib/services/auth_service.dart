@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'e2e_service.dart';
 
 /// Auth Service DyKal — Email + Password + Invite Code (Hanya Berdua)
@@ -21,6 +22,8 @@ class AuthService {
 
   // Cache pasangan (diisi setelah login/pairing)
   String? coupleId;
+  String? cachedCoupleId;
+  bool isPairedCached = false;
   String? partnerId;
   String? partnerName;
   String? myPhotoUrl;
@@ -36,6 +39,38 @@ class AuthService {
 
   Stream<User?> get authState => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
+
+  /// BATCH O (owner): muat cache lokal dari SharedPreferences supaya AuthGate tidak
+  /// memblokir boot dengan spinner "Menunggu data pasangan...".
+  Future<void> loadCache() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final cid = p.getString('cached_couple_id');
+      final paired = p.getBool('cached_is_paired') ?? false;
+      if (cid != null && cid.isNotEmpty) {
+        coupleId = cid;
+        cachedCoupleId = cid;
+        isPairedCached = paired;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveCache(String? cid, bool paired) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (cid != null && cid.isNotEmpty) {
+        await p.setString('cached_couple_id', cid);
+        await p.setBool('cached_is_paired', paired);
+        cachedCoupleId = cid;
+        isPairedCached = paired;
+      } else {
+        await p.remove('cached_couple_id');
+        await p.remove('cached_is_paired');
+        cachedCoupleId = null;
+        isPairedCached = false;
+      }
+    } catch (_) {}
+  }
 
   /// Stream coupleId user ini (dipakai AuthGate untuk routing otomatis)
   Stream<String?> coupleIdStream() {
@@ -326,6 +361,7 @@ class AuthService {
         }
       }
     } catch (_) {}
+    unawaited(_saveCache(coupleId, coupleId != null && partnerId != null));
     // E2EE (Batch E): publikasikan public key X25519 device ini begitu status
     // auth diketahui. Public key aman dibagikan; private key tidak pernah
     // keluar dari secure storage device.
@@ -340,6 +376,7 @@ class AuthService {
       try { await _db.doc('users/$uid').set({'coupleId': null}, SetOptions(merge: true)); } catch (_) {}
     }
     coupleId = partnerId = partnerName = partnerPhotoUrl = null;
+    unawaited(_saveCache(null, false));
   }
 
   Future<void> logout() async {
@@ -349,6 +386,7 @@ class AuthService {
     }
     coupleId = partnerId = partnerName = myPhotoUrl = partnerPhotoUrl = null;
     _userDocChecked = false; // biar login berikutnya ensureUserDoc jalan lagi
+    unawaited(_saveCache(null, false));
     await _auth.signOut();
   }
 

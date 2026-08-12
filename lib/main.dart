@@ -70,6 +70,7 @@ Future<void> main() async {
   try { await BubbleStyle.instance.load(); } catch (_) {}
   try { await WallpaperSettings.instance.load(); } catch (_) {}
   try { await FontScale.load(); } catch (_) {}
+  try { await AuthService().loadCache(); } catch (_) {}
 
   // Sisanya (birthday, callback update) non-kritis — background.
   unawaited(_initNonFirebase());
@@ -361,11 +362,20 @@ class _AuthGateState extends State<AuthGate> {
               }
               return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: bootStage);
             }
-            if (cSnap.connectionState != ConnectionState.active) {
+            // BATCH O (owner): OFFLINE-FIRST ala WA — saat stream masih waiting,
+            // jika kita SUDAH punya cache coupleId dari sesi sebelumnya,
+            // JANGAN tampilkan spinner "Menunggu data pasangan/couple..."!
+            // Langsung lanjut pakai data cache.
+            final cid = cSnap.hasData
+                ? cSnap.data
+                : (cSnap.connectionState == ConnectionState.waiting
+                    ? (AuthService().coupleId ?? AuthService().cachedCoupleId)
+                    : null);
+
+            if (cid == null && cSnap.connectionState != ConnectionState.active) {
               bootStage = 'Menunggu data pasangan...';
               return _splash();
             }
-            final cid = cSnap.data;
             if (cid == null) {
               DevLogger.instance.info('auth', 'coupleId null -> PairingScreen');
               _reachedContent = true;
@@ -386,6 +396,10 @@ class _AuthGateState extends State<AuthGate> {
                   return _InitErrorScreen(onRetry: _retry, detail: _lastError, stage: bootStage);
                 }
                 if (!cs.hasData) {
+                  if (AuthService().isPairedCached) {
+                    _reachedContent = true;
+                    return const MainNav();
+                  }
                   bootStage = 'Menunggu data couple...';
                   return _splash();
                 }

@@ -92,7 +92,13 @@ export default {
           ttl: isCancel ? '10s' : (isCall ? '45s' : '86400s'),
           // icon: ic_notification = siluet hati resmi (drawable), BUKAN ic_launcher
           // (launcher icon ber-latar putih jadi kotak buram kalau dipaksa jadi icon status bar)
-          notification: { icon: 'ic_notification', color: '#FF6B8A', channel_id: targetChannel, sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
+          // PENTING (FIX FCM dataOnly): saat dataOnly = true, JANGAN kirim block
+          // android.notification! Jika android.notification ada, Google Play Services
+          // menganggap pesan ini sebagai Notification Message dan TIDAK memanggil
+          // firebaseMessagingBackgroundHandler untuk membuat MessagingStyle kustom!
+          ...(dataOnly ? {} : {
+            notification: { icon: 'ic_notification', color: '#FF6B8A', channel_id: targetChannel, sound: 'default', visibility: 'PRIVATE', notification_count: 1 }
+          }),
         },
         apns: { payload: { aps: { sound: 'default' } } },
       };

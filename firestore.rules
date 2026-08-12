@@ -103,6 +103,13 @@ service cloud.firestore {
       }
     }
 
+    // Pengumuman XYSTUDIO (Pusat Notifikasi) — dibaca semua user login;
+    // tulis ditutup dari client (owner menulis via Firebase Console/admin).
+    match /announcements/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // Info update aplikasi (dibaca UpdateService.checkForUpdate di semua device)
     // FIX #3: koleksi ini sebelumnya TIDAK ADA di rules -> selalu permission-denied.
     // Isinya cuma info versi + link APK (tidak sensitif), jadi baca bebas;

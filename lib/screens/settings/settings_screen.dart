@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/bubble_style.dart';
+import '../../services/e2e_service.dart';
 import '../../services/wallpaper_settings.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -410,10 +411,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'Privasi & Keamanan',
             icon: Icons.security_outlined,
             children: [
-              _infoTile(
-                Icons.lock_outline,
-                'Enkripsi Data Media',
-                'AES-256-GCM Hardware Cipher (.webp.crypt15)',
+              FutureBuilder<String>(
+                future: E2EService.statusLabel(),
+                builder: (_, snap) => _infoTile(
+                  Icons.lock_outline,
+                  'Enkripsi End-to-End Media Chat',
+                  snap.data ?? 'Memeriksa...',
+                ),
               ),
               FutureBuilder<bool>(
                 future: FloatingService.hasOverlayPermission(),

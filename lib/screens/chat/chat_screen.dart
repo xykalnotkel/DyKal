@@ -19,6 +19,7 @@ import '../../services/media_cache.dart';
 import '../../services/bubble_style.dart';
 import '../../services/voice_cache.dart';
 import '../../services/wallpaper_settings.dart';
+import '../../services/e2e_service.dart';
 import '../../services/push_service.dart';
 import '../../services/theme_controller.dart';
 import '../call/call_log_screen.dart';
@@ -97,11 +98,19 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         } else if (img != null) {
           _savedMedia.add(id);
-          // Foto/video masuk: simpan lokal + catat mapping URL->path di
-          // MediaCache agar bisa DIBUKA OFFLINE (offline-first ala WA).
-          MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto').then((path) {
-            if (path != null) MediaCache.put(img, path);
-          });
+          if (E2EService.isEncryptedUrl(img)) {
+            // E2E: unduh ciphertext -> DEKRIPSI -> simpan plaintext lokal.
+            // Backend (Cloudinary/Firestore) hanya pernah pegang ciphertext.
+            E2EService.downloadDecrypted(img, ext: mt == 'video' ? 'mp4' : 'webp').then((path) {
+              if (path != null) MediaCache.put(img, path);
+            });
+          } else {
+            // Foto/video masuk: simpan lokal + catat mapping URL->path di
+            // MediaCache agar bisa DIBUKA OFFLINE (offline-first ala WA).
+            MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto').then((path) {
+              if (path != null) MediaCache.put(img, path);
+            });
+          }
         }
       }
     });
@@ -163,6 +172,27 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// Kirim media ala WhatsApp: pesan langsung muncul dengan ikon jam (sending),
   /// upload berjalan di background, lalu status jadi 'sent' + URL terpasang.
+  /// Upload media dengan E2E bila pasangan sudah siap (punya public key).
+  /// Penanda E2E = URL mengandung '/dykal/e2e/' (nol perubahan skema pesan).
+  /// Fallback plaintext otomatis kalau E2E belum siap — chat tidak pernah macet.
+  Future<String?> _uploadMaybeE2E(File file, {required String kind, String plainFolder = 'dykal/chat'}) async {
+    try {
+      File toEncrypt = file;
+      if (kind == 'image') {
+        // Kompres dulu (jalur kualitas sama dengan upload biasa) baru enkripsi.
+        toEncrypt = await CloudinaryService().compressImage(file);
+      }
+      final enc = await E2EService.encryptFile(toEncrypt);
+      if (enc != null) {
+        final url = await CloudinaryService().uploadRaw(enc);
+        if (url != null) return url;
+      }
+    } catch (_) {}
+    // Fallback: pasangan app lama / raw ditolak preset -> jalur lama.
+    if (kind == 'audio') return CloudinaryService().uploadVoiceNote(file);
+    return CloudinaryService().uploadImage(file, folder: plainFolder);
+  }
+
   /// Tidak ada dialog loading yang memblokir layar.
   Future<void> _sendWithUpload({
     required String id,
@@ -349,7 +379,7 @@ class _ChatScreenState extends State<ChatScreen> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         type: MessageType.voice,
         voiceDuration: secs,
-        upload: () => CloudinaryService().uploadVoiceNote(File(path)),
+        upload: () => _uploadMaybeE2E(File(path), kind: 'audio'),
       );
     } else {
       _showVoicePreview(path, secs); // FIX #15: preview dulu sebelum kirim
@@ -419,7 +449,7 @@ class _ChatScreenState extends State<ChatScreen> {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: MessageType.voice,
       voiceDuration: secs,
-      upload: () => CloudinaryService().uploadVoiceNote(File(path)),
+      upload: () => _uploadMaybeE2E(File(path), kind: 'audio'),
     );
   }
 
@@ -743,9 +773,10 @@ class _ChatScreenState extends State<ChatScreen> {
       type: MessageType.image,
       caption: result['caption'] as String?,
       viewOnce: viewOnce,
-      upload: () => CloudinaryService().uploadImage(
+      upload: () => _uploadMaybeE2E(
         File(result['localPath'] as String),
-        folder: viewOnce ? 'dykal/view_once' : 'dykal/chat',
+        kind: 'image',
+        plainFolder: viewOnce ? 'dykal/view_once' : 'dykal/chat',
       ),
     );
   }
@@ -775,7 +806,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     type: MessageType.image,
                     caption: name,
-                    upload: () => CloudinaryService().uploadImage(file, folder: 'dykal/documents'),
+                    upload: () => _uploadMaybeE2E(file, kind: 'image', plainFolder: 'dykal/documents'),
                   );
                 }
               }),
@@ -787,7 +818,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   await _sendWithUpload(
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     type: MessageType.voice,
-                    upload: () => CloudinaryService().uploadVoiceNote(file),
+                    upload: () => _uploadMaybeE2E(file, kind: 'audio'),
                   );
                 }
               }),

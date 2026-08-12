@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/update_service.dart';
 import '../../services/wallpaper_settings.dart';
+import '../notifications/notifications_screen.dart';
 import '../../widgets/story_avatar.dart';
 import '../call/call_log_screen.dart';
 import 'story_viewer.dart';
@@ -16,6 +19,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// Cap waktu terakhir pusat notifikasi dibaca — dasar badge lonceng.
+  int _notifSeenMs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      final v = p.getInt(NotificationsScreen.seenKey) ?? 0;
+      if (mounted) setState(() => _notifSeenMs = v);
+    });
+  }
+
   /// Nama pasangan: jika saya member A (pembuat couple), pasangan ada di
   /// displayNameB; jika saya member B (yang join), pasangan ada di displayNameA.
   String _partnerName(Map<String, dynamic>? d) {
@@ -88,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           actions: [
+            _notifBell(context),
             _chatButton(context),
             IconButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CallLogScreen())),
@@ -257,6 +273,51 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
+    );
+  }
+
+  /// Lonceng notifikasi + badge jumlah belum dibaca:
+  /// = (ada update tersedia ? 1 : 0) + pengumuman lebih baru dari last-seen.
+  /// Menu baru di topbar sesuai permintaan owner ("lumayan penting buat
+  /// info update dll").
+  Widget _notifBell(BuildContext context) {
+    return ListenableBuilder(
+      listenable: UpdateService.instance,
+      builder: (context, _) {
+        final updateCount = UpdateService.instance.availableUpdate != null ? 1 : 0;
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('announcements')
+              .orderBy('createdAt', descending: true)
+              .limit(10)
+              .snapshots(),
+          builder: (context, snap) {
+            var unseen = updateCount;
+            for (final d in snap.data?.docs ?? const <QueryDocumentSnapshot>[]) {
+              final ts = (d.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+              if (ts != null && ts.millisecondsSinceEpoch > _notifSeenMs) unseen++;
+            }
+            return IconButton(
+              tooltip: 'Notifikasi',
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                );
+                // Refresh badge setelah layar notif ditutup.
+                final p = await SharedPreferences.getInstance();
+                if (mounted) setState(() => _notifSeenMs = p.getInt(NotificationsScreen.seenKey) ?? 0);
+              },
+              icon: Badge(
+                isLabelVisible: unseen > 0,
+                label: Text('$unseen'),
+                backgroundColor: DyKalTheme.primary,
+                child: Icon(Icons.notifications_outlined, color: DyKalTheme.textPrimaryOf(context)),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

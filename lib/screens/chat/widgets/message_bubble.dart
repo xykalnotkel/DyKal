@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
 import '../../../services/bubble_style.dart';
+import '../../../services/e2e_service.dart';
 import '../../../services/media_cache.dart';
 import '../../../services/sticker_store.dart';
 import '../../../services/voice_cache.dart';
@@ -31,10 +32,25 @@ class OfflineFirstImage extends StatelessWidget {
     this.placeholder,
   });
 
+  /// Resolusi tampilan:
+  /// 1. File lokal (MediaCache) — jalur offline.
+  /// 2. URL E2E (/dykal/e2e/): unduh ciphertext -> DEKRIPSI -> simpan lokal.
+  /// 3. Bukan E2E & belum lokal -> null -> CDN biasa.
+  static Future<String?> _resolve(String url) async {
+    final hit = await MediaCache.get(url);
+    if (hit != null) return hit;
+    if (E2EService.isEncryptedUrl(url)) {
+      final plain = await E2EService.downloadDecrypted(url, ext: 'webp');
+      if (plain != null) await MediaCache.put(url, plain);
+      return plain;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String?>(
-      future: MediaCache.get(url),
+      future: _resolve(url),
       builder: (_, snap) {
         final path = snap.data;
         if (path != null) {
@@ -46,8 +62,20 @@ class OfflineFirstImage extends StatelessWidget {
             errorBuilder: (_, __, ___) => _cdn(),
           );
         }
+        // URL E2E yang gagal dekripsi JANGAN dilempar ke CDN (isinya
+        // ciphertext — CDN akan error). Tampilkan placeholder terkunci.
+        if (E2EService.isEncryptedUrl(url)) return _locked();
         return _cdn();
       },
+    );
+  }
+
+  Widget _locked() {
+    return Container(
+      width: width,
+      height: height ?? 120,
+      color: const Color(0x22000000),
+      child: const Center(child: Icon(Icons.lock_outline, color: Colors.white54)),
     );
   }
 
@@ -781,12 +809,19 @@ class _VoicePlayerState extends State<_VoicePlayer> {
     });
   }
 
-  /// Putar: pakai file lokal (offline) jika pernah disimpan, else streaming URL.
+  /// Putar: pakai file lokal (offline) jika pernah disimpan. URL E2E
+  /// (/dykal/e2e/) diunduh + didekripsi dulu ke file lokal (audio E2E tidak
+  /// bisa di-streaming langsung — isinya ciphertext).
   Future<void> _play() async {
     try {
-      final local = await VoiceCache.get(widget.url);
-      if (local != null && await File(local).exists()) {
-        await _player.setFilePath(local);
+      String? path = await VoiceCache.get(widget.url);
+      if (path != null && !await File(path).exists()) path = null;
+      if (path == null && E2EService.isEncryptedUrl(widget.url)) {
+        path = await E2EService.downloadDecrypted(widget.url, ext: 'm4a');
+        if (path != null) await VoiceCache.put(widget.url, path);
+      }
+      if (path != null) {
+        await _player.setFilePath(path);
       } else {
         await _player.setUrl(widget.url);
       }

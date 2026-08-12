@@ -29,6 +29,34 @@ class CloudinaryService {
     return result != null ? File(result.path) : file;
   }
 
+  /// Kompres publik (dipakai jalur E2E sebelum enkripsi).
+  Future<File> compressImage(File file) => _compressToWebP(file);
+
+  /// Upload resource RAW (ciphertext E2E .bin). Folder default dykal/e2e
+  /// — segmen folder inilah penanda E2E di URL (lihat E2EService.marker).
+  Future<String?> uploadRaw(File file, {String folder = 'dykal/e2e'}) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: file.path.split('/').last,
+          contentType: MediaType.parse('application/octet-stream'),
+        ),
+        'upload_preset': uploadPreset,
+        'folder': folder,
+        'resource_type': 'raw',
+      });
+      final res = await _dio.post(
+        'https://api.cloudinary.com/v1_1/$cloudName/raw/upload',
+        data: formData,
+      );
+      if (res.statusCode == 200) return res.data['secure_url'] as String?;
+    } catch (e) {
+      print('Cloudinary raw upload error: $e');
+    }
+    return null;
+  }
+
   /// Upload Image (Foto Album, Foto Chat, Avatar)
   /// Otomatis compress ke WebP dulu
   Future<String?> uploadImage(File file, {String folder = "dykal/album"}) async {

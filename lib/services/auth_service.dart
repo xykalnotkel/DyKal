@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
+import 'e2e_service.dart';
 
 /// Auth Service DyKal — Email + Password + Invite Code (Hanya Berdua)
 /// Flow:
@@ -306,6 +308,10 @@ class AuthService {
         }
       }
     } catch (_) {}
+    // E2EE (Batch E): publikasikan public key X25519 device ini begitu status
+    // auth diketahui. Public key aman dibagikan; private key tidak pernah
+    // keluar dari secure storage device.
+    unawaited(E2EService.ensureKeyPair());
   }
 
   /// Bersihkan coupleId usang (doc couple tidak ada / setengah jadi).

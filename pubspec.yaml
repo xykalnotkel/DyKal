@@ -68,6 +68,8 @@ dependencies:
   image_cropper: ^8.0.0 # FIX profile: crop foto (shape bulat) sebelum upload
   flutter_foreground_task: ^10.0.0
   encrypt: ^5.0.0   # FIX stiker: AES-GCM (.webp.crypt15)
+  cryptography: ^2.7.0 # E2EE media: ECDH X25519 (tukar kunci tanpa backend tahu)
+  flutter_secure_storage: ^9.2.2 # E2EE: private key di Android Keystore
   connectivity_plus: ^6.0.5 # cek koneksi (popup no internet saat kirim)
   share_plus: ^10.0.0 # share foto dari album
   photo_manager: ^3.2.0 # custom gallery picker (album + image/video)

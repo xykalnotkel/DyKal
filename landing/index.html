@@ -4,113 +4,137 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DyKal — Ruang Kecil Kalian Berdua</title>
-<meta name="description" content="DyKal: aplikasi private couple dari XYSTUDIO. Chat terenkripsi E2EE, panggilan suara/video, cerita harian, album, surat cinta. Unduh APK Android resmi.">
-<link rel="icon" href="logo.png" type="image/png">
+<meta name="description" content="DyKal: aplikasi private couple dari XYSTUDIO. Chat terenkripsi E2EE, panggilan suara/video dengan nada sambung, cerita harian bermusik, album, surat cinta. Unduh APK Android resmi (32/64-bit).">
+<link rel="icon" href="logo.webp" type="image/webp">
 <style>
   :root{
-    --pink:#FF6B8A; --pink-deep:#E84A72; --peach:#FFE9EE; --ink:#241F27;
-    --mut:#6E6875; --card:#FFFFFF; --bg:#FFF7F9; --line:#F3D9E0;
-    --green:#00A884; --radius:20px;
+    --pink:#FF6B8A; --pink-deep:#E84A72; --peach:#FFE9EE; --ink:#2B2230;
+    --mut:#7A7180; --bg:#FFF6F8; --line:#F2D8E0;
+    --green:#00A884; --r:22px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+  /* ============ 2.5D CLAY SYSTEM (2D yang terlihat 3D) ============ */
+  .clay{
+    background:#fff;border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.9) inset,     /* highlight atas = tebal 3D */
+      0 -6px 14px rgba(232,74,114,.05) inset,  /* bayangan dalam bawah */
+      0 18px 40px rgba(232,74,114,.12),        /* drop shadow lembut */
+      0 3px 10px rgba(43,34,48,.06);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .clay:hover{
+    transform:translateY(-4px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.9) inset,
+      0 -6px 14px rgba(232,74,114,.05) inset,
+      0 26px 54px rgba(232,74,114,.18),
+      0 4px 12px rgba(43,34,48,.07);
+  }
+  .clay-btn{
+    display:inline-flex;align-items:center;gap:10px;border:none;cursor:pointer;text-decoration:none;
+    font-weight:800;border-radius:999px;color:#fff;position:relative;
+    background:linear-gradient(180deg,#FF7E9B,#E8406C);
+    box-shadow:0 3px 0 #C22754, 0 12px 24px rgba(232,64,108,.35), 0 1px 0 rgba(255,255,255,.5) inset;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .clay-btn:hover{transform:translateY(-2px)}
+  .clay-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #C22754, 0 6px 14px rgba(232,64,108,.30)}
+  .clay-btn.ghost{
+    background:linear-gradient(180deg,#FFFFFF,#FFEFF3);color:var(--ink);
+    border:2px solid var(--line);
+    box-shadow:0 3px 0 #E7C2CD, 0 10px 22px rgba(43,34,48,.08);
+  }
+  .clay-btn.ghost:active{box-shadow:0 1px 0 #E7C2CD, 0 5px 12px rgba(43,34,48,.06)}
+  .clay-btn.off{pointer-events:none;filter:grayscale(1);opacity:.5;box-shadow:0 3px 0 #C9C4C9}
+
   /* ---------- NAV ---------- */
-  nav{position:sticky;top:0;z-index:50;background:rgba(255,247,249,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  nav .wrap{display:flex;align-items:center;gap:10px;height:60px}
-  nav img{width:34px;height:34px;border-radius:10px}
-  nav b{font-size:18px;letter-spacing:.3px}
+  nav{position:sticky;top:0;z-index:50;background:rgba(255,246,248,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:10px;height:62px}
+  nav img{width:36px;height:36px;border-radius:12px;box-shadow:0 6px 16px rgba(232,74,114,.3)}
+  nav b{font-size:18px}
   nav .spacer{flex:1}
-  nav a.nl{color:var(--mut);text-decoration:none;font-size:14px;font-weight:600;margin-left:18px}
+  nav a.nl{color:var(--mut);text-decoration:none;font-size:14px;font-weight:700;margin-left:18px}
   nav a.nl:hover{color:var(--pink)}
-  .btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;text-decoration:none;
-       font-weight:700;border-radius:999px;transition:transform .15s ease, box-shadow .15s ease}
-  .btn:active{transform:scale(.97)}
+
   /* ---------- HERO ---------- */
-  header{padding:56px 0 26px;text-align:center}
-  .logoBig{width:96px;height:96px;border-radius:26px;margin:0 auto 14px;display:block;
-           box-shadow:0 14px 40px rgba(255,107,138,.35)}
-  h1{font-size:clamp(30px,5vw,46px);letter-spacing:-.5px}
-  h1 span{color:var(--pink)}
-  .tag{color:var(--mut);max-width:560px;margin:10px auto 0;font-size:16px}
-  .heroImg{width:min(420px,88vw);margin:26px auto 0;display:block;border-radius:28px;
-           box-shadow:0 24px 60px rgba(228,74,114,.18)}
-  .byx{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12.5px;color:var(--mut);
-       border:1px solid var(--line);background:#fff;padding:5px 14px;border-radius:999px;font-weight:600}
+  header{padding:58px 0 20px;text-align:center;position:relative;overflow:hidden}
+  .halo{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none}
+  .halo.a{width:340px;height:340px;background:#FFD3DD;top:-90px;left:-60px}
+  .halo.b{width:280px;height:280px;background:#FFC7DE;bottom:-70px;right:-40px}
+  .logoBig{width:104px;height:104px;border-radius:30px;margin:0 auto 16px;display:block;
+           box-shadow:0 4px 0 #D94A70, 0 22px 50px rgba(232,74,114,.4), 0 1px 0 rgba(255,255,255,.6) inset}
+  h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.6px}
+  h1 span{background:linear-gradient(180deg,#FF7E9B,#E8406C);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{color:var(--mut);max-width:600px;margin:12px auto 0;font-size:16px}
+  .heroImg{width:min(430px,90vw);margin:30px auto 0;display:block;border-radius:30px;
+           box-shadow:0 30px 70px rgba(228,74,114,.22)}
+  .byx{display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:12.5px;color:var(--mut);
+       padding:6px 16px;border-radius:999px;font-weight:700}
+
   /* ---------- DOWNLOAD ---------- */
-  #unduh{padding:38px 0 10px;text-align:center}
-  .dlRow{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:18px}
-  .btnDl{padding:16px 26px;font-size:16px;color:#fff;background:linear-gradient(135deg,#FF6B8A,#E84A72);
-         box-shadow:0 10px 26px rgba(228,74,114,.35);min-width:250px;justify-content:center}
-  .btnDl small{display:block;font-weight:500;font-size:11.5px;opacity:.9}
-  .btnDl.alt32{background:#fff;color:var(--ink);border:2px solid var(--line);box-shadow:0 6px 18px rgba(36,31,39,.07)}
-  .btnDl.off{pointer-events:none;filter:grayscale(1);opacity:.45;box-shadow:none}
-  .abi{margin-top:12px;font-size:13px;color:var(--mut)}
+  #unduh{padding:44px 0 14px;text-align:center}
+  .dlRow{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+  .btnDl{padding:18px 28px;font-size:16px;min-width:270px;justify-content:center;flex-direction:column}
+  .btnDl .top{display:flex;align-items:center;gap:9px}
+  .btnDl small{display:block;font-weight:600;font-size:11.5px;opacity:.9;margin-top:2px}
+  .btnInfo{max-width:270px;margin:8px auto 0;font-size:12px;line-height:1.45;color:var(--mut)}
+  .abi{margin-top:16px;font-size:13.5px;color:var(--mut);background:#fff;border:1px solid var(--line);
+       border-radius:14px;padding:10px 16px;display:inline-block;max-width:560px}
   .abi b{color:var(--ink)}
-  .hint{font-size:12.5px;color:var(--mut);margin-top:8px}
-  /* ---------- PREVIEW ---------- */
-  #preview{padding:60px 0}
-  .secT{font-size:clamp(22px,3.4vw,30px);text-align:center;letter-spacing:-.3px}
-  .secS{color:var(--mut);text-align:center;max-width:620px;margin:8px auto 40px;font-size:15px}
-  .phones{display:flex;gap:22px;justify-content:center;flex-wrap:wrap}
-  .phone{width:230px;border-radius:34px;background:#111015;padding:10px;box-shadow:0 24px 54px rgba(36,31,39,.25)}
-  .screen{border-radius:26px;overflow:hidden;background:#1B1A1F;aspect-ratio:9/19;position:relative;color:#fff}
-  .scr-pad{padding:14px 12px;display:flex;flex-direction:column;gap:8px;height:100%}
-  .sTop{display:flex;align-items:center;gap:8px;padding:2px 4px 8px;border-bottom:1px solid rgba(255,255,255,.08)}
-  .sAva{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#FF6B8A,#E84A72);
-        display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
-  .sName{font-size:12px;font-weight:700}
-  .sStat{font-size:9.5px;color:#7EE787}
-  .bub{max-width:78%;padding:7px 10px;border-radius:14px;font-size:10.5px;line-height:1.35;position:relative}
-  .bub.me{align-self:flex-end;background:#E84A72;border-bottom-right-radius:4px}
-  .bub.them{align-self:flex-start;background:#2A2C33;border-bottom-left-radius:4px}
-  .bub .tm{display:block;text-align:right;font-size:8px;color:rgba(255,255,255,.55);margin-top:2px}
-  .bub.me .tm::after{content:" ✓✓";color:#53BDEB}
-  .chip{position:absolute;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);font-size:9px;
-        padding:3px 10px;border-radius:999px;color:#fff}
-  .waveWrap{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
-  .wave{display:flex;gap:3px;align-items:flex-end;height:26px}
-  .wave i{width:4px;border-radius:2px;background:var(--pink);animation:wv 1.1s ease-in-out infinite}
-  .wave i:nth-child(2){animation-delay:.1s}.wave i:nth-child(3){animation-delay:.2s}
-  .wave i:nth-child(4){animation-delay:.3s}.wave i:nth-child(5){animation-delay:.4s}
-  .wave i:nth-child(6){animation-delay:.25s}.wave i:nth-child(7){animation-delay:.15s}
-  @keyframes wv{0%,100%{height:8px}50%{height:26px}}
-  .lockRow{display:flex;align-items:center;gap:7px;background:rgba(0,168,132,.12);border:1px solid rgba(0,168,132,.35);
-           border-radius:12px;padding:8px 10px;font-size:9.5px;color:#9FF0D4}
-  .storyRing{width:52px;height:52px;border-radius:50%;padding:2.5px;background:
-        conic-gradient(var(--pink) 0 80%, transparent 80% 88%, var(--pink) 88% 100%)}
-  .storyRing>div{width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FFD9E2,#FF9BB4)}
+  .abi .rechk{color:var(--pink);font-weight:700;cursor:pointer;text-decoration:underline}
+
+  /* ---------- PREVIEW: screenshot asli, kartu miring 2.5D ---------- */
+  #preview{padding:64px 0}
+  .secT{font-size:clamp(24px,3.6vw,32px);text-align:center;letter-spacing:-.3px}
+  .secS{color:var(--mut);text-align:center;max-width:640px;margin:10px auto 44px;font-size:15px}
+  .shots{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;perspective:1200px}
+  .shot{width:236px;padding:10px;border-radius:38px;background:#16141A;
+        box-shadow:0 4px 0 #000, 0 30px 60px rgba(43,34,48,.35), 0 1px 0 rgba(255,255,255,.25) inset;
+        transition:transform .2s ease}
+  .shot img{width:100%;border-radius:29px;display:block;aspect-ratio:9/19;object-fit:cover;background:#241f29}
+  .shot figcaption{text-align:center;color:#fff;font-size:11.5px;padding:8px 4px 2px;font-weight:600;letter-spacing:.2px}
+  .shot.s1{transform:rotateY(9deg) rotateX(2deg)} .shot.s3{transform:rotateY(-9deg) rotateX(2deg)}
+  .shot:hover{transform:rotateY(0) translateY(-6px) scale(1.02)}
+  .shotsNote{text-align:center;font-size:12px;color:var(--mut);margin-top:18px}
+
   /* ---------- FEATURES ---------- */
   #fitur{padding:50px 0}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
-        box-shadow:0 4px 16px rgba(36,31,39,.04);transition:transform .15s ease}
-  .card:hover{transform:translateY(-3px)}
-  .ic{width:42px;height:42px;border-radius:14px;background:var(--peach);display:flex;align-items:center;
-      justify-content:center;margin-bottom:12px}
-  .ic svg{width:22px;height:22px;stroke:var(--pink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+  .card{padding:22px}
+  .ic{width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#FFE3EA,#FFD1DC);
+      display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+      box-shadow:0 3px 0 #F4B9C8, 0 8px 18px rgba(232,74,114,.2)}
+  .ic svg{width:23px;height:23px;stroke:var(--pink-deep);fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
   .card h3{font-size:15.5px;margin-bottom:5px}
   .card p{font-size:13px;color:var(--mut)}
+
   /* ---------- PANDUAN ---------- */
-  #panduan{padding:50px 0 70px}
-  .steps{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
-  .step{display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}
-  .stepN{min-width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#FF6B8A,#E84A72);
-         color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
-  .step h4{font-size:14.5px;margin-bottom:2px}
+  #panduan{padding:50px 0 40px}
+  .steps{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .step{display:flex;gap:15px;padding:18px}
+  .stepN{min-width:36px;height:36px;border-radius:14px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;
+         background:linear-gradient(180deg,#FF7E9B,#E8406C);box-shadow:0 3px 0 #C22754}
+  .step h4{font-size:14.5px;margin-bottom:3px}
   .step p{font-size:13px;color:var(--mut)}
-  .step code{background:var(--peach);padding:1px 6px;border-radius:6px;font-size:12px}
-  footer{border-top:1px solid var(--line);padding:26px 0;text-align:center;color:var(--mut);font-size:13px}
+  .step code{background:var(--peach);padding:1px 7px;border-radius:7px;font-size:12px}
+  .pp{margin-top:24px;max-width:660px;margin-left:auto;margin-right:auto;padding:18px;border-left:4px solid var(--pink)}
+  .pp h4{font-size:14.5px;margin-bottom:4px}
+  .pp p{font-size:13px;color:var(--mut)}
+  footer{border-top:1px solid var(--line);padding:28px 0;text-align:center;color:var(--mut);font-size:13px}
   footer b{color:var(--pink)}
-  @media(max-width:520px){.btnDl{width:100%}}
+  @media(max-width:560px){.btnDl,.btnInfo{width:100%;max-width:none}}
 </style>
 </head>
 <body>
 
 <nav>
   <div class="wrap">
-    <img src="logo.png" alt="Logo DyKal">
+    <img src="logo.webp" alt="Logo DyKal">
     <b>DyKal</b>
     <span class="spacer"></span>
     <a class="nl" href="#preview">Preview</a>
@@ -121,88 +145,68 @@
 </nav>
 
 <header>
+  <div class="halo a"></div><div class="halo b"></div>
   <div class="wrap">
-    <img class="logoBig" src="logo.png" alt="DyKal">
+    <img class="logoBig" src="logo.webp" alt="DyKal">
     <h1>Ruang kecil <span>kalian berdua</span>.</h1>
-    <p class="tag">DyKal adalah aplikasi private couple: chat ala WhatsApp yang terenkripsi ujung-ke-ujung,
-       telepon & video call, cerita harian, album kenangan, sampai surat cinta — semua hanya untuk dua orang.</p>
-    <div class="byx">Dibangun oleh <b>&nbsp;XYSTUDIO&nbsp;</b> untuk Dyaa &amp; Kall</div>
+    <p class="tag">Chat terenkripsi ujung-ke-ujung, telepon dengan nada sambung "tuut", cerita harian
+       yang memilih musik sesuai suasana foto, album kenangan, dan surat cinta — private untuk dua orang.</p>
+    <div class="byx clay">Dibangun oleh <b>&nbsp;XYSTUDIO&nbsp;</b> untuk Dyaa &amp; Kall</div>
   </div>
 </header>
 
 <section id="unduh">
   <div class="wrap">
     <div class="dlRow">
-      <a class="btn btnDl" id="btn64" href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-arm64.apk">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>Unduh 64-bit<small>HP modern (Android 8+, mayoritas HP)</small></span>
-      </a>
-      <a class="btn btnDl alt32" id="btn32" href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-armeabi-v7a.apk">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>Unduh 32-bit<small>HP lama / entry-level (armeabi-v7a)</small></span>
-      </a>
+      <div>
+        <a class="clay-btn btnDl" id="btn64" href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-arm64.apk">
+          <span class="top"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Unduh 64-bit</span>
+          <small>HP modern (Android 8 ke atas)</small>
+        </a>
+        <p class="btnInfo" id="info64">Ukuran lebih kecil &amp; paling ngebut di HP 64-bit.</p>
+      </div>
+      <div>
+        <a class="clay-btn ghost btnDl alt32" id="btn32" href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-armeabi-v7a.apk">
+          <span class="top"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Unduh 32-bit</span>
+          <small>HP lama / entry-level</small>
+        </a>
+        <p class="btnInfo" id="info32">Untuk HP 32-bit (umumnya HP jadul / RAM kecil).</p>
+      </div>
     </div>
-    <p class="abi" id="abiText">Mendeteksi jenis HP kamu...</p>
-    <p class="hint">Tombol otomatis menyesuaikan HP-mu. Kalau ragu: pilih 64-bit dulu — tidak cocok? Pasang 32-bit. File resmi dari GitHub Releases DyKal, selalu versi terbaru.</p>
+    <p class="abi" id="abiText">Mendeteksi jenis HP kamu secara aman... <span class="rechk" id="manualSel">pilih manual</span></p>
   </div>
 </section>
 
 <section id="preview">
   <div class="wrap">
-    <h2 class="secT">Lihat isinya dulu</h2>
-    <p class="secS">Chat gelembung ala WA lengkap dengan centang biru &amp; ikon jam saat pending, voice note bergelombang, telepon dengan nada sambung "tuut-tuut", dan story harian kalian.</p>
-    <div class="phones">
-      <!-- Mock 1: Chat -->
-      <div class="phone"><div class="screen"><div class="scr-pad">
-        <div class="sTop"><div class="sAva">D</div><div><div class="sName">Dyaa</div><div class="sStat">Online · WiFi</div></div></div>
-        <div class="bub them">Sayang, udah makan?<span class="tm">20:14</span></div>
-        <div class="bub me">Udah dong, kamu jangan lupa ya<span class="tm">20:15</span></div>
-        <div class="bub me">Nanti malem call?<span class="tm">20:15</span></div>
-        <div class="bub them">Gas! Aku kangen cerita<span class="tm">20:16</span></div>
-        <div class="lockRow">🔒 Pesan &amp; media terenkripsi ujung-ke-ujung</div>
-      </div></div></div>
-      <!-- Mock 2: VN + Call -->
-      <div class="phone"><div class="screen"><div class="scr-pad">
-        <div class="sTop"><div class="sAva">K</div><div><div class="sName">Kall</div><div class="sStat">Online · data seluler</div></div></div>
-        <div class="chip" style="top:10px">Panggilan Suara · Memanggil...</div>
-        <div class="waveWrap">
-          <div class="sAva" style="width:64px;height:64px;font-size:26px">K</div>
-          <div class="sName" style="font-size:14px">Dyaa</div>
-          <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <div style="font-size:9.5px;color:#9AA0A6">tuut… tuut… (nada sambung)</div>
-        </div>
-        <div class="bub me">Voice Note · 0:42 ▶ <span class="tm">21:02</span></div>
-      </div></div></div>
-      <!-- Mock 3: Story -->
-      <div class="phone"><div class="screen"><div class="scr-pad">
-        <div class="sTop"><div class="sName">Cerita Kita</div><div class="sStat">rotasi tiap hari</div></div>
-        <div class="waveWrap" style="gap:14px">
-          <div class="storyRing"><div></div></div>
-          <div style="font-size:11px;color:#E9E4EA;text-align:center">Foto album terpilih acak<br>latar blur mengikuti suasana<br>musik fade-in lembut</div>
-        </div>
-        <div class="bub them" style="align-self:center">Tahan untuk pause — lepas untuk lanjut<span class="tm">tips</span></div>
-      </div></div></div>
+    <h2 class="secT">Tampilan aslinya</h2>
+    <p class="secS">Chat gelembung ala WA dengan centang &amp; jam pending, panggilan dengan bar hijau kembali, dan cerita dengan latar blur + suasana musik otomatis.</p>
+    <div class="shots">
+      <figure class="shot s1"><img src="shots/chat.webp" alt="Layar chat DyKal"><figcaption>Chat — E2EE &amp; centang ala WA</figcaption></figure>
+      <figure class="shot"><img src="shots/call.webp" alt="Layar panggilan DyKal"><figcaption>Panggilan — nada sambung &amp; bar kembali</figcaption></figure>
+      <figure class="shot s3"><img src="shots/story.webp" alt="Layar cerita DyKal"><figcaption>Cerita — blur &amp; musik suasana</figcaption></figure>
     </div>
+    <p class="shotsNote">Screenshot area: tampilan penuh dari aplikasi.</p>
   </div>
 </section>
 
 <section id="fitur">
   <div class="wrap">
     <h2 class="secT">Kecil-kecil lengkap</h2>
-    <p class="secS">Fokusnya satu: koneksi dua orang yang terasa hangat, cepat, dan privat.</p>
+    <p class="secS">Satu tujuan: koneksi dua orang yang hangat, cepat, dan privat.</p>
     <div class="grid">
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <h3>E2EE ala Signal</h3><p>Foto, stiker, dokumen &amp; voice note dienkripsi X25519 + AES-256-GCM. Server pun tak bisa membaca — kuncinya hanya di HP kalian.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3a8.5 8.5 0 1 1 17-3.2z"/></svg></div>
-        <h3>Chat WA-style</h3><p>Gelembung rounded, centang biru/ikon jam, balas dari notifikasi, wallpaper kustom, bubble meta dalam/luar, offline-first penuh.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-        <h3>Call audio &amp; video</h3><p>Nada sambung "tuut" saat memanggil, nada sibuk saat ditolak, fullscreen dering, minimize jadi bar hijau — balik kapan saja tanpa putus.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C.6 8 2.6 4 6.5 4c2.3 0 3.9 1.3 5.5 3.4C13.6 5.3 15.2 4 17.5 4 21.4 4 23.4 8 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/></svg></div>
-        <h3>Cerita &amp; Album</h3><p>Story harian dengan preview album, latar blur, musik fade-in, tahan-untuk-pause — berputar ulang sampai ada stok baru.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg></div>
-        <h3>Tema konsisten</h3><p>Dark &amp; light serasi, radius minimal 12 di semua tombol &amp; kartu, tersimpan lokal — jalan penuh walau tanpa internet.</p></div>
-      <div class="card"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h7l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></div>
-        <h3>Galeri &amp; statistik</h3><p>Picker kategori Semua/Foto/Video yang ngebut, statistik penyimpanan transparan per kategori, bersihkan cache sekali ketuk.</p></div>
+      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>E2EE ala Signal</h3><p>Foto, stiker, dokumen &amp; voice note dienkripsi X25519 + AES-256-GCM. Server pun tak bisa membaca.</p></div>
+      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3a8.5 8.5 0 1 1 17-3.2z"/></svg></div>
+        <h3>Chat WA-style</h3><p>Centang biru, ikon jam pending, balas dari notifikasi, wallpaper kustom, offline-first penuh.</p></div>
+      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+        <h3>Call audio &amp; video</h3><p>Nada sambung "tuut", nada sibuk saat ditolak, minimize jadi bar hijau — balik tanpa putus.</p></div>
+      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C.6 8 2.6 4 6.5 4c2.3 0 3.9 1.3 5.5 3.4C13.6 5.3 15.2 4 17.5 4 21.4 4 23.4 8 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/></svg></div>
+        <h3>Cerita suasana-otomatis</h3><p>Foto cerah = lagu ceria, foto sendu = lagu mellow. Blur backdrop, tahan-untuk-pause, rotasi harian.</p></div>
+      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg></div>
+        <h3>Status presence jujur</h3><p>Online·WiFi, "Lagi buka TikTok" (opt-in), "Data nyala", atau "Terakhir dilihat" — tidak ada status palsu.</p></div>
+      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h7l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></div>
+        <h3>Hemat &amp; transparan</h3><p>Mode hemat data, statistik penyimpanan per kategori, bersihkan cache sekali ketuk.</p></div>
     </div>
   </div>
 </section>
@@ -210,13 +214,21 @@
 <section id="panduan">
   <div class="wrap">
     <h2 class="secT">Panduan pasang (2 menit)</h2>
-    <p class="secS">Karena DyKal tidak lewat Play Store, ikuti langkah ini sekali saja.</p>
+    <p class="secS">DyKal tidak lewat Play Store, jadi ikuti langkah ini sekali saja.</p>
     <div class="steps">
-      <div class="step"><div class="stepN">1</div><div><h4>Unduh APK sesuai HP-mu</h4><p>Tekan tombol unduh di atas — situs ini otomatis mendeteksi 32/64-bit. Simpan file APK-nya.</p></div></div>
-      <div class="step"><div class="stepN">2</div><div><h4>Izinkan instal dari sumber ini</h4><p>Buka APK → Android meminta izin <code>Install unknown apps</code> → geser izinkan → lanjut pasang. Ini normal untuk aplikasi luar Play Store.</p></div></div>
-      <div class="step"><div class="stepN">3</div><div><h4>Daftar &amp; bikin username</h4><p>Isi email, nama panggilan, dan username unik (huruf kecil). Hijau = tersedia, merah = sudah dipakai, oranye = lagi susah ngecek (dicoba lagi otomatis).</p></div></div>
-      <div class="step"><div class="stepN">4</div><div><h4>Pairing dengan pasangan</h4><p>Buka menu pairing → bagikan kode ke pasangan → pasangan memasukkan kode → beres. Semua fitur langsung kebuka.</p></div></div>
-      <div class="step"><div class="stepN">5</div><div><h4>Update gampang</h4><p>Tiap rilis baru, notifikasi <code>DyKal vX tersedia</code> masuk otomatis → ketuk <code>Unduh Sekarang</code> → pasang menimpa versi lama. Data aman.</p></div></div>
+      <div class="step clay"><div class="stepN">1</div><div><h4>Unduh APK sesuai HP-mu</h4><p>Deteksi otomatis di atas menandai tombol yang cocok; kalau ragu, unduh 64-bit dulu. Gagal pasang? Baru coba 32-bit.</p></div></div>
+      <div class="step clay"><div class="stepN">2</div><div><h4>Izinkan instal dari sumber ini</h4><p>Buka APK → Android meminta izin <code>Install unknown apps</code> → geser izinkan → lanjut pasang.</p></div></div>
+      <div class="step clay"><div class="stepN">3</div><div><h4>Daftar &amp; bikin username</h4><p>Email, nama panggilan, username unik (huruf kecil). Hijau = tersedia, merah = dipakai, oranye = susah ngecek (dicoba ulang otomatis).</p></div></div>
+      <div class="step clay"><div class="stepN">4</div><div><h4>Pairing dengan pasangan</h4><p>Bagikan kode pairing ke pasangan → pasangan memasukkan kode → semua fitur terbuka.</p></div></div>
+      <div class="step clay"><div class="stepN">5</div><div><h4>Update otomatis</h4><p>Tiap rilis baru ada notif <code>DyKal vX tersedia</code> → <code>Unduh Sekarang</code> → pasang menimpa. Data aman.</p></div></div>
+    </div>
+    <div class="pp clay">
+      <h4>Kalau Play Protect memperingatkan ("Aplikasi tidak dikenal")</h4>
+      <p>Itu normal untuk aplikasi di luar Play Store — bukan berarti berbahaya. DyKal ditandatangani konsisten
+      dengan sertifikat rilis resmi (V1+V2, versionCode unik per-ABI) dan sumbernya terbuka di GitHub.
+      Caranya: ketuk <code>Detail lainnya</code> → <code>Tetap pasang</code>. Kalau diminta, matikan
+      sementara Play Protect di Play Store → menu profil → Play Protect → roda gigi → matikan pemindaian,
+      lalu pasang. (Boleh dinyalakan lagi setelahnya.)</p>
     </div>
   </div>
 </section>
@@ -225,36 +237,69 @@
   <div class="wrap">
     <b>DyKal</b> — dibuat dengan sungguh oleh <b>XYSTUDIO</b> · rilis resmi di
     <a href="https://github.com/xykalnotkel/DyKal/releases" style="color:var(--pink);text-decoration:none;font-weight:700">GitHub Releases</a><br>
-    <span style="font-size:12px">Aplikasi private — tidak dijual, tidak ada iklan, tidak ada pelacak.</span>
+    <span style="font-size:12px">Private, tanpa iklan, tanpa pelacak. Kode sumber terbuka.</span>
   </div>
 </footer>
 
 <script>
-(async function detectAbi(){
+// ============================================================
+// Deteksi ABI — prinsip VALID DULU: hanya mematikan tombol bila
+// deteksi YAKIN. Bila ragu, dua-duanya aktif + info jujur.
+// ============================================================
+(function(){
   const t = document.getElementById('abiText');
   const b64 = document.getElementById('btn64');
-  const b32 = document.getElementById('btn32');
-  let bit = '';
-  try {
-    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
-      const d = await navigator.userAgentData.getHighEntropyValues(['bitness','architecture']);
-      bit = d.bitness || '';
-    }
-  } catch(e){}
-  // Fallback lama: UA string lama kadang menyebut arsitektur
-  if (!bit) {
-    const ua = navigator.userAgent.toLowerCase();
-    if (/armv7|armeabi|i686|win32|x86(?!_64)/.test(ua)) bit = '32';
-  }
-  if (bit === '32') {
+  const info64 = document.getElementById('info64');
+  const info32 = document.getElementById('info32');
+  let decided = false;
+
+  function mark32(source){
+    if (decided) return; decided = true;
     b64.classList.add('off');
-    b64.querySelector('small').textContent = 'Tidak kompatibel di HP-mu (32-bit)';
-    t.innerHTML = 'HP-mu terdeteksi <b>32-bit</b> — tombol 64-bit dimatikan otomatis, pakai tombol 32-bit ya.';
-  } else if (bit === '64') {
-    t.innerHTML = 'HP-mu terdeteksi <b>64-bit</b> — pakai tombol 64-bit (paling ringan & cepat).';
-  } else {
-    t.innerHTML = 'Tidak bisa mendeteksi otomatis. Hampir semua HP 2017 ke atas = <b>64-bit</b>. Gagal pasang? Coba 32-bit.';
+    info64.innerHTML = '<b style="color:#B00020">Tidak kompatibel di HP-mu (terdeteksi 32-bit)</b> — pakai tombol 32-bit di sebelah.';
+    info32.innerHTML = 'Ini pilihan yang cocok untuk HP-mu.';
+    t.innerHTML = 'HP-mu terdeteksi <b>32-bit</b> (' + source + ') — tombol 64-bit dimatikan supaya tidak salah unduh. <span class="rechk" id="forceOn">Salah deteksi? Aktifkan lagi</span>';
+    document.getElementById('forceOn').onclick = forceManual;
   }
+  function mark64(source){
+    if (decided) return; decided = true;
+    info64.innerHTML = 'Ini pilihan yang pas untuk HP-mu.';
+    t.innerHTML = 'HP-mu terdeteksi <b>64-bit</b> (' + source + ') — pakai tombol 64-bit. <span class="rechk" id="manual2">pilih manual</span>';
+    document.getElementById('manual2').onclick = resetAll;
+  }
+  function unsure(){
+    t.innerHTML = 'Deteksi otomatis tidak yakin — rekomendasi umum: <b>64-bit</b> (hampir semua HP 2017+). Kalau proses pasang gagal "Aplikasi tidak kompatibel", pakai 32-bit. <span class="rechk" id="manual3">deteksi ulang</span>';
+    document.getElementById('manual3').onclick = detect;
+  }
+  function forceManual(){ decided=false; b64.classList.remove('off');
+    info64.innerHTML='Mode manual aktif — periksa: Settings > Tentang Ponsel; prosesor 64-bit hampir pasti di HP 2017+.';
+    t.innerHTML='Mode manual: pilih sesuai HP-mu. <span class="rechk" id="reDet">deteksi ulang</span>';
+    document.getElementById('reDet').onclick=detect; }
+  function resetAll(){ decided=false; b64.classList.remove('off'); detect(); }
+
+  async function detect(){
+    // Sinyal 1: userAgentData bitness (paling akurat di browser modern)
+    try{
+      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
+        const d = await navigator.userAgentData.getHighEntropyValues(['bitness','architecture']);
+        if (d.bitness === '32') return mark32('browser');
+        if (d.bitness === '64') return mark64('browser');
+      }
+    }catch(e){}
+    // Sinyal 2: UA string lama
+    const ua = (navigator.userAgent||'').toLowerCase();
+    if (/armv7l|armeabi|i686|win32/.test(ua) && !/x86_64|aarch64|arm64/.test(ua)) return mark32('user agent');
+    if (/x86_64|aarch64|arm64|wow64|win64/.test(ua)) return mark64('user agent');
+    // Sinyal 3: tes memori WASM > 2GB (32-bit hampir pasti gagal). Aman & cepat.
+    try{
+      // 65537 pages x 64KiB = 4GiB+64KiB — browser 32-bit menolak.
+      const m = new WebAssembly.Memory({initial: 65537});
+      if (m.buffer.byteLength > 4294967296) return mark64('tes memori');
+    }catch(e){ return mark32('tes memori'); }
+    unsure();
+  }
+  document.getElementById('manualSel').onclick = forceManual;
+  detect();
 })();
 </script>
 </body>

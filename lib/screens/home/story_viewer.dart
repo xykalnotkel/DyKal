@@ -5,7 +5,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:http/http.dart' as http;
 import '../../config/theme.dart';
+import '../../services/story_mood.dart';
 
 class StoryViewer extends StatefulWidget {
   final String coupleId;
@@ -22,6 +24,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   int _currentIndex = 0;
   bool _loading = true;
   String? _error; // FIX: dulu error -> loading muter SELAMANYA (layar hitam)
+  String? _moodLabel; // suasana terdeteksi (Batch I)
 
   late AnimationController _animController;
 
@@ -75,9 +78,30 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     _photoUrls.shuffle();
 
     if (_audioPaths.isNotEmpty) {
-      final randomPath = (_audioPaths..shuffle()).first;
+      // BATCH I: lagu dipilih MENYESUAIKAN suasana foto cerita yang akan
+      // tampil (kecerahan/warna -> ceria/romantis/sendu/tenang).
+      var chosenPath = (_audioPaths..shuffle()).first;
       try {
-        await _audioPlayer.setFilePath(randomPath);
+        final moods = await StoryMoodStore.load();
+        final bytes = (await http.get(Uri.parse(_photoUrls.first))
+                .timeout(const Duration(seconds: 8)))
+            .bodyBytes;
+        if (bytes.isNotEmpty) {
+          final mood = await StoryMoodAnalyzer.analyzeBytes(bytes);
+          final matching = _audioPaths
+              .where((p) => moods[p] == mood)
+              .toList();
+          if (matching.isNotEmpty) {
+            chosenPath = (matching..shuffle()).first;
+          }
+          if (mounted) setState(() => _moodLabel = StoryMoodAnalyzer.labels[mood]);
+        } else if (moods.isNotEmpty) {
+          final matching = _audioPaths.where((p) => moods[p] != null).toList();
+          if (matching.isNotEmpty) chosenPath = (matching..shuffle()).first;
+        }
+      } catch (_) {}
+      try {
+        await _audioPlayer.setFilePath(chosenPath);
         // BATCH H: musik fade-in halus (menyesuaikan suasana — tidak nyentak).
         await _audioPlayer.setVolume(0.0);
         await _audioPlayer.play();
@@ -324,6 +348,18 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                           'Cerita Kita',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
                         ),
+                        if (_moodLabel != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text('suasana $_moodLabel',
+                                style: const TextStyle(color: Colors.white, fontSize: 10)),
+                          ),
+                        ],
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white, size: 22),

@@ -17,6 +17,7 @@ class MainActivity : FlutterActivity() {
     private val RINGTONE_CHANNEL = "dykal/ringtone"
     private val FLOATING_CHANNEL = "com.dykal.app/floating"
     private val INSTALLER_CHANNEL = "dykal/installer"
+    private val ACTIVITY_CHANNEL = "dykal/activity"
     private var currentRingtone: Ringtone? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -99,6 +100,37 @@ class MainActivity : FlutterActivity() {
                     "hideBubble" -> {
                         val intent = Intent(this, FloatingChatService::class.java)
                         stopService(intent)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // BATCH I: Activity Share Handler (status "Lagi buka TikTok", opt-in)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ACTIVITY_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "hasUsagePermission" ->
+                        result.success(ActivityShareService.hasUsagePermission(this))
+                    "openUsageSettings" -> {
+                        try {
+                            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                        } catch (e: Exception) {
+                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                        }
+                        result.success(null)
+                    }
+                    "start" -> {
+                        val intent = Intent(this, ActivityShareService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(null)
+                    }
+                    "stop" -> {
+                        stopService(Intent(this, ActivityShareService::class.java))
                         result.success(null)
                     }
                     else -> result.notImplemented()

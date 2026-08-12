@@ -15,6 +15,7 @@ import '../../services/app_logger.dart';
 import '../../services/auth_service.dart';
 import '../../services/dev_logger.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/presence_service.dart';
 import '../../services/media_saver.dart';
 import '../../services/media_cache.dart';
 import '../../services/bubble_style.dart';
@@ -630,27 +631,19 @@ class _ChatScreenState extends State<ChatScreen> {
             stream: FirebaseFirestore.instance.doc('presence/$_partnerId').snapshots(),
             builder: (_, snap) {
               final data = snap.data?.data() as Map<String, dynamic>?;
-              final online = data?['isOnline'] ?? false;
               final typing = data?['isTyping'] ?? false;
               final rec = data?['isRecording'] ?? false;
-              final net = data?['net'] as String? ?? 'none'; // wifi/mobile/none
-              final lastSeen = data?['lastSeen'];
-              // Status pintar (permintaan owner):
-              // - online + jenis koneksi (WiFi/Seluler)
-              // - offline jujur: "Terakhir dilihat ..." (kemungkinan data mati)
+              // BATCH I: status 4-tingkat jujur via PresenceService.describe
+              // (Online·WiFi / "Lagi buka TikTok" / "Data nyala" / Terakhir
+              // dilihat) — lihat services/presence_service.dart.
+              final (described, _) = PresenceService.describe(data);
               String sub;
               if (typing) {
                 sub = 'mengetik...';
               } else if (rec) {
                 sub = 'merekam audio...';
-              } else if (online) {
-                final via = net == 'wifi' ? 'WiFi' : (net == 'mobile' ? 'data seluler' : 'online');
-                sub = 'Online · $via';
-              } else if (lastSeen is Timestamp) {
-                final dt = lastSeen.toDate();
-                sub = 'Terakhir dilihat ${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
               } else {
-                sub = 'offline';
+                sub = described;
               }
               return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Text(_partnerName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)), const SizedBox(width: 6), Icon(Icons.favorite, color: DyKalTheme.primary, size: 14)]),

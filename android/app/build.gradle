@@ -63,6 +63,10 @@ android {
             keyPassword keystoreProperties['keyPassword']
             storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
             storePassword keystoreProperties['storePassword']
+            // SOLUSHIPLAYPROTECT.pdf: v1+v2 eksplisit (default AGP kadang hanya
+            // v2 untuk targetSdk baru) — sideload via Play Protect lebih mulus.
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
 
@@ -72,6 +76,19 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+// SOLUSIPLAYPROTECT.pdf: versionCode UNIK per-ABI (base*1000 + versionCode)
+// agar split APK tidak saling bentrok & update per-ABI terbaca benar.
+ext.abiCodes = ['armeabi-v7a': 1, 'arm64-v8a': 2, 'x86_64': 3]
+import com.android.build.OutputFile
+android.applicationVariants.all { variant ->
+    variant.outputs.each { output ->
+        def baseAbiVersionCode = project.ext.abiCodes.get(output.getFilter(OutputFile.ABI))
+        if (baseAbiVersionCode != null) {
+            output.versionCodeOverride = baseAbiVersionCode * 1000 + variant.versionCode
         }
     }
 }

@@ -11,7 +11,11 @@ import '../../services/wallpaper_settings.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 import '../../config/theme.dart';
+import '../../services/font_scale.dart';
+import '../../services/music_catalog.dart';
+import '../../services/story_mood.dart';
 import '../../services/theme_controller.dart';
 import '../../services/floating_service.dart';
 import '../../services/ringtone_service.dart';
@@ -39,12 +43,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Audio Player & Story
   final _audioPlayer = AudioPlayer();
   List<String> _storyAudioPaths = [];
+  Map<String, StoryMood> _storyMoods = {};
   int _bubbleStyle = 0;
   int _mediaVisibility = 0;
   // Statistik penyimpanan per kategori (label -> bytes) — UI bar bersegmen.
   Map<String, int> _storage = {};
   int _storageTotal = 0;
   bool _bubbleEnabled = false;
+
+  // BATCH I: fitur pengaturan baru
+  bool _activityShare = false; // laporkan app yang sedang dibuka (opt-in)
+  bool _dataSaver = false;     // kompresi upload lebih agresif
+  double _fontScale = 1.0;
+  static const _chActivity = MethodChannel('dykal/activity');
 
   @override
   void initState() {
@@ -64,7 +75,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _mediaVisibility = prefs.getInt('media_visibility_pref') ?? 0;
       _storyAudioPaths = prefs.getStringList('story_audio_playlist') ?? [];
       _bubbleEnabled = prefs.getBool('floating_bubble_enabled') ?? false;
+      _activityShare = prefs.getBool('activity_share_enabled') ?? false;
+      _dataSaver = prefs.getBool('data_saver') ?? false;
+      _fontScale = prefs.getDouble('font_scale') ?? 1.0;
     });
+    _storyMoods = await StoryMoodStore.load();
+    // Pastikan service native konsisten dengan pref (restart service bila ON).
+    if (_activityShare) {
+      try { await _chActivity.invokeMethod('start'); } catch (_) {}
+    }
+    if (mounted) setState(() {});
 
     // Auto-tampilkan bubble saat aplikasi dibuka jika toggle aktif dan izin ada.
     if (_bubbleEnabled) {
@@ -217,8 +237,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (result == null || result.files.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     final newPaths = result.files.where((f) => f.path != null).map((f) => f.path!).toList();
-    setState(() => _storyAudioPaths.addAll(newPaths));
+    setState(() {
+      _storyAudioPaths.addAll(newPaths);
+      // BATCH I: tebak suasana dari nama file (bisa diubah lewat chip).
+      for (final p in newPaths) {
+        _storyMoods[p] = StoryMoodAnalyzer.guessFromName(p);
+      }
+    });
     await prefs.setStringList('story_audio_playlist', _storyAudioPaths);
+    await StoryMoodStore.save(_storyMoods);
   }
 
   Future<void> _removeAudio(int index) async {
@@ -289,8 +316,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       final prefs = await SharedPreferences.getInstance();
-      setState(() => _storyAudioPaths.add(savePath));
+      setState(() {
+        _storyAudioPaths.add(savePath);
+        _storyMoods[savePath] = StoryMoodAnalyzer.guessFromName(savePath);
+      });
       await prefs.setStringList('story_audio_playlist', _storyAudioPaths);
+      await StoryMoodStore.save(_storyMoods);
       closeDialog();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Audio dari video ditambahkan')));
     } catch (e) {
@@ -321,9 +352,368 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {}
   }
 
+  // ================= BATCH I — metode fitur baru =================
+
+  /// Instruksi mulai ulang (per aturan owner): perubahan tampilan besar
+  /// menyarankan restart agar seluruh widget lama ikut gaya baru.
+  void _restartHint() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Sebagian berlaku langsung — mulai ulang aplikasi agar konsisten penuh.'),
+      duration: const Duration(seconds: 6),
+      action: SnackBarAction(
+        label: 'Tutup App',
+        onPressed: () => SystemNavigator.pop(),
+      ),
+    ));
+  }
+
+  Future<void> _setFontScale(double v) async {
+    setState(() => _fontScale = v);
+    await FontScale.set(v);
+    _restartHint();
+  }
+
+  /// Toggle Bagikan Aktivitas (opt-in). Butuh izin "Penggunaan akses"
+  /// (App-Ops) yang hanya bisa diberikan di pengaturan Android.
+  Future<void> _toggleActivityShare(bool v) async {
+    if (!v) {
+      try { await _chActivity.invokeMethod('stop'); } catch (_) {}
+      setState(() => _activityShare = false);
+      await _saveLocalPref('activity_share_enabled', false);
+      return;
+    }
+    Future<bool> hasPerm() async {
+      try { return await _chActivity.invokeMethod('hasUsagePermission') == true; } catch (_) { return false; }
+    }
+    if (!await hasPerm()) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Izin Penggunaan Akses'),
+          content: const Text(
+              'DyKal perlu izin "Penggunaan akses" untuk tahu aplikasi apa yang sedang dibuka (mis. "Lagi buka TikTok").\n\n'
+              'Langkah: tekan Buka Pengaturan -> cari DyKal -> aktifkan "Izinkan akses penggunaan" -> kembali ke sini. '
+              'Fitur ini hanya membagi NAMA aplikasi (bukan isi layar) dan bisa dimatikan kapan saja.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Nanti')),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try { await _chActivity.invokeMethod('openUsageSettings'); } catch (_) {}
+              },
+              child: const Text('Buka Pengaturan'),
+            ),
+          ],
+        ),
+      );
+      // Tunggu user kembali & mengaktifkan izin (poll maksimal ~40 detik).
+      var granted = false;
+      for (var i = 0; i < 20; i++) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        if (await hasPerm()) { granted = true; break; }
+      }
+      if (!granted) return;
+    }
+    try { await _chActivity.invokeMethod('start'); } catch (_) {}
+    setState(() => _activityShare = true);
+    await _saveLocalPref('activity_share_enabled', true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Aktivitas perangkat kini dibagikan ke pasangan')));
+    }
+  }
+
+  /// Ubah kata sandi: re-auth email+sandi lama -> updatePassword.
+  Future<void> _changePasswordDialog() async {
+    final oldC = TextEditingController();
+    final newC = TextEditingController();
+    String? err;
+    var busy = false;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, ss) => AlertDialog(
+          title: const Text('Ubah Kata Sandi', style: TextStyle(fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldC,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Sandi saat ini'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: newC,
+                obscureText: true,
+                decoration: const InputDecoration(
+                    labelText: 'Sandi baru', helperText: 'Minimal 6 karakter'),
+              ),
+              if (err != null) ...[
+                const SizedBox(height: 8),
+                Text(err!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: busy ? null : () => Navigator.pop(ctx), child: const Text('Batal')),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      if (newC.text.length < 6) {
+                        ss(() => err = 'Sandi baru minimal 6 karakter');
+                        return;
+                      }
+                      ss(() { busy = true; err = null; });
+                      try {
+                        final user = FirebaseAuth.instance.currentUser;
+                        final email = user?.email;
+                        if (user == null || email == null) throw 'Sesi tidak valid, login ulang dulu';
+                        final cred = EmailAuthProvider.credential(email: email, password: oldC.text);
+                        await user.reauthenticateWithCredential(cred);
+                        await user.updatePassword(newC.text);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Kata sandi berhasil diganti')));
+                        }
+                      } on FirebaseAuthException catch (e) {
+                        ss(() {
+                          busy = false;
+                          err = e.code == 'wrong-password' || e.code == 'invalid-credential'
+                              ? 'Sandi lama salah'
+                              : (e.code == 'weak-password' ? 'Sandi baru terlalu lemah' : 'Gagal: ${e.code}');
+                        });
+                      } catch (e) {
+                        ss(() { busy = false; err = '$e'; });
+                      }
+                    },
+              child: Text(busy ? 'Menyimpan...' : 'Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pilih suasana lagu (dipakai story player agar musik senada foto).
+  Future<void> _pickMood(int index) async {
+    final path = _storyAudioPaths[index];
+    final picked = await showModalBottomSheet<StoryMood>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Suasana lagu ini', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: StoryMood.values
+                    .map((m) => ActionChip(
+                          label: Text(StoryMoodAnalyzer.labels[m]!),
+                          onPressed: () => Navigator.pop(ctx, m),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Story memutar lagu yang senada dengan suasana foto (terang+cerah = Ceria, dst).',
+                style: TextStyle(fontSize: 11.5, color: DyKalTheme.textSecondaryOf(context)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+    setState(() => _storyMoods[path] = picked);
+    await StoryMoodStore.save(_storyMoods);
+  }
+
+  // ---------- Katalog Musik Gratis ----------
+  final _catPlayer = AudioPlayer();
+  String? _catPlayingUrl;
+  final Set<String> _catDownloading = {};
+
+  Future<void> _openMusicCatalog() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        maxChildSize: 0.92,
+        builder: (ctx, scroll) => StatefulBuilder(
+          builder: (ctx, ss) => Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(4))),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(18, 12, 18, 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Katalog Musik Gratis', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Text(
+                  'Sumber: katalog XYSTUDIO (+ Jamendo bila client_id diisi di bawah). Unduh = masuk playlist cerita dengan suasana otomatis.',
+                  style: TextStyle(fontSize: 11.5, color: DyKalTheme.textSecondaryOf(ctx)),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: FutureBuilder<List<CatalogTrack>>(
+                  future: MusicCatalogService.fetch(),
+                  builder: (ctx, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Center(child: CircularProgressIndicator(color: DyKalTheme.primary));
+                    }
+                    final tracks = snap.data ?? [];
+                    if (tracks.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Katalog kosong / tidak terjangkau. Tambahkan lagu via URL di file katalog atau isi Jamendo client_id.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: DyKalTheme.textSecondaryOf(ctx), fontSize: 12.5),
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      controller: scroll,
+                      itemCount: tracks.length + 1,
+                      itemBuilder: (ctx, i) {
+                        if (i == tracks.length) return _catalogSettingsTile(ss);
+                        final t = tracks[i];
+                        final playing = _catPlayingUrl == t.url;
+                        final downloading = _catDownloading.contains(t.url);
+                        return ListTile(
+                          dense: true,
+                          leading: CircleAvatar(
+                            backgroundColor: DyKalTheme.primary.withValues(alpha: 0.12),
+                            child: Icon(
+                              playing ? Icons.pause : Icons.play_arrow,
+                              color: DyKalTheme.primary, size: 20,
+                            ),
+                          ),
+                          title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                          subtitle: Text(
+                            '${t.artist.isEmpty ? 'Tanpa nama' : t.artist} • ${StoryMoodAnalyzer.labels[t.mood]}',
+                            maxLines: 1,
+                            style: TextStyle(fontSize: 11, color: DyKalTheme.textSecondaryOf(ctx)),
+                          ),
+                          onTap: () => _previewCatalog(t, ss),
+                          trailing: downloading
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                              : IconButton(
+                                  icon: const Icon(Icons.download_outlined, size: 20),
+                                  tooltip: 'Unduh ke playlist cerita',
+                                  onPressed: () => _downloadCatalog(t, ss),
+                                ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    try { await _catPlayer.stop(); } catch (_) {}
+    _catPlayingUrl = null;
+  }
+
+  Widget _catalogSettingsTile(StateSetter ss) {
+    return ExpansionTile(
+      tilePadding: const EdgeInsets.symmetric(horizontal: 18),
+      title: const Text('Pengaturan Sumber Katalog', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+      children: [
+        TextFormField(
+          initialValue: MusicCatalogService.defaultCatalogUrl,
+          decoration: const InputDecoration(
+            labelText: 'URL katalog JSON',
+            helperText: 'Skema: {"songs":[{"title","artist","url","mood"}]}',
+          ),
+          onChanged: (v) => MusicCatalogService.setCatalogUrl(v),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: '',
+          decoration: const InputDecoration(
+            labelText: 'Jamendo client_id (opsional)',
+            helperText: 'Gratis daftar di dev.jamendo.com -> lagu CC legal',
+          ),
+          onChanged: (v) => MusicCatalogService.setJamendoClientId(v),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _previewCatalog(CatalogTrack t, StateSetter ss) async {
+    try {
+      if (_catPlayingUrl == t.url && _catPlayer.playing) {
+        await _catPlayer.pause();
+      } else if (_catPlayingUrl == t.url) {
+        await _catPlayer.play();
+      } else {
+        await _catPlayer.stop();
+        await _catPlayer.setUrl(t.url);
+        await _catPlayer.play();
+      }
+      ss(() => _catPlayingUrl = t.url);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal memutar pratinjau (cek internet)')));
+      }
+    }
+  }
+
+  Future<void> _downloadCatalog(CatalogTrack t, StateSetter ss) async {
+    ss(() => _catDownloading.add(t.url));
+    final path = await MusicCatalogService.download(t);
+    ss(() => _catDownloading.remove(t.url));
+    if (path == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unduhan gagal — cek internet / URL lagu')));
+      }
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (!_storyAudioPaths.contains(path)) _storyAudioPaths.add(path);
+      _storyMoods[path] = t.mood;
+    });
+    await prefs.setStringList('story_audio_playlist', _storyAudioPaths);
+    await StoryMoodStore.save(_storyMoods);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('"${t.title}" masuk playlist cerita (${StoryMoodAnalyzer.labels[t.mood]})')));
+    }
+  }
+
   @override
   void dispose() {
     _audioPlayer.dispose();
+    _catPlayer.dispose();
     super.dispose();
   }
 
@@ -423,6 +813,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                child: const Text('Ukuran Teks', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SegmentedButton<double>(
+                  segments: const [
+                    ButtonSegment(value: 0.9, label: Text('Kecil')),
+                    ButtonSegment(value: 1.0, label: Text('Normal')),
+                    ButtonSegment(value: 1.12, label: Text('Besar')),
+                  ],
+                  selected: {_fontScale},
+                  onSelectionChanged: (s) => _setFontScale(s.first),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                 child: const Text('Bentuk Bubble Chat', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               ),
               Padding(
@@ -498,6 +905,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   snap.data ?? 'Memeriksa...',
                 ),
               ),
+              // BATCH I: ubah kata sandi akun (re-auth email dulu, wajib aman).
+              _tile(
+                Icons.password_outlined,
+                'Ubah Kata Sandi',
+                'Verifikasi sandi lama sebelum mengganti',
+                _changePasswordDialog,
+              ),
+              // BATCH I: opt-in "Lagi buka TikTok" — pasangan bisa melihat
+              // aplikasi apa yang sedang kamu buka saat DyKal tertutup.
+              SwitchListTile(
+                secondary: Icon(
+                  Icons.location_searching_outlined,
+                  color: _activityShare ? DyKalTheme.primary : DyKalTheme.textGrey,
+                ),
+                title: const Text('Bagikan Aktivitas Perangkat', style: TextStyle(fontSize: 14)),
+                subtitle: Text(
+                  _activityShare
+                      ? 'Aktif — pasangan melihat "Lagi buka TikTok/IG/..."'
+                      : 'Nonaktif — pasangan hanya melihat Online/Terakhir dilihat',
+                  style: TextStyle(fontSize: 11.5, color: DyKalTheme.textSecondaryOf(context)),
+                ),
+                value: _activityShare,
+                activeThumbColor: Colors.white,
+                activeTrackColor: DyKalTheme.primary,
+                onChanged: _toggleActivityShare,
+              ),
               FutureBuilder<bool>(
                 future: FloatingService.hasOverlayPermission(),
                 builder: (_, snap) => ListTile(
@@ -547,6 +980,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'Penyimpanan & Data',
             icon: Icons.storage_outlined,
             children: [
+              // BATCH I: hemat data — kompresi upload lebih agresif, media
+              // tetap offline-first (lokal menjadi prioritas baca).
+              SwitchListTile(
+                secondary: Icon(
+                  Icons.data_saver_on_outlined,
+                  color: _dataSaver ? DyKalTheme.online : DyKalTheme.textGrey,
+                ),
+                title: const Text('Mode Hemat Data & Cloud', style: TextStyle(fontSize: 14)),
+                subtitle: Text(
+                  _dataSaver
+                      ? 'Aktif — foto diupload lebih kecil (kualitas 58, maks 1280px)'
+                      : 'Normal — kualitas 80, maks 1080p. Media yang sudah diunduh disimpan lokal.',
+                  style: TextStyle(fontSize: 11.5, color: DyKalTheme.textSecondaryOf(context)),
+                ),
+                value: _dataSaver,
+                activeThumbColor: Colors.white,
+                activeTrackColor: DyKalTheme.online,
+                onChanged: (v) async {
+                  setState(() => _dataSaver = v);
+                  await _saveLocalPref('data_saver', v);
+                },
+              ),
               _infoTile(
                 Icons.folder_outlined,
                 'Lokasi Scoped Media',
@@ -601,6 +1056,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       dense: true,
                       leading: const Icon(Icons.music_note, color: DyKalTheme.primary),
                       title: Text(e.value.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                      // BATCH I: chip suasana — dipakai story untuk memilih lagu
+                      // yang senada dengan suasana foto.
+                      subtitle: GestureDetector(
+                        onTap: () => _pickMood(e.key),
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: DyKalTheme.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'suasana: ${StoryMoodAnalyzer.labels[_storyMoods[e.value] ?? StoryMoodAnalyzer.guessFromName(e.value)]}',
+                            style: TextStyle(fontSize: 10, color: DyKalTheme.primary),
+                          ),
+                        ),
+                      ),
+                      isThreeLine: true,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -632,6 +1105,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _addAudioFromVideo,
                   icon: const Icon(Icons.video_library, size: 18),
                   label: const Text('Tambah dari Video (jadi MP3)'),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: FilledButton.icon(
+                  onPressed: _openMusicCatalog,
+                  icon: const Icon(Icons.library_music_outlined, size: 18),
+                  label: const Text('Katalog Musik Gratis (online)'),
                 ),
               ),
             ],
@@ -852,7 +1333,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ButtonSegment(value: AppUiStyle.sharp, label: Text('Sharp'), icon: Icon(Icons.crop_square, size: 16)),
             ],
             selected: {currentStyle},
-            onSelectionChanged: (s) => ThemeController.instance.setStyle(s.first),
+            onSelectionChanged: (s) {
+              ThemeController.instance.setStyle(s.first);
+              // Per aturan owner: perubahan gaya antarmuka diikuti instruksi
+              // mulai ulang — tidak semua widget menempelkan radius saat runtime.
+              _restartHint();
+            },
           ),
         );
       },

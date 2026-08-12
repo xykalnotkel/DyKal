@@ -82,6 +82,29 @@ Future<void> dykalNotifBackgroundResponse(NotificationResponse r) async {
   } catch (_) {}
 }
 
+/// BATCH I: tandai semua pesan 'sent' dari partner -> 'delivered', SEKALI JALAN.
+/// Di-spark dari background FCM handler (pesan sampai walau app mati = centang
+/// 2 per permintaan owner) dan dari MainNav saat app dibuka.
+Future<void> markDeliveredFirestore(FirebaseFirestore db, String cid, String uid) async {
+  if (cid.isEmpty || uid.isEmpty) return;
+  try {
+    final qs = await db
+        .collection('chats/$cid/messages')
+        .where('status', isEqualTo: 'sent')
+        .limit(60)
+        .get();
+    final batch = db.batch();
+    var n = 0;
+    for (final d in qs.docs) {
+      if (d.data()['fromId'] != uid) {
+        batch.update(d.reference, {'status': 'delivered'});
+        n++;
+      }
+    }
+    if (n > 0) await batch.commit();
+  } catch (_) {}
+}
+
 /// FCM Service DyKal — Gratis Spark (Tanpa Cloud Functions).
 ///
 /// ARSITEKTUR NOTIF (Batch G, spek v2 #4):
@@ -253,13 +276,14 @@ class FCMService {
         AndroidNotificationAction('mute', 'Bisukan', cancelNotification: true),
       ],
     );
-    await plugin.show(
-      notifIdChat,
-      title,
-      body,
-      NotificationDetails(android: androidDetails),
-      payload: jsonEncode({'t': 'chat', 'cid': coupleId}),
-    );
+    await plugin.show(notifIdChat, title, body, NotificationDetails(android: androidDetails),
+        payload: jsonEncode({'t': 'chat', 'cid': coupleId}));
+  }
+
+  /// Tandai delivered sekali jalan (dipanggil MainNav).
+  static Future<void> markDeliveredNow(String cid) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return markDeliveredFirestore(FirebaseFirestore.instance, cid, uid);
   }
 
   /// Notif PANGGILAN layar penuh (dering telepon sistem + Angkat/Tolak).
@@ -611,12 +635,17 @@ class FCMService {
     final body = (data['messageBody'] as String?)?.isNotEmpty == true
         ? data['messageBody'] as String
         : 'Pesan baru';
+    final cid = (data['coupleId'] as String?) ?? '';
     await showRichChatNotif(
       plugin,
       title: title,
       body: body,
       avatarUrl: data['senderAvatar'] as String?,
-      coupleId: (data['coupleId'] as String?) ?? '',
+      coupleId: cid,
     );
+    // BATCH I: pesan TIBA di device walau app mati -> centang 2 (delivered)
+    // langsung, tak perlu menunggu app dibuka.
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    await markDeliveredFirestore(FirebaseFirestore.instance, cid, uid);
   }
 }

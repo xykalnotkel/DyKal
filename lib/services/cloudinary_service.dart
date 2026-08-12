@@ -4,6 +4,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_constants.dart';
 
 /// Cloudinary Service - Pengganti Firebase Storage yang butuh CC
@@ -17,14 +18,22 @@ class CloudinaryService {
   Future<File> _compressToWebP(File file) async {
     final tempDir = await getTemporaryDirectory();
     final targetPath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.webp';
-    
+
+    // BATCH I: mode hemat data (toggle Settings) — kompresi lebih agresif,
+    // ~55-70% lebih kecil dari preset normal. Default tetap jernih.
+    var saver = false;
+    try {
+      final p = await SharedPreferences.getInstance();
+      saver = p.getBool('data_saver') ?? false;
+    } catch (_) {}
+
     final result = await FlutterImageCompress.compressAndGetFile(
       file.absolute.path,
       targetPath,
-      quality: 80, // 80% udah super jernih tapi size 30-50% lebih kecil
+      quality: saver ? 58 : 80,
       format: CompressFormat.webp, // WebP paling ringan & support transparan
-      minWidth: 1080, // Cukup untuk xxhdpi (No DPI auto scale flutter)
-      minHeight: 1080,
+      minWidth: saver ? 1280 : 1080,
+      minHeight: saver ? 1280 : 1080,
     );
     return result != null ? File(result.path) : file;
   }

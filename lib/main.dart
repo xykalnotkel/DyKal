@@ -32,6 +32,8 @@ import 'services/theme_controller.dart';
 import 'services/bubble_style.dart';
 import 'services/wallpaper_settings.dart';
 import 'services/update_service.dart';
+import 'services/presence_service.dart';
+import 'services/font_scale.dart';
 import 'widgets/update_banner.dart';
 import 'widgets/return_to_call_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -67,6 +69,7 @@ Future<void> main() async {
   try { await ThemeController.instance.load(); } catch (_) {}
   try { await BubbleStyle.instance.load(); } catch (_) {}
   try { await WallpaperSettings.instance.load(); } catch (_) {}
+  try { await FontScale.load(); } catch (_) {}
 
   // Sisanya (birthday, callback update) non-kritis — background.
   unawaited(_initNonFirebase());
@@ -173,9 +176,12 @@ class DyKalApp extends StatelessWidget {
           cardRadius: ThemeController.instance.cardRadius,
           buttonRadius: ThemeController.instance.buttonRadius,
         ),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: child!,
+        builder: (context, child) => ValueListenableBuilder<double>(
+          valueListenable: FontScale.value,
+          builder: (context, scale, _) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
         ),
         home: const SplashGate(),
         routes: {
@@ -534,15 +540,16 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
   }
 
   void _setPresenceOnline(bool online) {
-    final uid = AuthService().myId;
-    if (uid.isEmpty) return;
-    FirebaseFirestore.instance.doc('presence/$uid').set({
-      'isOnline': online,
-      // Jenis koneksi ikut dilaporkan -> pasangan bisa bedakan "online via
-      // WiFi/Seluler" vs status offline (terakhir dilihat) di header chat.
-      'net': online ? _lastNet : 'none',
-      if (!online) 'lastSeen': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    // BATCH I: presence dipegang PresenceService (heartbeat 45 dtk + status
+    // jujur). Fungsi lama direute ke sana agar semua lifecycle tetap bekerja.
+    final ps = PresenceService.instance;
+    if (online) {
+      ps.setNet(_lastNet);
+      ps.start();
+    } else {
+      ps.setNet('none');
+      unawaited(ps.stop());
+    }
   }
 
   @override
@@ -568,9 +575,15 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
 
   void _listenDelivered() {
     final coupleId = AuthService().coupleId;
-    final myId = AuthService().myId;
-    if (coupleId == null || coupleId.isEmpty || myId.isEmpty) return;
+    if (coupleId == null || coupleId.isEmpty) return;
+    // Start heartbeat sesegera mungkin (status Online akurat per Batch I).
+    PresenceService.instance.setNet(_lastNet);
+    PresenceService.instance.start();
+    // Tandai delivered — termasuk saat app baru dibuka (bukan cuma snapshot).
+    unawaited(FCMService.markDeliveredNow(coupleId));
 
+    final myId = AuthService().myId;
+    if (myId.isEmpty) return;
     _deliveredSub = FirebaseFirestore.instance
         .collection('chats/$coupleId/messages')
         .where('status', isEqualTo: 'sent')

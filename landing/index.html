@@ -10,10 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* Mode Gelap ala TikTok Dark Soft (#12141D / #161823) — Default / Sistem Gelap */
     :root {
-      --bg: #0F1219;
-      --surface: #171A24;
-      --surface-card: #1D212E;
+      --bg: #12141D;
+      --surface: #161823;
+      --surface-card: #1C1F2D;
       --border: rgba(255, 255, 255, 0.08);
       --border-light: rgba(255, 255, 255, 0.18);
       --primary: #FF6B8A;
@@ -23,7 +24,23 @@
       --accent: #00D68F;
       --text: #F8FAFC;
       --text-muted: #94A3B8;
-      --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+      --morph-opacity: 0.22;
+    }
+
+    /* Mode Terang Mengikuti Sistem HP (prefers-color-scheme: light) */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #F8F9FB;
+        --surface: #FFFFFF;
+        --surface-card: #FFFFFF;
+        --border: rgba(0, 0, 0, 0.08);
+        --border-light: rgba(0, 0, 0, 0.16);
+        --text: #12141D;
+        --text-muted: #64748B;
+        --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+        --morph-opacity: 0.15;
+      }
     }
 
     * {
@@ -38,20 +55,60 @@
       color: var(--text);
       line-height: 1.6;
       overflow-x: hidden;
+      position: relative;
     }
 
-    /* Ambient Static Glows (Bebas Lag GPU) */
-    .ambient-bg {
+    /* Morphing Background Bebas Lag (60/120 FPS tanpa filter blur GPU) */
+    .morph-bg {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      pointer-events: none;
+      overflow: hidden;
       z-index: -1;
-      background:
-        radial-gradient(circle at 15% 15%, rgba(255, 107, 138, 0.12) 0%, transparent 45%),
-        radial-gradient(circle at 85% 85%, rgba(123, 108, 246, 0.12) 0%, transparent 45%);
+      pointer-events: none;
+    }
+
+    .morph-shape {
+      position: absolute;
+      opacity: var(--morph-opacity);
+      will-change: transform, border-radius;
+      animation: morphing 18s ease-in-out infinite alternate;
+    }
+
+    .morph-1 {
+      top: -10%;
+      left: -5%;
+      width: 55vw;
+      height: 55vw;
+      background: radial-gradient(circle, var(--primary) 0%, transparent 75%);
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    }
+
+    .morph-2 {
+      bottom: -15%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, var(--secondary) 0%, transparent 75%);
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+      animation-delay: -9s;
+    }
+
+    @keyframes morphing {
+      0% {
+        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+      }
+      50% {
+        border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+        transform: translate3d(4%, 6%, 0) rotate(120deg) scale(1.06);
+      }
+      100% {
+        border-radius: 30% 70% 40% 60% / 60% 40% 60% 40%;
+        transform: translate3d(-4%, -4%, 0) rotate(240deg) scale(0.96);
+      }
     }
 
     .container {
@@ -64,7 +121,17 @@
     header {
       padding: 20px 0;
       border-bottom: 1px solid var(--border);
-      background: rgba(15, 18, 25, 0.9);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(18, 20, 29, 0.75);
+    }
+
+    @media (prefers-color-scheme: light) {
+      header {
+        background: rgba(248, 249, 251, 0.85);
+      }
     }
 
     .nav-inner {
@@ -91,7 +158,7 @@
     }
 
     .badge-ver {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--surface-card);
       border: 1px solid var(--border-light);
       padding: 4px 14px;
       border-radius: 999px;
@@ -112,7 +179,7 @@
       font-weight: 800;
       line-height: 1.15;
       margin-bottom: 20px;
-      color: #FFFFFF;
+      color: var(--text);
     }
 
     .hero-title span {
@@ -156,10 +223,10 @@
     }
 
     .android-icon {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       background: rgba(0, 214, 143, 0.15);
-      border-radius: 10px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -180,10 +247,18 @@
       font-size: 12px;
       color: #7DD3FC;
       background: rgba(125, 211, 252, 0.12);
-      padding: 8px 14px;
-      border-radius: 12px;
+      padding: 10px 16px;
+      border-radius: 14px;
       border: 1px solid rgba(125, 211, 252, 0.25);
       margin-bottom: 24px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .abi-status {
+        color: #0284C7;
+        background: rgba(2, 132, 199, 0.1);
+        border-color: rgba(2, 132, 199, 0.25);
+      }
     }
 
     .apk-grid {
@@ -192,37 +267,39 @@
       gap: 18px;
     }
 
-    /* Tactile 3D Button Style */
+    /* Tactile 3D Button Style (2.5D ala TikTok / Modern iOS) */
     .apk-card {
       position: relative;
-      background: #232838;
+      background: var(--surface-card);
       border-radius: 18px;
       padding: 22px 18px;
       text-decoration: none;
       color: var(--text);
-      border-top: 1px solid rgba(255, 255, 255, 0.25);
-      border-left: 1px solid rgba(255, 255, 255, 0.12);
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
-      border-bottom: 5px solid #0F1219;
-      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-      transition: transform 0.15s ease, border-bottom-width 0.15s ease;
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 5px solid rgba(0, 0, 0, 0.35);
+      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: transform 0.15s ease, border-bottom-width 0.15s ease, box-shadow 0.15s ease;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      cursor: pointer;
     }
 
     .apk-card:hover {
-      background: #2A3042;
+      transform: translateY(-2px);
+      box-shadow: 0 14px 22px rgba(0, 0, 0, 0.3);
     }
 
     .apk-card:active {
       transform: translateY(3px);
       border-bottom-width: 2px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
 
     .apk-card.btn-recommended {
-      background: linear-gradient(135deg, #1E293B, #0F172A);
+      background: linear-gradient(135deg, var(--surface-card), rgba(255, 107, 138, 0.12));
       border-color: var(--primary);
       border-bottom: 5px solid var(--primary-dark);
     }
@@ -267,6 +344,12 @@
       color: #A5B4FC;
     }
 
+    @media (prefers-color-scheme: light) {
+      .badge-blue {
+        color: var(--secondary-dark);
+      }
+    }
+
     .badge-red {
       background: rgba(255, 107, 138, 0.2);
       color: var(--primary);
@@ -302,10 +385,10 @@
     /* Tactile 2.5D Feature Card */
     .card {
       background: var(--surface-card);
-      border-top: 1px solid rgba(255, 255, 255, 0.15);
-      border-left: 1px solid rgba(255, 255, 255, 0.08);
-      border-right: 1px solid rgba(0, 0, 0, 0.2);
-      border-bottom: 4px solid #10121C;
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 4px solid rgba(0, 0, 0, 0.35);
       border-radius: 20px;
       padding: 32px 26px;
       box-shadow: var(--card-shadow);
@@ -349,8 +432,8 @@
 
     .step-card {
       background: var(--surface-card);
-      border-top: 1px solid rgba(255, 255, 255, 0.15);
-      border-bottom: 4px solid #10121C;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 4px solid rgba(0, 0, 0, 0.35);
       border-radius: 20px;
       padding: 28px;
       position: relative;
@@ -378,8 +461,8 @@
 
     .faq-item {
       background: var(--surface-card);
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
-      border-bottom: 3px solid #10121C;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 3px solid rgba(0, 0, 0, 0.35);
       border-radius: 16px;
       overflow: hidden;
     }
@@ -434,8 +517,11 @@
 </head>
 <body>
 
-  <!-- Static Ambient Background (Zero GPU Lag) -->
-  <div class="ambient-bg"></div>
+  <!-- Morphing Fluid Background (Bebas Lag 60/120 FPS) -->
+  <div class="morph-bg">
+    <div class="morph-shape morph-1"></div>
+    <div class="morph-shape morph-2"></div>
+  </div>
 
   <!-- Header -->
   <header>
@@ -522,7 +608,7 @@
     </div>
   </section>
 
-  <!-- Fitur Utama (Semua Ikon murni SVG tanpa Emoji) -->
+  <!-- Fitur Utama -->
   <section class="section" id="fitur">
     <div class="container">
       <h2 class="section-title">Fasilitas Eksklusif Berdua</h2>
@@ -652,9 +738,9 @@
     </div>
   </footer>
 
-  <!-- Automatic ABI Detection Engine -->
+  <!-- Automatic ABI Detection Engine & Download Redirector -->
   <script>
-    (function detectAndroidABI() {
+    (function initDyKalLanding() {
       const ua = navigator.userAgent || navigator.vendor || window.opera || "";
       const isAndroid = /Android/i.test(ua);
       const is64Bit = /arm64|aarch64|x86_64|64/i.test(ua) || 
@@ -666,19 +752,17 @@
       const badge32 = document.getElementById("badge-armeabi");
       const statusText = document.getElementById("abi-status-text");
 
-      if (!btn64 || !btn32 || !statusText) return;
-
-      if (!isAndroid) {
-        statusText.textContent = "Sistem siap. Silakan unduh APK Universal atau ARM64 untuk dipasang di perangkat Android kamu.";
-        return;
-      }
-
-      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
-        navigator.userAgentData.getHighEntropyValues(["bitness", "architecture"]).then(values => {
-          applyABIMode(values.bitness === "64" || values.architecture === "arm64");
-        }).catch(() => applyABIMode(is64Bit));
-      } else {
-        applyABIMode(is64Bit);
+      // 1. Deteksi ABI
+      if (btn64 && btn32 && statusText) {
+        if (!isAndroid) {
+          statusText.textContent = "Sistem siap. Silakan unduh APK Universal atau ARM64 untuk dipasang di perangkat Android kamu.";
+        } else if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+          navigator.userAgentData.getHighEntropyValues(["bitness", "architecture"]).then(values => {
+            applyABIMode(values.bitness === "64" || values.architecture === "arm64");
+          }).catch(() => applyABIMode(is64Bit));
+        } else {
+          applyABIMode(is64Bit);
+        }
       }
 
       function applyABIMode(is64) {
@@ -699,6 +783,29 @@
           statusText.textContent = "Sistem mendeteksi perangkat Android 32-bit. Tombol ARM64 dinonaktifkan agar tidak terjadi error pemasangan.";
         }
       }
+
+      // 2. Redirect ke thanks.html setelah mulai mengunduh APK
+      const downloadCards = document.querySelectorAll(".apk-card");
+      downloadCards.forEach(card => {
+        card.addEventListener("click", function(e) {
+          if (this.classList.contains("btn-disabled")) return;
+          e.preventDefault();
+          const apkUrl = this.getAttribute("href");
+          
+          // Mulai pengunduhan APK di background
+          const a = document.createElement("a");
+          a.href = apkUrl;
+          a.download = apkUrl;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          // Redirect ke halaman Terima Kasih setelah 650ms
+          setTimeout(() => {
+            window.location.href = "thanks.html?apk=" + encodeURIComponent(apkUrl);
+          }, 650);
+        });
+      });
     })();
   </script>
 

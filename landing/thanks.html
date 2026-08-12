@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terima Kasih — Pengunduhan DyKal | XYSTUDIO</title>
+  <meta name="description" content="Terima kasih telah mengunduh aplikasi DyKal. Ikuti petunjuk instalasi dan mulai ruang digital privatmu bersama dia.">
+  <link rel="icon" href="favicon/favicon-32.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Mode Gelap ala TikTok Dark Soft (#12141D / #161823) */
+    :root {
+      --bg: #12141D;
+      --surface: #161823;
+      --surface-card: #1C1F2D;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.18);
+      --primary: #FF6B8A;
+      --primary-dark: #D94A68;
+      --secondary: #7B6CF6;
+      --secondary-dark: #5849D6;
+      --accent: #00D68F;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+      --morph-opacity: 0.22;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #F8F9FB;
+        --surface: #FFFFFF;
+        --surface-card: #FFFFFF;
+        --border: rgba(0, 0, 0, 0.08);
+        --border-light: rgba(0, 0, 0, 0.16);
+        --text: #12141D;
+        --text-muted: #64748B;
+        --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+        --morph-opacity: 0.15;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Morphing Background Bebas Lag */
+    .morph-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .morph-shape {
+      position: absolute;
+      opacity: var(--morph-opacity);
+      will-change: transform, border-radius;
+      animation: morphing 18s ease-in-out infinite alternate;
+    }
+
+    .morph-1 {
+      top: -10%;
+      left: -5%;
+      width: 55vw;
+      height: 55vw;
+      background: radial-gradient(circle, var(--primary) 0%, transparent 75%);
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    }
+
+    .morph-2 {
+      bottom: -15%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, var(--secondary) 0%, transparent 75%);
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+      animation-delay: -9s;
+    }
+
+    @keyframes morphing {
+      0% {
+        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+      }
+      50% {
+        border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+        transform: translate3d(4%, 6%, 0) rotate(120deg) scale(1.06);
+      }
+      100% {
+        border-radius: 30% 70% 40% 60% / 60% 40% 60% 40%;
+        transform: translate3d(-4%, -4%, 0) rotate(240deg) scale(0.96);
+      }
+    }
+
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(18, 20, 29, 0.75);
+    }
+
+    @media (prefers-color-scheme: light) {
+      header {
+        background: rgba(248, 249, 251, 0.85);
+      }
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 50px 0;
+      text-align: center;
+    }
+
+    .icon-success {
+      width: 80px;
+      height: 80px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(0, 214, 143, 0.2), rgba(123, 108, 246, 0.2));
+      border: 1px solid rgba(0, 214, 143, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(28px, 4.5vw, 44px);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    p.lead {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin: 0 auto 28px;
+    }
+
+    .fallback-link {
+      display: inline-block;
+      font-size: 13.5px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+      margin-bottom: 40px;
+      padding: 10px 20px;
+      background: rgba(255, 107, 138, 0.12);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 107, 138, 0.25);
+    }
+
+    .fallback-link:hover {
+      background: rgba(255, 107, 138, 0.2);
+    }
+
+    /* 2.5D Tactile Card */
+    .info-card {
+      background: var(--surface);
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 4px solid rgba(0, 0, 0, 0.35);
+      border-radius: 24px;
+      padding: 32px 28px;
+      box-shadow: var(--card-shadow);
+      text-align: left;
+      margin-bottom: 40px;
+    }
+
+    .info-card h2 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      background: var(--surface-card);
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Dukung Kami Tactile Buttons */
+    .support-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .support-desc {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .support-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .btn-support {
+      position: relative;
+      background: var(--surface-card);
+      border-radius: 16px;
+      padding: 16px 20px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 4px solid rgba(0, 0, 0, 0.35);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease, border-bottom-width 0.15s ease;
+    }
+
+    .btn-support:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-support:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+
+    .btn-wa { border-color: #25D366; color: #25D366; }
+    .btn-tk { border-color: #FF0050; color: #FF0050; }
+    .btn-ig { border-color: #E1306C; color: #E1306C; }
+    .btn-tr { border-color: #FFC857; color: #FFC857; }
+
+    .btn-home {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(255, 107, 138, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .btn-home:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(255, 107, 138, 0.45);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 30px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    svg.icon {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Morphing Background -->
+  <div class="morph-bg">
+    <div class="morph-shape morph-1"></div>
+    <div class="morph-shape morph-2"></div>
+  </div>
+
+  <header>
+    <div class="container nav-inner">
+      <a href="index.html" class="brand">
+        <img src="logo.webp" alt="DyKal Logo">
+        <span>DyKal</span>
+      </a>
+      <div class="badge-ver">Versi 1.3.0+13</div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="icon-success">
+        <!-- Checkmark SVG -->
+        <svg viewBox="0 0 24 24" class="icon" style="width: 38px; height: 38px;">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+
+      <h1>Terima Kasih Telah Mengunduh DyKal!</h1>
+      <p class="lead">Pengunduhan file APK sedang berjalan otomatis di ponselmu. Ikuti petunjuk singkat di bawah untuk memulai pemasangan.</p>
+
+      <a href="DyKal-arm64.apk" class="fallback-link" id="retry-link">
+        Klik di sini jika pengunduhan belum dimulai secara otomatis
+      </a>
+
+      <!-- Cara Pasang APK -->
+      <div class="info-card">
+        <h2>
+          <svg viewBox="0 0 24 24" class="icon" style="color: var(--primary);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          Cara Pasang Aplikasi di Android
+        </h2>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div>
+              <strong style="color: var(--text);">Buka File APK yang Terunduh</strong>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Sentuh notifikasi pengunduhan selesai atau cari file APK DyKal di folder Unduhan / Download ponselmu.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div>
+              <strong style="color: var(--text);">Izinkan Instalasi Sumber Tidak Dikenal</strong>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Jika diminta, pilih <strong>Setelan</strong> lalu aktifkan <strong>"Izinkan dari sumber ini"</strong> untuk melanjutkan pemasangan.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div>
+              <strong style="color: var(--text);">Masuk & Hubungkan Pasangan</strong>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Buka DyKal, daftar menggunakan email & kata sandi, lalu gunakan kode undangan untuk langsung terhubung berdua.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dukung XYSTUDIO -->
+      <h2 class="support-title">Dukung Pengembang XYSTUDIO</h2>
+      <p class="support-desc">Bantu kami mengembangkan fitur baru dan menjaga server tetap gratis selamanya.</p>
+
+      <div class="support-grid">
+        <!-- WhatsApp Share -->
+        <a href="https://api.whatsapp.com/send?text=Cobain%20DyKal%20%E2%80%94%20aplikasi%20privat%20khusus%20kamu%20%26%20pasangan%21%20Unduh%20di%3A%20https%3A%2F%2Fxykalnotkel.github.io%2FDyKal%2F" target="_blank" class="btn-support btn-wa">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          Bagikan ke WhatsApp
+        </a>
+
+        <!-- TikTok Follow -->
+        <a href="https://tiktok.com/@xystudio" target="_blank" class="btn-support btn-tk">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+          Ikuti TikTok XYSTUDIO
+        </a>
+
+        <!-- IG Follow -->
+        <a href="https://instagram.com/xystudio" target="_blank" class="btn-support btn-ig">
+          <svg viewBox="0 0 24 24" class="icon"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+          Ikuti IG XYSTUDIO
+        </a>
+
+        <!-- Donate / Traktir -->
+        <a href="https://trakteer.id/xystudio" target="_blank" class="btn-support btn-tr">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+          Traktir Kopi / Dukung
+        </a>
+      </div>
+
+      <a href="index.html" class="btn-home">
+        Kembali ke Halaman Utama
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><strong>XYSTUDIO</strong> oleh Kall — Ruang Privat Eksklusif Untuk Dyaa & Kall &bull; 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    // Sesuaikan link fallback dengan APK yang diunduh dari parameter URL ?apk=...
+    (function initThanksPage() {
+      const params = new URLSearchParams(window.location.search);
+      const apk = params.get("apk");
+      const retryLink = document.getElementById("retry-link");
+      if (apk && retryLink) {
+        retryLink.href = apk;
+      }
+    })();
+  </script>
+
+</body>
+</html>

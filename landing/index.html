@@ -1,306 +1,515 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DyKal — Ruang Kecil Kalian Berdua</title>
-<meta name="description" content="DyKal: aplikasi private couple dari XYSTUDIO. Chat terenkripsi E2EE, panggilan suara/video dengan nada sambung, cerita harian bermusik, album, surat cinta. Unduh APK Android resmi (32/64-bit).">
-<link rel="icon" href="logo.webp" type="image/webp">
-<style>
-  :root{
-    --pink:#FF6B8A; --pink-deep:#E84A72; --peach:#FFE9EE; --ink:#2B2230;
-    --mut:#7A7180; --bg:#FFF6F8; --line:#F2D8E0;
-    --green:#00A884; --r:22px;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
-  .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DyKal — Ruang Digital Privat Untuk Kamu & Dia | XYSTUDIO</title>
+  <meta name="description" content="Satu aplikasi, dua orang, nol distraksi. Percakapan realtime, panggilan suara & video P2P, album bersama, dan surat cinta dengan enkripsi End-to-End.">
+  <link rel="icon" href="favicon/favicon-32.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f17;
+      --surface: #151824;
+      --surface-card: rgba(26, 31, 46, 0.7);
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #FF6B8A;
+      --primary-glow: rgba(255, 107, 138, 0.35);
+      --secondary: #7B6CF6;
+      --secondary-glow: rgba(123, 108, 246, 0.35);
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
 
-  /* ============ 2.5D CLAY SYSTEM (2D yang terlihat 3D) ============ */
-  .clay{
-    background:#fff;border:1px solid var(--line);border-radius:var(--r);
-    box-shadow:
-      0 1px 0 rgba(255,255,255,.9) inset,     /* highlight atas = tebal 3D */
-      0 -6px 14px rgba(232,74,114,.05) inset,  /* bayangan dalam bawah */
-      0 18px 40px rgba(232,74,114,.12),        /* drop shadow lembut */
-      0 3px 10px rgba(43,34,48,.06);
-    transition:transform .18s ease, box-shadow .18s ease;
-  }
-  .clay:hover{
-    transform:translateY(-4px);
-    box-shadow:
-      0 1px 0 rgba(255,255,255,.9) inset,
-      0 -6px 14px rgba(232,74,114,.05) inset,
-      0 26px 54px rgba(232,74,114,.18),
-      0 4px 12px rgba(43,34,48,.07);
-  }
-  .clay-btn{
-    display:inline-flex;align-items:center;gap:10px;border:none;cursor:pointer;text-decoration:none;
-    font-weight:800;border-radius:999px;color:#fff;position:relative;
-    background:linear-gradient(180deg,#FF7E9B,#E8406C);
-    box-shadow:0 3px 0 #C22754, 0 12px 24px rgba(232,64,108,.35), 0 1px 0 rgba(255,255,255,.5) inset;
-    transition:transform .12s ease, box-shadow .12s ease;
-  }
-  .clay-btn:hover{transform:translateY(-2px)}
-  .clay-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #C22754, 0 6px 14px rgba(232,64,108,.30)}
-  .clay-btn.ghost{
-    background:linear-gradient(180deg,#FFFFFF,#FFEFF3);color:var(--ink);
-    border:2px solid var(--line);
-    box-shadow:0 3px 0 #E7C2CD, 0 10px 22px rgba(43,34,48,.08);
-  }
-  .clay-btn.ghost:active{box-shadow:0 1px 0 #E7C2CD, 0 5px 12px rgba(43,34,48,.06)}
-  .clay-btn.off{pointer-events:none;filter:grayscale(1);opacity:.5;box-shadow:0 3px 0 #C9C4C9}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  /* ---------- NAV ---------- */
-  nav{position:sticky;top:0;z-index:50;background:rgba(255,246,248,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-  nav .wrap{display:flex;align-items:center;gap:10px;height:62px}
-  nav img{width:36px;height:36px;border-radius:12px;box-shadow:0 6px 16px rgba(232,74,114,.3)}
-  nav b{font-size:18px}
-  nav .spacer{flex:1}
-  nav a.nl{color:var(--mut);text-decoration:none;font-size:14px;font-weight:700;margin-left:18px}
-  nav a.nl:hover{color:var(--pink)}
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-  /* ---------- HERO ---------- */
-  header{padding:58px 0 20px;text-align:center;position:relative;overflow:hidden}
-  .halo{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none}
-  .halo.a{width:340px;height:340px;background:#FFD3DD;top:-90px;left:-60px}
-  .halo.b{width:280px;height:280px;background:#FFC7DE;bottom:-70px;right:-40px}
-  .logoBig{width:104px;height:104px;border-radius:30px;margin:0 auto 16px;display:block;
-           box-shadow:0 4px 0 #D94A70, 0 22px 50px rgba(232,74,114,.4), 0 1px 0 rgba(255,255,255,.6) inset}
-  h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.6px}
-  h1 span{background:linear-gradient(180deg,#FF7E9B,#E8406C);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .tag{color:var(--mut);max-width:600px;margin:12px auto 0;font-size:16px}
-  .heroImg{width:min(430px,90vw);margin:30px auto 0;display:block;border-radius:30px;
-           box-shadow:0 30px 70px rgba(228,74,114,.22)}
-  .byx{display:inline-flex;align-items:center;gap:6px;margin-top:16px;font-size:12.5px;color:var(--mut);
-       padding:6px 16px;border-radius:999px;font-weight:700}
+    /* Morphing Fluid Background Shapes */
+    .morph-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+    }
 
-  /* ---------- DOWNLOAD ---------- */
-  #unduh{padding:44px 0 14px;text-align:center}
-  .dlRow{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-  .btnDl{padding:18px 28px;font-size:16px;min-width:270px;justify-content:center;flex-direction:column}
-  .btnDl .top{display:flex;align-items:center;gap:9px}
-  .btnDl small{display:block;font-weight:600;font-size:11.5px;opacity:.9;margin-top:2px}
-  .btnInfo{max-width:270px;margin:8px auto 0;font-size:12px;line-height:1.45;color:var(--mut)}
-  .abi{margin-top:16px;font-size:13.5px;color:var(--mut);background:#fff;border:1px solid var(--line);
-       border-radius:14px;padding:10px 16px;display:inline-block;max-width:560px}
-  .abi b{color:var(--ink)}
-  .abi .rechk{color:var(--pink);font-weight:700;cursor:pointer;text-decoration:underline}
+    .blob {
+      position: absolute;
+      filter: blur(80px);
+      opacity: 0.45;
+      animation: morph 16s ease-in-out infinite alternate;
+    }
 
-  /* ---------- PREVIEW: screenshot asli, kartu miring 2.5D ---------- */
-  #preview{padding:64px 0}
-  .secT{font-size:clamp(24px,3.6vw,32px);text-align:center;letter-spacing:-.3px}
-  .secS{color:var(--mut);text-align:center;max-width:640px;margin:10px auto 44px;font-size:15px}
-  .shots{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;perspective:1200px}
-  .shot{width:236px;padding:10px;border-radius:38px;background:#16141A;
-        box-shadow:0 4px 0 #000, 0 30px 60px rgba(43,34,48,.35), 0 1px 0 rgba(255,255,255,.25) inset;
-        transition:transform .2s ease}
-  .shot img{width:100%;border-radius:29px;display:block;aspect-ratio:9/19;object-fit:cover;background:#241f29}
-  .shot figcaption{text-align:center;color:#fff;font-size:11.5px;padding:8px 4px 2px;font-weight:600;letter-spacing:.2px}
-  .shot.s1{transform:rotateY(9deg) rotateX(2deg)} .shot.s3{transform:rotateY(-9deg) rotateX(2deg)}
-  .shot:hover{transform:rotateY(0) translateY(-6px) scale(1.02)}
-  .shotsNote{text-align:center;font-size:12px;color:var(--mut);margin-top:18px}
+    .blob-1 {
+      top: -10%;
+      left: -10%;
+      width: 55vw;
+      height: 55vw;
+      background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    }
 
-  /* ---------- FEATURES ---------- */
-  #fitur{padding:50px 0}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
-  .card{padding:22px}
-  .ic{width:46px;height:46px;border-radius:16px;background:linear-gradient(180deg,#FFE3EA,#FFD1DC);
-      display:flex;align-items:center;justify-content:center;margin-bottom:14px;
-      box-shadow:0 3px 0 #F4B9C8, 0 8px 18px rgba(232,74,114,.2)}
-  .ic svg{width:23px;height:23px;stroke:var(--pink-deep);fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
-  .card h3{font-size:15.5px;margin-bottom:5px}
-  .card p{font-size:13px;color:var(--mut)}
+    .blob-2 {
+      bottom: -15%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+      animation-delay: -8s;
+    }
 
-  /* ---------- PANDUAN ---------- */
-  #panduan{padding:50px 0 40px}
-  .steps{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-  .step{display:flex;gap:15px;padding:18px}
-  .stepN{min-width:36px;height:36px;border-radius:14px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;
-         background:linear-gradient(180deg,#FF7E9B,#E8406C);box-shadow:0 3px 0 #C22754}
-  .step h4{font-size:14.5px;margin-bottom:3px}
-  .step p{font-size:13px;color:var(--mut)}
-  .step code{background:var(--peach);padding:1px 7px;border-radius:7px;font-size:12px}
-  .pp{margin-top:24px;max-width:660px;margin-left:auto;margin-right:auto;padding:18px;border-left:4px solid var(--pink)}
-  .pp h4{font-size:14.5px;margin-bottom:4px}
-  .pp p{font-size:13px;color:var(--mut)}
-  footer{border-top:1px solid var(--line);padding:28px 0;text-align:center;color:var(--mut);font-size:13px}
-  footer b{color:var(--pink)}
-  @media(max-width:560px){.btnDl,.btnInfo{width:100%;max-width:none}}
-</style>
+    @keyframes morph {
+      0% {
+        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+      }
+      50% {
+        border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
+        transform: translate(5%, 8%) rotate(120deg) scale(1.08);
+      }
+      100% {
+        border-radius: 30% 70% 40% 60% / 60% 40% 60% 40%;
+        transform: translate(-5%, -5%) rotate(240deg) scale(0.95);
+      }
+    }
+
+    /* Container & Navigation */
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 15, 23, 0.75);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+    }
+
+    .badge-ver {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+    }
+
+    .hero-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(38px, 6vw, 64px);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 40px;
+    }
+
+    .cta-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 32px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 16px;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #FF4870);
+      color: #fff;
+      box-shadow: 0 8px 24px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px var(--primary-glow);
+    }
+
+    .btn-outline {
+      background: var(--surface-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    /* Grid Fitur */
+    .section {
+      padding: 80px 0;
+    }
+
+    .section-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 50px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 36px 28px;
+      backdrop-filter: blur(16px);
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(255, 107, 138, 0.4);
+    }
+
+    .card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(255, 107, 138, 0.2), rgba(123, 108, 246, 0.2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-size: 26px;
+      color: var(--primary);
+    }
+
+    .card h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Panduan Langkah (Steps) */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      margin-top: 40px;
+    }
+
+    .step-card {
+      position: relative;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+    }
+
+    .step-num {
+      position: absolute;
+      top: -16px;
+      left: 28px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 4px 16px;
+      border-radius: 999px;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    /* FAQ Accordion */
+    .faq-list {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .faq-item {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .faq-q {
+      padding: 20px 24px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .faq-a {
+      padding: 0 24px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .faq-item.open .faq-a {
+      display: block;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    footer strong {
+      color: var(--text);
+    }
+  </style>
 </head>
 <body>
 
-<nav>
-  <div class="wrap">
-    <img src="logo.webp" alt="Logo DyKal">
-    <b>DyKal</b>
-    <span class="spacer"></span>
-    <a class="nl" href="#preview">Preview</a>
-    <a class="nl" href="#fitur">Fitur</a>
-    <a class="nl" href="#panduan">Panduan</a>
-    <a class="nl" href="#unduh"><b style="color:var(--pink)">Unduh</b></a>
+  <!-- Morphing Glass Background -->
+  <div class="morph-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
   </div>
-</nav>
 
-<header>
-  <div class="halo a"></div><div class="halo b"></div>
-  <div class="wrap">
-    <img class="logoBig" src="logo.webp" alt="DyKal">
-    <h1>Ruang kecil <span>kalian berdua</span>.</h1>
-    <p class="tag">Chat terenkripsi ujung-ke-ujung, telepon dengan nada sambung "tuut", cerita harian
-       yang memilih musik sesuai suasana foto, album kenangan, dan surat cinta — private untuk dua orang.</p>
-    <div class="byx clay">Dibangun oleh <b>&nbsp;XYSTUDIO&nbsp;</b> untuk Dyaa &amp; Kall</div>
-  </div>
-</header>
+  <!-- Header / Navigation -->
+  <header>
+    <div class="container nav-inner">
+      <a href="#" class="brand">
+        <img src="logo.webp" alt="DyKal Logo">
+        <span>DyKal</span>
+      </a>
+      <div class="badge-ver">Versi 1.3.0+13</div>
+    </div>
+  </header>
 
-<section id="unduh">
-  <div class="wrap">
-    <div class="dlRow">
-      <div>
-        <a class="clay-btn btnDl" id="btn64" href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-arm64.apk">
-          <span class="top"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Unduh 64-bit</span>
-          <small>HP modern (Android 8 ke atas)</small>
-        </a>
-        <p class="btnInfo" id="info64">Ukuran lebih kecil &amp; paling ngebut di HP 64-bit.</p>
-      </div>
-      <div>
-        <a class="clay-btn ghost btnDl alt32" id="btn32" href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-armeabi-v7a.apk">
-          <span class="top"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Unduh 32-bit</span>
-          <small>HP lama / entry-level</small>
-        </a>
-        <p class="btnInfo" id="info32">Untuk HP 32-bit (umumnya HP jadul / RAM kecil).</p>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero-title">Ruang Digital Privat<br><span>Untuk Kamu & Dia</span></h1>
+      <p class="hero-subtitle">Satu aplikasi, dua orang, nol distraksi. Percakapan realtime, panggilan suara & video berkualitas jernih, album kenangan bersama, dan surat cinta abadi.</p>
+      <div class="cta-group">
+        <a href="#download" class="btn btn-primary">Unduh Aplikasi Sekarang</a>
+        <a href="#panduan" class="btn btn-outline">Panduan Cara Pakai</a>
       </div>
     </div>
-    <p class="abi" id="abiText">Mendeteksi jenis HP kamu secara aman... <span class="rechk" id="manualSel">pilih manual</span></p>
-  </div>
-</section>
+  </section>
 
-<section id="preview">
-  <div class="wrap">
-    <h2 class="secT">Tampilan aslinya</h2>
-    <p class="secS">Chat gelembung ala WA dengan centang &amp; jam pending, panggilan dengan bar hijau kembali, dan cerita dengan latar blur + suasana musik otomatis.</p>
-    <div class="shots">
-      <figure class="shot s1"><img src="shots/chat.webp" alt="Layar chat DyKal"><figcaption>Chat — E2EE &amp; centang ala WA</figcaption></figure>
-      <figure class="shot"><img src="shots/call.webp" alt="Layar panggilan DyKal"><figcaption>Panggilan — nada sambung &amp; bar kembali</figcaption></figure>
-      <figure class="shot s3"><img src="shots/story.webp" alt="Layar cerita DyKal"><figcaption>Cerita — blur &amp; musik suasana</figcaption></figure>
+  <!-- Fitur Utama -->
+  <section class="section" id="fitur">
+    <div class="container">
+      <h2 class="section-title">Fasilitas Eksklusif Berdua</h2>
+      <p class="section-desc">Semua fitur didesain khusus agar hubungan kamu dan pasangan makin hangat dan terhubung setiap saat.</p>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <h3>Chat Realtime & Voice Note</h3>
+          <p>Kirim pesan teks, foto, stiker, dan voice note seketika. Dilengkapi kontrol rekam geser ala WhatsApp dan foto sekali lihat (ViewOnce).</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📞</div>
+          <h3>Panggilan Suara & Video P2P</h3>
+          <p>Panggilan suara jernih dan video call HD antar perangkat secara langsung (WebRTC peer-to-peer) tanpa delay server perantara.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <h3>Enkripsi End-to-End (E2EE)</h3>
+          <p>Kriptografi ECDH X25519 & AES-256-GCM. Kunci rahasia hanya ada di HP kamu dan dia — bahkan sistem tidak bisa membukanya.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💌</div>
+          <h3>Surat Cinta Digital</h3>
+          <p>Tulis surat cinta mendalam dengan segel gembok istimewa dan catatan waktu abadi untuk kenangan yang tidak akan pernah pudar.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📸</div>
+          <h3>Album Berdua & Live Photo</h3>
+          <p>Simpan momen foto dan video bersama dalam satu galeri rapi. Dukungan pembuatan Live Photo langsung dari ponselmu.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔔</div>
+          <h3>Notifikasi Nyala Selalu</h3>
+          <p>Pemberitahuan pesan dan panggilan masuk tetap berdering walau aplikasi ditutup, didukung sistem push interaktif nan responsif.</p>
+        </div>
+      </div>
     </div>
-    <p class="shotsNote">Screenshot area: tampilan penuh dari aplikasi.</p>
-  </div>
-</section>
+  </section>
 
-<section id="fitur">
-  <div class="wrap">
-    <h2 class="secT">Kecil-kecil lengkap</h2>
-    <p class="secS">Satu tujuan: koneksi dua orang yang hangat, cepat, dan privat.</p>
-    <div class="grid">
-      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <h3>E2EE ala Signal</h3><p>Foto, stiker, dokumen &amp; voice note dienkripsi X25519 + AES-256-GCM. Server pun tak bisa membaca.</p></div>
-      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3a8.5 8.5 0 1 1 17-3.2z"/></svg></div>
-        <h3>Chat WA-style</h3><p>Centang biru, ikon jam pending, balas dari notifikasi, wallpaper kustom, offline-first penuh.</p></div>
-      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-        <h3>Call audio &amp; video</h3><p>Nada sambung "tuut", nada sibuk saat ditolak, minimize jadi bar hijau — balik tanpa putus.</p></div>
-      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9C.6 8 2.6 4 6.5 4c2.3 0 3.9 1.3 5.5 3.4C13.6 5.3 15.2 4 17.5 4 21.4 4 23.4 8 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/></svg></div>
-        <h3>Cerita suasana-otomatis</h3><p>Foto cerah = lagu ceria, foto sendu = lagu mellow. Blur backdrop, tahan-untuk-pause, rotasi harian.</p></div>
-      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg></div>
-        <h3>Status presence jujur</h3><p>Online·WiFi, "Lagi buka TikTok" (opt-in), "Data nyala", atau "Terakhir dilihat" — tidak ada status palsu.</p></div>
-      <div class="card clay"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h7l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></div>
-        <h3>Hemat &amp; transparan</h3><p>Mode hemat data, statistik penyimpanan per kategori, bersihkan cache sekali ketuk.</p></div>
+  <!-- Panduan Cara Pakai -->
+  <section class="section" id="panduan">
+    <div class="container">
+      <h2 class="section-title">Cara Mulai Menggunakan DyKal</h2>
+      <p class="section-desc">Hanya butuh 3 langkah mudah untuk mengaktifkan ruang privat berdua.</p>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">Langkah 1</div>
+          <h3>Daftar & Buat Akun</h3>
+          <p style="margin-top: 12px; color: var(--text-muted);">Unduh aplikasi DyKal, lalu daftar menggunakan alamat email dan kata sandimu. Lengkapi nama panggilan dan foto avatarmu.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">Langkah 2</div>
+          <h3>Buat atau Input Kode</h3>
+          <p style="margin-top: 12px; color: var(--text-muted);">Salah satu membuat kode undangan unik (contoh: DYKAL-ABCD). Pasangan lainnya cukup memasukkan kode tersebut untuk terhubung.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">Langkah 3</div>
+          <h3>Selesai, Terhubung!</h3>
+          <p style="margin-top: 12px; color: var(--text-muted);">Kalian resmi terhubung. Seluruh riwayat obrolan, panggilan, dan media akan tersinkronisasi khusus hanya untuk kalian berdua.</p>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section id="panduan">
-  <div class="wrap">
-    <h2 class="secT">Panduan pasang (2 menit)</h2>
-    <p class="secS">DyKal tidak lewat Play Store, jadi ikuti langkah ini sekali saja.</p>
-    <div class="steps">
-      <div class="step clay"><div class="stepN">1</div><div><h4>Unduh APK sesuai HP-mu</h4><p>Deteksi otomatis di atas menandai tombol yang cocok; kalau ragu, unduh 64-bit dulu. Gagal pasang? Baru coba 32-bit.</p></div></div>
-      <div class="step clay"><div class="stepN">2</div><div><h4>Izinkan instal dari sumber ini</h4><p>Buka APK → Android meminta izin <code>Install unknown apps</code> → geser izinkan → lanjut pasang.</p></div></div>
-      <div class="step clay"><div class="stepN">3</div><div><h4>Daftar &amp; bikin username</h4><p>Email, nama panggilan, username unik (huruf kecil). Hijau = tersedia, merah = dipakai, oranye = susah ngecek (dicoba ulang otomatis).</p></div></div>
-      <div class="step clay"><div class="stepN">4</div><div><h4>Pairing dengan pasangan</h4><p>Bagikan kode pairing ke pasangan → pasangan memasukkan kode → semua fitur terbuka.</p></div></div>
-      <div class="step clay"><div class="stepN">5</div><div><h4>Update otomatis</h4><p>Tiap rilis baru ada notif <code>DyKal vX tersedia</code> → <code>Unduh Sekarang</code> → pasang menimpa. Data aman.</p></div></div>
+  <!-- FAQ Section -->
+  <section class="section" id="faq">
+    <div class="container">
+      <h2 class="section-title">Pertanyaan Sering Diajukan (FAQ)</h2>
+      <p class="section-desc">Jawaban atas pertanyaan seputar privasi, keamanan, dan fitur aplikasi.</p>
+      <div class="faq-list">
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+            <span>Apakah pesan dan foto di DyKal benar-benar privat?</span>
+            <span>+</span>
+          </div>
+          <div class="faq-a">
+            Ya, sangat privat. DyKal menerapkan enkripsi End-to-End (E2EE) dengan algoritma ECDH X25519 dan AES-256-GCM. Kunci dekripsi disimpan secara aman di dalam Android Keystore ponsel masing-masing. Pihak ketiga maupun server tidak dapat membaca pesan atau melihat foto kalian.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+            <span>Apakah DyKal berbayar atau menampilkan iklan?</span>
+            <span>+</span>
+          </div>
+          <div class="faq-a">
+            Tidak. DyKal dirancang 100% bebas iklan dan tanpa biaya langganan bulanan untuk seluruh fitur utama kamu dan dia.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+            <span>Bagaimana jika salah satu ganti ponsel?</span>
+            <span>+</span>
+          </div>
+          <div class="faq-a">
+            Kamu cukup mengunduh aplikasi DyKal di ponsel baru, lalu masuk kembali (login) menggunakan alamat email dan kata sandi yang sama. Seluruh data pasangan dan riwayat akan otomatis pulih.
+          </div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+            <span>Apakah panggilan suara dan video memakan banyak kuota?</span>
+            <span>+</span>
+          </div>
+          <div class="faq-a">
+            DyKal menggunakan teknologi WebRTC Peer-to-Peer, sehingga koneksi langsung dihubungkan antar perangkat tanpa perantara server, menghasilkan kualitas audio/video yang jernih dengan penggunaan kuota yang sangat efisien.
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="pp clay">
-      <h4>Kalau Play Protect memperingatkan ("Aplikasi tidak dikenal")</h4>
-      <p>Itu normal untuk aplikasi di luar Play Store — bukan berarti berbahaya. DyKal ditandatangani konsisten
-      dengan sertifikat rilis resmi (V1+V2, versionCode unik per-ABI) dan sumbernya terbuka di GitHub.
-      Caranya: ketuk <code>Detail lainnya</code> → <code>Tetap pasang</code>. Kalau diminta, matikan
-      sementara Play Protect di Play Store → menu profil → Play Protect → roda gigi → matikan pemindaian,
-      lalu pasang. (Boleh dinyalakan lagi setelahnya.)</p>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p><strong>XYSTUDIO</strong> oleh Kall — Ruang Privat Eksklusif Untuk Dyaa & Kall &bull; 2026</p>
     </div>
-  </div>
-</section>
+  </footer>
 
-<footer>
-  <div class="wrap">
-    <b>DyKal</b> — dibuat dengan sungguh oleh <b>XYSTUDIO</b> · rilis resmi di
-    <a href="https://github.com/xykalnotkel/DyKal/releases" style="color:var(--pink);text-decoration:none;font-weight:700">GitHub Releases</a><br>
-    <span style="font-size:12px">Private, tanpa iklan, tanpa pelacak. Kode sumber terbuka.</span>
-  </div>
-</footer>
-
-<script>
-// ============================================================
-// Deteksi ABI — prinsip VALID DULU: hanya mematikan tombol bila
-// deteksi YAKIN. Bila ragu, dua-duanya aktif + info jujur.
-// ============================================================
-(function(){
-  const t = document.getElementById('abiText');
-  const b64 = document.getElementById('btn64');
-  const info64 = document.getElementById('info64');
-  const info32 = document.getElementById('info32');
-  let decided = false;
-
-  function mark32(source){
-    if (decided) return; decided = true;
-    b64.classList.add('off');
-    info64.innerHTML = '<b style="color:#B00020">Tidak kompatibel di HP-mu (terdeteksi 32-bit)</b> — pakai tombol 32-bit di sebelah.';
-    info32.innerHTML = 'Ini pilihan yang cocok untuk HP-mu.';
-    t.innerHTML = 'HP-mu terdeteksi <b>32-bit</b> (' + source + ') — tombol 64-bit dimatikan supaya tidak salah unduh. <span class="rechk" id="forceOn">Salah deteksi? Aktifkan lagi</span>';
-    document.getElementById('forceOn').onclick = forceManual;
-  }
-  function mark64(source){
-    if (decided) return; decided = true;
-    info64.innerHTML = 'Ini pilihan yang pas untuk HP-mu.';
-    t.innerHTML = 'HP-mu terdeteksi <b>64-bit</b> (' + source + ') — pakai tombol 64-bit. <span class="rechk" id="manual2">pilih manual</span>';
-    document.getElementById('manual2').onclick = resetAll;
-  }
-  function unsure(){
-    t.innerHTML = 'Deteksi otomatis tidak yakin — rekomendasi umum: <b>64-bit</b> (hampir semua HP 2017+). Kalau proses pasang gagal "Aplikasi tidak kompatibel", pakai 32-bit. <span class="rechk" id="manual3">deteksi ulang</span>';
-    document.getElementById('manual3').onclick = detect;
-  }
-  function forceManual(){ decided=false; b64.classList.remove('off');
-    info64.innerHTML='Mode manual aktif — periksa: Settings > Tentang Ponsel; prosesor 64-bit hampir pasti di HP 2017+.';
-    t.innerHTML='Mode manual: pilih sesuai HP-mu. <span class="rechk" id="reDet">deteksi ulang</span>';
-    document.getElementById('reDet').onclick=detect; }
-  function resetAll(){ decided=false; b64.classList.remove('off'); detect(); }
-
-  async function detect(){
-    // Sinyal 1: userAgentData bitness (paling akurat di browser modern)
-    try{
-      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
-        const d = await navigator.userAgentData.getHighEntropyValues(['bitness','architecture']);
-        if (d.bitness === '32') return mark32('browser');
-        if (d.bitness === '64') return mark64('browser');
-      }
-    }catch(e){}
-    // Sinyal 2: UA string lama
-    const ua = (navigator.userAgent||'').toLowerCase();
-    if (/armv7l|armeabi|i686|win32/.test(ua) && !/x86_64|aarch64|arm64/.test(ua)) return mark32('user agent');
-    if (/x86_64|aarch64|arm64|wow64|win64/.test(ua)) return mark64('user agent');
-    // Sinyal 3: tes memori WASM > 2GB (32-bit hampir pasti gagal). Aman & cepat.
-    try{
-      // 65537 pages x 64KiB = 4GiB+64KiB — browser 32-bit menolak.
-      const m = new WebAssembly.Memory({initial: 65537});
-      if (m.buffer.byteLength > 4294967296) return mark64('tes memori');
-    }catch(e){ return mark32('tes memori'); }
-    unsure();
-  }
-  document.getElementById('manualSel').onclick = forceManual;
-  detect();
-})();
-</script>
 </body>
 </html>

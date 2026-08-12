@@ -13,6 +13,7 @@ import '../../services/theme_controller.dart';
 import '../settings/settings_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../widgets/photo_shape.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -224,7 +225,7 @@ class ProfileScreen extends StatelessWidget {
             subtitle: const Text('Ubah profil kamu (real-time)', style: TextStyle(fontSize: 12)),
             trailing: Icon(Icons.chevron_right, color: DyKalTheme.textGrey),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            onTap: () => _editProfile(context),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
           ),
         ),
       );

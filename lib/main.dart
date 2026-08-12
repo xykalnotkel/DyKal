@@ -16,6 +16,7 @@ import 'screens/album/album_screen.dart';
 import 'screens/letter/letter_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/auth/auth_screen.dart';
+import 'screens/auth/welcome_screen.dart';
 import 'screens/pairing/pairing_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/chat/chat_screen.dart';
@@ -343,7 +344,7 @@ class _AuthGateState extends State<AuthGate> {
         if (user == null) {
           DevLogger.instance.info('auth', 'No user -> AuthScreen');
           _reachedContent = true;
-          return const AuthScreen();
+          return AuthService().seenWelcome ? const AuthScreen() : const WelcomeScreen();
         }
         DevLogger.instance.info('auth', 'User logged in: ${user.uid}');
 

@@ -24,6 +24,7 @@ class AuthService {
   String? coupleId;
   String? cachedCoupleId;
   bool isPairedCached = false;
+  bool seenWelcome = false;
   String? partnerId;
   String? partnerName;
   String? myPhotoUrl;
@@ -31,7 +32,7 @@ class AuthService {
   String? _myStatus; // status/bio singkat dari Firestore
   String? _myAvatarShape; // shape avatar (custom seperti album)
   String? partnerPhotoUrl;
-  bool _userDocChecked = false; // ensureUserDoc auto-call: sekali per sesi
+  bool _userDocChecked = false; // ensureUserDoc auto-call: sekali per쇄
   String get myId => _auth.currentUser?.uid ?? '';
   String get myName => _myName ?? _auth.currentUser?.displayName ?? '';
   String get myStatus => _myStatus ?? '';
@@ -45,6 +46,7 @@ class AuthService {
   Future<void> loadCache() async {
     try {
       final p = await SharedPreferences.getInstance();
+      seenWelcome = p.getBool('seen_welcome') ?? false;
       final cid = p.getString('cached_couple_id');
       final paired = p.getBool('cached_is_paired') ?? false;
       if (cid != null && cid.isNotEmpty) {

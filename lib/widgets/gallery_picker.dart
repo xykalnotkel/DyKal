@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../config/theme.dart';
+import '../screens/chat/camera_screen.dart';
 
 /// Custom gallery picker (Batch H — rework total).
 /// - Tiga kategori: SEMUA (foto+video campur, urut terbaru), Foto, Video.
@@ -179,12 +180,25 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                           onNotification: _onScroll,
                           child: GridView.builder(
                             padding: const EdgeInsets.all(4),
-                            cacheExtent: 900, // prefetch di luar layar — terasa instan
+                            cacheExtent: 900,
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2),
-                            itemCount: _assets.length,
+                            itemCount: _assets.length + 1,
                             itemBuilder: (_, i) {
-                              final a = _assets[i];
+                              if (i == 0) {
+                                return _CameraTile(
+                                  onTap: () async {
+                                    final res = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const CameraScreen()),
+                                    );
+                                    if (res != null && mounted) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                );
+                              }
+                              final a = _assets[i - 1];
                               return _ThumbTile(
                                 key: ValueKey(a.id),
                                 asset: a,
@@ -294,6 +308,42 @@ class _ThumbTileState extends State<_ThumbTile> with AutomaticKeepAliveClientMix
                     ),
                   ),
               ]),
+      ),
+    );
+  }
+}
+
+class _CameraTile extends StatelessWidget {
+  final VoidCallback onTap;
+  const _CameraTile({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: DyKalTheme.primary.withValues(alpha: 0.15),
+          border: Border.all(color: DyKalTheme.primary.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: DyKalTheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 26),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Kamera',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: DyKalTheme.primary),
+            ),
+          ],
+        ),
       ),
     );
   }

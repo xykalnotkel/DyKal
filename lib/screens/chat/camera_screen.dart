@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -126,7 +127,9 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   Future<File> _mirrorImage(File file) async {
     try {
       final bytes = await file.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
+      // FIX (owner): hindari OOM pada foto resolusi tinggi (12MP+) dengan membatasi
+      // dimensi dekoding ke maksimal 1440px lebar/tinggi.
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 1440);
       final frame = await codec.getNextFrame();
       final img = frame.image;
       final recorder = ui.PictureRecorder();
@@ -141,8 +144,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       await File(outPath).writeAsBytes(byteData!.buffer.asUint8List());
       return File(outPath);
     } catch (_) {
-      // Fallback: pakai file asli (lebih baik un-mirror daripada gagal total).
-      // Gambar full-res 12MP+ di HP 32-bit berisiko OOM di instantiateImageCodec.
       return file;
     }
   }
@@ -354,6 +355,13 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   Widget _buildPreview(ColorFilter? filter) {
     final controller = _controller!;
     Widget preview = CameraPreview(controller);
+    if (_isFrontCamera) {
+      preview = Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.rotationY(math.pi),
+        child: preview,
+      );
+    }
 
     if (filter != null) {
       preview = ColorFiltered(colorFilter: filter, child: preview);

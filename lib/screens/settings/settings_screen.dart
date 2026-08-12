@@ -23,6 +23,7 @@ import '../../services/cloudinary_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/update_service.dart';
 import '../../services/auth_service.dart';
+import '../profile/edit_profile_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:dio/dio.dart';
 
@@ -362,14 +363,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// menyarankan restart agar seluruh widget lama ikut gaya baru.
   void _restartHint() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Sebagian berlaku langsung — mulai ulang aplikasi agar konsisten penuh.'),
-      duration: const Duration(seconds: 6),
-      action: SnackBarAction(
-        label: 'Tutup App',
-        onPressed: () => SystemNavigator.pop(),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mulai Ulang Aplikasi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: const Text('Perubahan tampilan ini membutuhkan mulai ulang aplikasi agar diterapkan sempurna ke seluruh layar.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Nanti Saja'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              SystemNavigator.pop();
+            },
+            child: const Text('Mulai Ulang Sekarang'),
+          ),
+        ],
       ),
-    ));
+    );
   }
 
   Future<void> _setFontScale(double v) async {
@@ -1061,32 +1074,6 @@ Khusus untuk Pelanggan Premium XYSTUDIO di versi mendatang!''',
     );
   }
 
-  void _showCopyGitHubDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Repository GitHub DyKal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: const SelectableText('''https://github.com/xykalnotkel/DyKal.git
-
-Lisensi XYSTUDIO (2026) oleh Kall.''', style: TextStyle(fontSize: 13)),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(const ClipboardData(text: 'https://github.com/xykalnotkel/DyKal.git'));
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('URL GitHub disalin')));
-            },
-            child: const Text('Salin URL'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showBackupDialog() {
     showDialog(
       context: context,
@@ -1234,7 +1221,7 @@ Lisensi XYSTUDIO (2026) oleh Kall.''', style: TextStyle(fontSize: 13)),
           title: 'Profil & Hubungan',
           icon: Icons.favorite_outline,
           children: [
-            _tile(Icons.person_outline, 'Lihat Profil Kamu', 'Edit nama, status, dan foto avatar', () => Navigator.pushNamed(context, '/profile')),
+            _tile(Icons.person_outline, 'Edit Profil Kamu', 'Ubah nama panggilan, status (bio), & foto avatar', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()))),
             _infoTile(Icons.link, 'ID Pasangan', (AuthService().partnerId ?? '').isNotEmpty ? AuthService().partnerId! : 'Belum terhubung'),
           ],
         ),
@@ -1469,7 +1456,7 @@ Lisensi XYSTUDIO (2026) oleh Kall.''', style: TextStyle(fontSize: 13)),
           title: 'Lisensi & Hak Cipta',
           icon: Icons.copyright_outlined,
           children: [
-            _tile(Icons.code, 'Repository GitHub DyKal', 'https://github.com/xykalnotkel/DyKal.git', _showCopyGitHubDialog),
+            _infoTile(Icons.verified_outlined, 'Pusat Distribusi XYSTUDIO', 'Aplikasi privat eksklusif untuk kamu & pasangan'),
             _infoTile(Icons.favorite_rounded, 'Lisensi Aplikasi', 'XYSTUDIO oleh Kall (2026) — Aplikasi Ekosistem Privat Berdua'),
             _tile(
               Icons.description_outlined,

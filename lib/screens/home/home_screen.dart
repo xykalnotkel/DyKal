@@ -140,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         // Anniversary & Ultah
         SliverToBoxAdapter(child: _anniversary()),
+        SliverToBoxAdapter(child: _memoriesHighlight(context)),
         SliverToBoxAdapter(child: _birthday()),
 
         // Statistik
@@ -540,6 +541,87 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     Text(subtitle, style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 12)),
                   ],
                 ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _memoriesHighlight(BuildContext context) {
+    final coupleId = AuthService().coupleId;
+    if (coupleId == null) return const SizedBox.shrink();
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('couples/$coupleId/letters')
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .snapshots(),
+      builder: (context, snap) {
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) return const SizedBox.shrink();
+        final data = docs.first.data() as Map<String, dynamic>;
+        final fromName = data['fromName'] as String? ?? 'Pasangan';
+        final text = data['text'] as String? ?? '';
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF7B6CF6), Color(0xFFFF6B8A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF7B6CF6).withValues(alpha: 0.25),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Sorotan & Kenangan Kita',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Surat Cinta',
+                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '"$text"',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 13,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '— dari $fromName',
+                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ],
           ),

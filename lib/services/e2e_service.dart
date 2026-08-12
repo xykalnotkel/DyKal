@@ -58,7 +58,7 @@ class E2EService {
       if (priv == null || pub == null) {
         final kp = await X25519().newKeyPair();
         final data = await kp.extract(); // SimpleKeyPairData
-        priv = base64Encode(Uint8List.fromList(data.privateKey));
+        priv = base64Encode(Uint8List.fromList(data.bytes));
         pub = base64Encode(Uint8List.fromList(data.publicKey.bytes));
         await _store.write(key: _kPriv, value: priv);
         await _store.write(key: _kPub, value: pub);

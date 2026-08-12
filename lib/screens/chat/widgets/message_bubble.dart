@@ -578,7 +578,7 @@ class MessageBubble extends StatelessWidget {
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 4),
-                    _outsideStatusIcon(),
+                    _outsideStatusIcon(context),
                   ],
                 ],
               ),
@@ -592,7 +592,7 @@ class MessageBubble extends StatelessWidget {
 
   /// Ikon status versi luar-bubble (warna tema — bukan putih, biar terbaca
   /// di atas wallpaper terang).
-  Widget _outsideStatusIcon() {
+  Widget _outsideStatusIcon(BuildContext context) {
     final base = DyKalTheme.textSecondaryOf(context);
     switch (message.status) {
       case MessageStatus.sending:

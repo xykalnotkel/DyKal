@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'offline_first_image.dart';
+import 'inline_video_player.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
@@ -119,16 +120,15 @@ class _FullscreenMediaViewerState extends State<FullscreenMediaViewer> {
                 child: InteractiveViewer(
                   minScale: 1.0,
                   maxScale: 4.5,
-                  child: CachedNetworkImage(
-                    imageUrl: widget.url,
-                    fit: BoxFit.contain,
-                    placeholder: (_, __) => const Center(
-                      child: CircularProgressIndicator(color: DyKalTheme.primary, strokeWidth: 2.5),
-                    ),
-                    errorWidget: (_, __, ___) => const Center(
-                      child: Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
-                    ),
-                  ),
+                  child: widget.isVideo
+                      ? InlineVideoPlayer(url: widget.url)
+                      : OfflineFirstImage(
+                          url: widget.url,
+                          fit: BoxFit.contain,
+                          placeholder: const Center(
+                            child: CircularProgressIndicator(color: DyKalTheme.primary, strokeWidth: 2.5),
+                          ),
+                        ),
                 ),
               ),
             ),

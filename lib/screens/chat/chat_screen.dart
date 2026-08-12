@@ -188,6 +188,15 @@ class _ChatScreenState extends State<ChatScreen> {
         // Kompres dulu (jalur kualitas sama dengan upload biasa) baru enkripsi.
         toEncrypt = await CloudinaryService().compressImage(file);
       }
+      if (kind == 'video') {
+        // Enkripsi memuat SELURUH file ke RAM — video raksasa (>150MB) kulepas
+        // ke jalur lama agar HP low-end tak OOM. Fallback jujur, tercatat.
+        final len = await file.length();
+        if (len > 150 * 1024 * 1024) {
+          debugPrint('E2E dilewati: video ${(len / 1048576).round()}MB > 150MB');
+          return CloudinaryService().uploadVideoForAudio(file, folder: plainFolder);
+        }
+      }
       final enc = await E2EService.encryptFile(toEncrypt);
       if (enc != null) {
         final url = await CloudinaryService().uploadRaw(enc);
@@ -196,8 +205,14 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (_) {}
     // Fallback: pasangan app lama / raw ditolak preset -> jalur lama.
     if (kind == 'audio') return CloudinaryService().uploadVoiceNote(file);
+    if (kind == 'video') return CloudinaryService().uploadVideoForAudio(file, folder: plainFolder);
     return CloudinaryService().uploadImage(file, folder: plainFolder);
   }
+
+  /// Deteksi video dari ekstensi path/URL (marker E2E tersembunyi .bin ->
+  /// selalu pakai field mediaKind/kind; helper ini untuk berkas lokal & URL lama).
+  static bool _looksVideo(String p) =>
+      RegExp(r'\.(mp4|mov|3gp|mkv|webm)(\?|#|$)', caseSensitive: false).hasMatch(p);
 
   /// Tidak ada dialog loading yang memblokir layar.
   Future<void> _sendWithUpload({
@@ -207,6 +222,7 @@ class _ChatScreenState extends State<ChatScreen> {
     String? caption,
     int? voiceDuration,
     List<int>? voiceWave,
+    String? mediaKind,
     bool viewOnce = false,
   }) async {
     final msg = ChatMessage(
@@ -219,6 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
       voiceUrl: null,
       voiceDuration: voiceDuration,
       voiceWave: voiceWave,
+      mediaKind: mediaKind,
       replyToId: _replyTo?.id,
       replyToText: _replyTo == null ? null : _replyPreviewText(_replyTo!),
       replyToName: _replyTo == null ? null : (_replyTo!.fromId == _myId ? AuthService().myName : _partnerName),
@@ -835,14 +852,17 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     if (result == null || !mounted) return;
     final viewOnce = result['viewOnce'] as bool? ?? false;
+    final localPath = result['localPath'] as String;
+    final isVid = (result['isVideo'] as bool? ?? false) || _looksVideo(localPath);
     await _sendWithUpload(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: MessageType.image,
       caption: result['caption'] as String?,
       viewOnce: viewOnce,
+      mediaKind: isVid ? 'video' : null,
       upload: () => _uploadMaybeE2E(
-        File(result['localPath'] as String),
-        kind: 'image',
+        File(localPath),
+        kind: isVid ? 'video' : 'image',
         plainFolder: viewOnce ? 'dykal/view_once' : 'dykal/chat',
       ),
     );

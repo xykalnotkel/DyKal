@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../services/e2e_service.dart';
+import '../../widgets/offline_first_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
@@ -20,6 +23,23 @@ class StoryViewer extends StatefulWidget {
 class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStateMixin {
   final _audioPlayer = AudioPlayer();
   List<String> _photoUrls = [];
+
+  /// BATCH L: byte sebuah foto cerita — sadar E2E (URL /dykal/e2e/ berisi
+  /// ciphertext: unduh -> dekripsi -> baru dianalisis/ditampilkan).
+  Future<Uint8List?> _bytesOf(String url) async {
+    try {
+      if (E2EService.isEncryptedUrl(url)) {
+        final plain = await E2EService.downloadDecrypted(url, ext: 'webp');
+        if (plain == null) return null;
+        return File(plain).readAsBytes();
+      }
+      final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      return r.bodyBytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   List<String> _audioPaths = [];
   int _currentIndex = 0;
   bool _loading = true;
@@ -62,6 +82,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
             .get()
             .timeout(const Duration(seconds: 12));
         for (final p in photosSnap.docs) {
+          if ((p.data()['kind'] as String?) == 'video') continue; // cerita = foto saja
           final url = p.data()['url'] as String?;
           if (url != null) _photoUrls.add(url);
         }
@@ -83,10 +104,8 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       var chosenPath = (_audioPaths..shuffle()).first;
       try {
         final moods = await StoryMoodStore.load();
-        final bytes = (await http.get(Uri.parse(_photoUrls.first))
-                .timeout(const Duration(seconds: 8)))
-            .bodyBytes;
-        if (bytes.isNotEmpty) {
+        final bytes = await _bytesOf(_photoUrls.first);
+        if (bytes != null && bytes.isNotEmpty) {
           final mood = await StoryMoodAnalyzer.analyzeBytes(bytes);
           final matching = _audioPaths
               .where((p) => moods[p] == mood)
@@ -268,11 +287,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
             Positioned.fill(
               child: ImageFiltered(
                 imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                child: CachedNetworkImage(
-                  imageUrl: _photoUrls[_currentIndex],
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(color: Colors.black),
-                ),
+                child: OfflineFirstImage(url: _photoUrls[_currentIndex], fit: BoxFit.cover),
               ),
             ),
             // Lapisan gelap tipis agar foto utama tetap fokus
@@ -282,14 +297,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
             // Foto utama (contain, utuh tak terpotong)
             Center(
-              child: CachedNetworkImage(
-                imageUrl: _photoUrls[_currentIndex],
-                fit: BoxFit.contain,
-                placeholder: (_, __) => const SizedBox.shrink(), // blur sudah jadi preview
-                errorWidget: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
-                ),
-              ),
+              child: OfflineFirstImage(url: _photoUrls[_currentIndex], fit: BoxFit.contain),
             ),
 
             // Indikator pause saat ditahan

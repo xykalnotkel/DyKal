@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'e2e_service.dart';
 
 /// WhatsApp-style Scoped Media Storage Engine for Android 10+ (API 29+)
 /// Base Directory: Android/media/com.dykal.app/Dykal/Media/
@@ -100,16 +103,33 @@ class MediaSaver {
         isPrivate: isPrivate,
       );
 
-      final ext = type == 'audio'
+      final e2e = E2EService.isEncryptedUrl(url);
+      var ext = type == 'audio'
           ? 'm4a'
           : (type == 'video'
               ? 'mp4'
               : (type == 'stiker' || type == 'stickers' ? 'webp.crypt15' : 'jpg'));
-      
+      // Foto E2E aslinya WebP terenkripsi — simpan dengan ekstensi yang benar
+      // (menamai ciphertext/plaintext webp sebagai .jpg bikin galeri bingung).
+      if (e2e && (type == 'foto' || type == 'images')) ext = 'webp';
+
       final fileName = 'DYKAL_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final filePath = '$dirPath/$fileName';
 
-      await Dio().download(url, filePath);
+      // BATCH L: sadar E2E — unduh dulu sebagai byte; kalau URL terenkripsi,
+      // dekripsi baru ditulis (menyimpan ciphertext = file sampah .jpg).
+      final res = await Dio()
+          .get<List<int>>(url, options: Options(responseType: ResponseType.bytes))
+          .timeout(const Duration(seconds: 90));
+      var data = res.data;
+      if (data == null || data.isEmpty) return null;
+      Uint8List bytes = Uint8List.fromList(data);
+      if (e2e) {
+        final plain = await E2EService.decryptBlob(bytes);
+        if (plain == null) return null; // kunci belum siap / blob korup
+        bytes = plain;
+      }
+      await File(filePath).writeAsBytes(bytes, flush: true);
       return filePath;
     } catch (_) {
       return null;

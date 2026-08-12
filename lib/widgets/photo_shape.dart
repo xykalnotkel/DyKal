@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'offline_first_image.dart';
 import '../config/theme.dart';
 
 enum PhotoShape {
@@ -99,13 +99,7 @@ class ShapedPhoto extends StatelessWidget {
         children: [
           ClipPath(
             clipper: _clipperFor(shape),
-            child: CachedNetworkImage(
-              imageUrl: url,
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: DyKalTheme.borderSoft),
-            ),
+            child: OfflineFirstImage(url: url, width: size, height: size, fit: BoxFit.cover),
           ),
           Positioned(
             top: -10,

@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../config/theme.dart';
+import 'offline_first_image.dart';
 
 class StoryAvatar extends StatelessWidget {
   final String? imageUrl;
@@ -42,12 +42,7 @@ class StoryAvatar extends StatelessWidget {
           padding: const EdgeInsets.all(4.5),
           child: ClipOval(
             child: imageUrl != null && imageUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: DyKalTheme.cardOf(context)),
-                    errorWidget: (_, __, ___) => _fallbackAvatar(),
-                  )
+                ? OfflineFirstImage(url: imageUrl!, fit: BoxFit.cover)
                 : _fallbackAvatar(),
           ),
         ),

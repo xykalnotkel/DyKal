@@ -8,94 +8,12 @@ import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
 import '../../../services/bubble_style.dart';
 import '../../../services/e2e_service.dart';
-import '../../../services/media_cache.dart';
+// media_cache: dipakai OfflineFirstImage (sekarang di widgets/) — bukan file ini.
 import '../../../services/sticker_store.dart';
 import '../../../services/voice_cache.dart';
 import '../../../widgets/fullscreen_media_viewer.dart';
+import '../../../widgets/offline_first_image.dart';
 import '../../../services/auth_service.dart';
-
-/// Gambar OFFLINE-FIRST ala WA: cek file lokal (MediaCache) duluan —
-/// media yang pernah terunduh tetap tampil walau internet mati. Kalau belum
-/// ada di lokal, fallback ke CDN (CachedNetworkImage punya disk cache sendiri).
-class OfflineFirstImage extends StatelessWidget {
-  final String url;
-  final BoxFit fit;
-  final double? width;
-  final double? height;
-  final Widget? placeholder;
-  const OfflineFirstImage({
-    super.key,
-    required this.url,
-    this.fit = BoxFit.cover,
-    this.width,
-    this.height,
-    this.placeholder,
-  });
-
-  /// Resolusi tampilan:
-  /// 1. File lokal (MediaCache) — jalur offline.
-  /// 2. URL E2E (/dykal/e2e/): unduh ciphertext -> DEKRIPSI -> simpan lokal.
-  /// 3. Bukan E2E & belum lokal -> null -> CDN biasa.
-  static Future<String?> _resolve(String url) async {
-    final hit = await MediaCache.get(url);
-    if (hit != null) return hit;
-    if (E2EService.isEncryptedUrl(url)) {
-      final plain = await E2EService.downloadDecrypted(url, ext: 'webp');
-      if (plain != null) await MediaCache.put(url, plain);
-      return plain;
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: _resolve(url),
-      builder: (_, snap) {
-        final path = snap.data;
-        if (path != null) {
-          return Image.file(
-            File(path),
-            fit: fit,
-            width: width,
-            height: height,
-            errorBuilder: (_, __, ___) => _cdn(),
-          );
-        }
-        // URL E2E yang gagal dekripsi JANGAN dilempar ke CDN (isinya
-        // ciphertext — CDN akan error). Tampilkan placeholder terkunci.
-        if (E2EService.isEncryptedUrl(url)) return _locked();
-        return _cdn();
-      },
-    );
-  }
-
-  Widget _locked() {
-    return Container(
-      width: width,
-      height: height ?? 120,
-      color: const Color(0x22000000),
-      child: const Center(child: Icon(Icons.lock_outline, color: Colors.white54)),
-    );
-  }
-
-  Widget _cdn() {
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: fit,
-      width: width,
-      height: height,
-      placeholder: placeholder != null ? (_, __) => placeholder! : null,
-      errorWidget: (_, __, ___) => Container(
-        width: width,
-        height: height ?? 120,
-        color: const Color(0x22000000),
-        child: const Icon(Icons.wifi_off_outlined, color: Colors.white54),
-      ),
-    );
-  }
-}
-
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -258,6 +176,7 @@ class MessageBubble extends StatelessWidget {
                 context,
                 url: message.imageUrl!,
                 fromName: 'Foto Sekali Lihat',
+                isVideo: message.mediaKind == 'video',
                 onDelete: () {
                   _markViewOnceOpened();
                 },
@@ -472,17 +391,27 @@ class MessageBubble extends StatelessWidget {
                           url: message.imageUrl!,
                           fromName: isMe ? 'Kamu' : (message.replyToName ?? 'Pasangan'),
                           createdAt: (message.createdAt as dynamic)?.toDate(),
+                          isVideo: message.mediaKind == 'video',
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: OfflineFirstImage(
-                            url: message.imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: Container(
-                              height: 180,
-                              color: DyKalTheme.borderOf(context),
-                            ),
-                          ),
+                          child: message.mediaKind == 'video'
+                              ? Container(
+                                  width: 220,
+                                  height: 280,
+                                  color: const Color(0x33000000),
+                                  child: const Center(
+                                    child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 56),
+                                  ),
+                                )
+                              : OfflineFirstImage(
+                                  url: message.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: Container(
+                                    height: 180,
+                                    color: DyKalTheme.borderOf(context),
+                                  ),
+                                ),
                         ),
                       ),
                     if (message.text.isNotEmpty)

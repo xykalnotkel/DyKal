@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../config/theme.dart';
+import '../../widgets/inline_video_player.dart';
 
 class ImageSendScreen extends StatefulWidget {
   final File image;
@@ -28,6 +29,10 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
   bool _isViewOnce = false;
   bool _isHd = false;
   bool _isDrawingMode = false;
+
+  /// BATCH L: layar ini juga dipakai saat galeri mengembalikan VIDEO —
+  /// pratinjau pakai player, crop/doodle/doodle-kanvas dilewati.
+  late final bool _isVideo = RegExp(r'\.(mp4|mov|3gp|mkv|webm)\$', caseSensitive: false).hasMatch(widget.image.path);
   bool _isSending = false;
 
   List<_DoodlePoint?> _points = [];
@@ -59,6 +64,12 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
   }
 
   Future<void> _cropAndRotate() async {
+    if (_isVideo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Crop hanya untuk foto')),
+      );
+      return;
+    }
     final cropped = await ImageCropper().cropImage(
       sourcePath: _currentImage.path,
       uiSettings: [
@@ -137,7 +148,8 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
 
   Future<void> _send() async {
     setState(() => _isSending = true);
-    final finalFile = await _renderFinalImage();
+    // Video: LEWATI kanvas gambar (render PNG) — file diteruskan apa adanya.
+    final finalFile = _isVideo ? widget.image : await _renderFinalImage();
     if (!mounted) return;
 
     // Upload TIDAK dilakukan di sini (agar tidak ada spinner blocking).
@@ -148,6 +160,7 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
       'caption': _caption.text.trim(),
       'viewOnce': _isViewOnce,
       'isHd': _isHd,
+      'isVideo': _isVideo,
     });
   }
 
@@ -175,7 +188,9 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
                       InteractiveViewer(
                         panEnabled: !_isDrawingMode,
                         scaleEnabled: !_isDrawingMode,
-                        child: Image.file(_currentImage, fit: BoxFit.contain),
+                        child: _isVideo
+                            ? InlineVideoPlayer(url: _currentImage.path)
+                            : Image.file(_currentImage, fit: BoxFit.contain),
                       ),
                       if (_points.isNotEmpty || _isDrawingMode)
                         Positioned.fill(
@@ -317,7 +332,7 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
           // Drawing Pencil
           IconButton(
             icon: Icon(Icons.edit, color: _isDrawingMode ? DyKalTheme.primary : Colors.white),
-            onPressed: () => setState(() => _isDrawingMode = !_isDrawingMode),
+            onPressed: _isVideo ? null : () => setState(() => _isDrawingMode = !_isDrawingMode),
             tooltip: 'Coret / Doodle',
           ),
           if (_points.isNotEmpty)

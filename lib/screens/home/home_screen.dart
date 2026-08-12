@@ -739,6 +739,7 @@ class _StoryEntryState extends State<_StoryEntry> {
         Timestamp? best;
         for (final d in qs.docs) {
           final data = d.data();
+          if ((data['kind'] as String?) == 'video') continue; // sampul cerita = foto
           final u = data['url'] as String?;
           if (u == null || u.isEmpty) continue;
           final ts = data['createdAt'] as Timestamp?;

@@ -13,6 +13,7 @@ class ChatMessage {
   final String? voiceUrl;
   final int? voiceDuration; // detik
   final List<int>? voiceWave; // sampel gelombang 0-100 (ditangkap saat merekam)
+  final String? mediaKind; // BATCH L: 'video' utk pesan image-yang-aslinya video
   final String? replyToId;
   final String? replyToText;
   final String? replyToName;
@@ -36,6 +37,7 @@ class ChatMessage {
     this.voiceUrl,
     this.voiceDuration,
     this.voiceWave,
+    this.mediaKind,
     this.replyToId,
     this.replyToText,
     this.replyToName,
@@ -60,6 +62,7 @@ class ChatMessage {
     'voiceUrl': voiceUrl,
     'voiceDuration': voiceDuration,
     'voiceWave': voiceWave,
+    'mediaKind': mediaKind,
     'replyToId': replyToId,
     'replyToText': replyToText,
     'replyToName': replyToName,
@@ -84,6 +87,7 @@ class ChatMessage {
     voiceUrl: m['voiceUrl'],
     voiceDuration: m['voiceDuration'],
     voiceWave: (m['voiceWave'] as List?)?.map((e) => (e as num).toInt()).toList(),
+    mediaKind: m['mediaKind'] as String?,
     replyToId: m['replyToId'],
     replyToText: m['replyToText'],
     replyToName: m['replyToName'],

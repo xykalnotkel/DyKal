@@ -22,6 +22,7 @@ import '../../services/ringtone_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/update_service.dart';
+import '../../services/auth_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:dio/dio.dart';
 
@@ -1034,9 +1035,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Bebas berkreasi tanpa batas: kustomisasi warna tombol, desain bubble eksklusif, font khusus, dan tata letak interaktif.
+                '''Bebas berkreasi tanpa batas: kustomisasi warna tombol, desain bubble eksklusif, font khusus, dan tata letak interaktif.
 
-Khusus untuk Pelanggan Premium XYSTUDIO di versi mendatang!',
+Khusus untuk Pelanggan Premium XYSTUDIO di versi mendatang!''',
                 style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
                 textAlign: TextAlign.center,
               ),
@@ -1065,9 +1066,9 @@ Khusus untuk Pelanggan Premium XYSTUDIO di versi mendatang!',
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Repository GitHub DyKal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: const SelectableText('https://github.com/xykalnotkel/DyKal.git
+        content: const SelectableText('''https://github.com/xykalnotkel/DyKal.git
 
-Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
+Lisensi XYSTUDIO (2026) oleh Kall.''', style: TextStyle(fontSize: 13)),
         actions: [
           TextButton(
             onPressed: () {

@@ -1,0 +1,43 @@
+{
+  "_komentar": "Katalog musik gratis DyKal (Batch I). Skema: songs[] = {title, artist, url, mood}. url HARUS https mp3 yang bisa diakses publik. mood HARUS salah satu dari _mood_valid (huruf kecil persis). Edit file ini lalu push = katalog di app ikut ter-update tanpa rilis baru (app fetch file ini via raw.githubusercontent).",
+  "_mood_valid": ["ceria", "romantis", "sendu", "tenang"],
+  "_lisensi": "Semua track di bawah ini: Kevin MacLeod, incompetech.com, Creative Commons BY 4.0 — wajib kredit artist (sudah dicantumkan di field artist).",
+  "songs": [
+    {
+      "title": "Monkeys Spinning Monkeys",
+      "artist": "Kevin MacLeod (incompetech.com) - CC BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3",
+      "mood": "ceria"
+    },
+    {
+      "title": "Fluffing a Duck",
+      "artist": "Kevin MacLeod (incompetech.com) - CC BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fluffing%20a%20Duck.mp3",
+      "mood": "ceria"
+    },
+    {
+      "title": "Carefree",
+      "artist": "Kevin MacLeod (incompetech.com) - CC BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3",
+      "mood": "ceria"
+    },
+    {
+      "title": "Windswept",
+      "artist": "Kevin MacLeod (incompetech.com) - CC BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Windswept.mp3",
+      "mood": "romantis"
+    },
+    {
+      "title": "Heartbreaking",
+      "artist": "Kevin MacLeod (incompetech.com) - CC BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Heartbreaking.mp3",
+      "mood": "sendu"
+    },
+    {
+      "title": "Meditation Impromptu 02",
+      "artist": "Kevin MacLeod (incompetech.com) - CC BY 4.0",
+      "url": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Meditation%20Impromptu%2002.mp3",
+      "mood": "tenang"
+    }
+  ]
+}

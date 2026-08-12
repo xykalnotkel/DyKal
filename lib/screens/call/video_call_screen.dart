@@ -230,12 +230,19 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     } catch (_) {}
   }
 
+  void _safePop() {
+    if (!mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/');
+    }
+  }
+
   void _onChanged() {
     if (!mounted) return;
-    // BATCH H: lawan menutup/menolak -> layar menutup diri (dulu caller stuck
-    // di layar "Memanggil..." walau partner sudah menolak).
     if (call.endedByRemote) {
-      Navigator.of(context).pop();
+      _safePop();
       return;
     }
     _local.srcObject = call.localStream;
@@ -439,7 +446,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     onTap: () {
                       _endCallLog();
                       call.hangUp();
-                      Navigator.pop(context);
+                      _safePop();
                     },
                     child: Container(
                       width: 66,

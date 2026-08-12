@@ -75,11 +75,19 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     });
   }
 
+  void _safePop() {
+    if (!mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/');
+    }
+  }
+
   void _onStateChanged() {
     if (!mounted) return;
-    // BATCH H: lawan menutup/menolak -> layar menutup diri.
     if (call.endedByRemote) {
-      Navigator.of(context).pop();
+      _safePop();
       return;
     }
     setState(() {});
@@ -259,12 +267,12 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                       _btn(Icons.mic_off, call.muted, 'Mute', call.toggleMute),
                       _btn(Icons.volume_up, call.speakerOn, 'Speaker', () => call.toggleSpeaker()),
                       _btn(Icons.videocam, false, 'Video', () async {
-                        await call.hangUp();
+                        await call.upgradeToVideo();
                         if (mounted) {
                           Navigator.pushReplacementNamed(
                             context,
                             '/videoCall',
-                            arguments: {'isCaller': true, 'type': 'video'},
+                            arguments: {'isCaller': call.isCaller, 'type': 'video'},
                           );
                         }
                       }),
@@ -275,7 +283,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                     onTap: () {
                       _endCallLog();
                       call.hangUp();
-                      Navigator.pop(context);
+                      _safePop();
                     },
                     child: Container(
                       width: 68,

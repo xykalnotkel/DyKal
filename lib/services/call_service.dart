@@ -312,6 +312,34 @@ class DyKalCallService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> upgradeToVideo() async {
+    try {
+      final stream = await navigator.mediaDevices.getUserMedia({
+        'audio': false,
+        'video': {
+          'facingMode': _frontCamera ? 'user' : 'environment',
+          'width': {'ideal': 640},
+          'height': {'ideal': 480},
+          'frameRate': {'ideal': 24},
+        },
+      });
+      final newTrack = stream.getVideoTracks().first;
+      localStream?.addTrack(newTrack);
+      final senders = await _pc?.getSenders() ?? [];
+      final vSenders = senders.where((s) => s.track?.kind == 'video').toList();
+      if (vSenders.isNotEmpty) {
+        await vSenders.first.replaceTrack(newTrack);
+      } else {
+        await _pc?.addTrack(newTrack, localStream!);
+      }
+      videoOn = true;
+      callType = 'video';
+      activeCallType = 'video';
+      await _db.doc('calls/$coupleId').update({'callType': 'video'});
+      notifyListeners();
+    } catch (_) {}
+  }
+
   bool _frontCamera = true;
   bool _flipping = false; // BATCH H: guard — flip beruntun = crash/stuck kamera
 

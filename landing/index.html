@@ -755,8 +755,6 @@
     (function initDyKalLanding() {
       const ua = navigator.userAgent || navigator.vendor || window.opera || "";
       const isAndroid = /Android/i.test(ua);
-      const is64Bit = /arm64|aarch64|x86_64|64/i.test(ua) || 
-                      (navigator.userAgentData && navigator.userAgentData.platform === "Android");
       
       const btn64 = document.getElementById("btn-arm64");
       const btn32 = document.getElementById("btn-armeabi");
@@ -764,25 +762,43 @@
       const badge32 = document.getElementById("badge-armeabi");
       const statusText = document.getElementById("abi-status-text");
 
-      // 1. Deteksi ABI
-      if (btn64 && btn32 && statusText) {
-        if (!isAndroid) {
-          statusText.textContent = "Sistem siap. Silakan unduh APK Universal atau ARM64 untuk dipasang di perangkat Android kamu.";
-        } else if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
-          navigator.userAgentData.getHighEntropyValues(["bitness", "architecture"]).then(values => {
-            applyABIMode(values.bitness === "64" || values.architecture === "arm64");
-          }).catch(() => applyABIMode(is64Bit));
-        } else {
-          applyABIMode(is64Bit);
-        }
+      if (!btn64 || !btn32 || !statusText) return;
+
+      if (!isAndroid) {
+        statusText.innerHTML = "<strong>Sistem Siap (Desktop/iOS):</strong> Silakan unduh APK Universal atau ARM64 untuk dipasang di perangkat Android kamu.";
+        return;
       }
 
-      function applyABIMode(is64) {
+      // 1. Tembak Cek Langsung ke Architecture (Modern Browser API / UserAgentData)
+      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        navigator.userAgentData.getHighEntropyValues(["architecture", "bitness", "model"])
+          .then(values => {
+            const arch = (values.architecture || "").toLowerCase();
+            const bit = String(values.bitness || "");
+            const is64 = bit === "64" || arch === "arm64" || arch === "x86_64";
+            const labelArch = arch ? arch.toUpperCase() : (is64 ? "ARM64" : "ARMEABI-V7A");
+            const labelBit = bit ? `(${bit}-bit)` : (is64 ? "(64-bit)" : "(32-bit)");
+            applyABIMode(is64, `${labelArch} ${labelBit}`, values.model || "Perangkat Android");
+          })
+          .catch(() => fallbackABIProbe());
+      } else {
+        fallbackABIProbe();
+      }
+
+      function fallbackABIProbe() {
+        const is64Bit = /arm64|aarch64|x86_64|64/i.test(ua);
+        const is32Bit = /armv7|armv7l|armeabi|armv6|i686|i386/i.test(ua);
+        const is64 = is64Bit || !is32Bit; // default modern Android ke 64-bit jika ambigu
+        const archLabel = is64 ? "ARM64 (64-bit)" : "ARMEABI-V7A (32-bit)";
+        applyABIMode(is64, archLabel, "Perangkat Android");
+      }
+
+      function applyABIMode(is64, archInfo, modelInfo) {
         if (is64) {
           btn64.classList.add("btn-recommended");
           badge64.textContent = "DIREKOMENDASIKAN (64-BIT)";
           badge64.classList.add("badge-green");
-          statusText.textContent = "Sistem mendeteksi perangkat Android 64-bit modern. APK ARM64 siap diunduh.";
+          statusText.innerHTML = `<strong>Terdeteksi ${modelInfo} — Arsitektur: ${archInfo}.</strong> APK ARM64-V8A direkomendasikan untuk performa maksimal.`;
         } else {
           btn64.classList.add("btn-disabled");
           btn64.style.pointerEvents = "none";
@@ -792,7 +808,7 @@
           btn32.classList.add("btn-recommended");
           badge32.textContent = "DIREKOMENDASIKAN (32-BIT)";
           badge32.classList.add("badge-green");
-          statusText.textContent = "Sistem mendeteksi perangkat Android 32-bit. Tombol ARM64 dinonaktifkan agar tidak terjadi error pemasangan.";
+          statusText.innerHTML = `<strong>Terdeteksi ${modelInfo} — Arsitektur: ${archInfo}.</strong> Tombol ARM64 dinonaktifkan otomatis agar tidak terjadi error saat instalasi.`;
         }
       }
 

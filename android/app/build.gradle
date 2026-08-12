@@ -100,6 +100,14 @@ flutter {
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 
+    // BATCH I: ActivityShareService.kt menulis presence (fgApp) LANGSUNG ke
+    // Firestore dari native saat isolat Dart mati — butuh SDK Firebase di
+    // classpath app (dep plugin FlutterFire bersifat implementation, tidak
+    // terekspos). BoM merapatkan versi. google-services.json ada -> init aman.
+    implementation platform('com.google.firebase:firebase-bom:34.2.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+
     // BATCH J (Live Photo Fase 1): mesin trim+kompres+preset 100% on-device.
     // Media3 1.4.1: pin stabil; signature Transformer/RgbMatrix diverifikasi
     // dari source tag 1.4.1. FFmpegKit pension -> jangan dipakai.

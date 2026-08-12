@@ -137,6 +137,10 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // BATCH J: Live Photo Fase 1 (trim/kompres/preset via Media3 Transformer)
+        // Channel "dykal/livephoto" didaftarkan di dalam konstruktor LivePhotoTool.
+        LivePhotoTool(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
+
         // APK Installer Handler
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALLER_CHANNEL)
             .setMethodCallHandler { call, result ->

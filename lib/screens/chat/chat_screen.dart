@@ -28,6 +28,7 @@ import '../call/call_log_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'camera_screen.dart';
+import '../live_photo/live_photo_screen.dart';
 import '../../widgets/typing_indicator.dart';
 import '../../widgets/gallery_picker.dart';
 import '../profile/view_profile_screen.dart'; // FIX #16: fullscreen partner profile
@@ -861,6 +862,13 @@ class _ChatScreenState extends State<ChatScreen> {
               _attachItem(Icons.camera_alt_rounded, 'Kamera', const Color(0xFF00D68F), () {
                 Navigator.pop(ctx);
                 _openCamera();
+              }),
+              _attachItem(Icons.motion_photos_on_rounded, 'Live Photo', const Color(0xFFFF6B9D), () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LivePhotoScreen()),
+                );
               }),
               _attachItem(Icons.insert_drive_file_rounded, 'Dokumen', const Color(0xFF7B6CF6), () async {
                 Navigator.pop(ctx);

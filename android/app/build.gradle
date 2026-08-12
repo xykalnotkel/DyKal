@@ -99,4 +99,12 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+
+    // BATCH J (Live Photo Fase 1): mesin trim+kompres+preset 100% on-device.
+    // Media3 1.4.1: pin stabil; signature Transformer/RgbMatrix diverifikasi
+    // dari source tag 1.4.1. FFmpegKit pension -> jangan dipakai.
+    implementation "androidx.media3:media3-transformer:1.4.1"
+    implementation "androidx.media3:media3-effect:1.4.1"
+    implementation "androidx.media3:media3-common:1.4.1"
+    implementation "androidx.media3:media3-muxer:1.4.1"
 }

@@ -525,13 +525,13 @@ class MessageBubble extends StatelessWidget {
     final base = DyKalTheme.textSecondaryOf(context);
     switch (message.status) {
       case MessageStatus.sending:
-        return Icon(Icons.schedule, size: 12, color: base);
+        return Icon(Icons.access_time_rounded, size: 14, color: base);
       case MessageStatus.sent:
-        return Icon(Icons.check, size: 12, color: base);
+        return Icon(Icons.check_rounded, size: 15, color: base);
       case MessageStatus.delivered:
-        return Icon(Icons.done_all, size: 12, color: base);
+        return Icon(Icons.done_all_rounded, size: 15, color: base);
       case MessageStatus.read:
-        return const Icon(Icons.done_all, size: 12, color: DyKalTheme.online);
+        return const Icon(Icons.done_all_rounded, size: 15, color: Color(0xFF34B7F1));
     }
   }
 
@@ -552,13 +552,13 @@ class MessageBubble extends StatelessWidget {
   Widget _statusIcon() {
     switch (message.status) {
       case MessageStatus.sending:
-        return const Icon(Icons.schedule, size: 12, color: Colors.white70);
+        return const Icon(Icons.access_time_rounded, size: 14, color: Colors.white70);
       case MessageStatus.sent:
-        return const Icon(Icons.check, size: 12, color: Colors.white70);
+        return const Icon(Icons.check_rounded, size: 15, color: Colors.white70);
       case MessageStatus.delivered:
-        return const Icon(Icons.done_all, size: 12, color: Colors.white70);
+        return const Icon(Icons.done_all_rounded, size: 15, color: Colors.white70);
       case MessageStatus.read:
-        return const Icon(Icons.done_all, size: 12, color: DyKalTheme.online);
+        return const Icon(Icons.done_all_rounded, size: 15, color: Color(0xFF34B7F1));
     }
   }
 

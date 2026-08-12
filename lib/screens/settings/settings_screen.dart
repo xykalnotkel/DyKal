@@ -847,456 +847,520 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? DyKalTheme.backgroundDark
           : DyKalTheme.background,
       appBar: AppBar(
-        title: const Text('Pengaturan Lanjutan', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Pengaturan DyKal', style: TextStyle(fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         children: [
-          // 1. NOTIFIKASI & DERAG
-          _sectionCard(
-            title: 'Notifikasi & Dering',
-            icon: Icons.notifications_active_outlined,
-            children: [
-              _tile(
-                Icons.music_note_outlined,
-                'Nada Notifikasi',
-                _notifRingtone,
-                () => _selectRingtoneDialog(
-                  type: 2,
-                  prefKey: 'notif_ringtone_title',
-                  currentVal: _notifRingtone,
-                  onSelect: (v) => setState(() => _notifRingtone = v),
-                ),
-              ),
-              _tile(
-                Icons.phone_in_talk_outlined,
-                'Nada Panggilan',
-                _callRingtone,
-                () => _selectRingtoneDialog(
-                  type: 1,
-                  prefKey: 'call_ringtone_title',
-                  currentVal: _callRingtone,
-                  onSelect: (v) => setState(() => _callRingtone = v),
-                ),
-              ),
-              _toggle(Icons.volume_up_outlined, 'Suara Notifikasi', _notifSound, (v) {
-                setState(() => _notifSound = v);
-                _saveLocalPref('notif_sound', v);
-              }),
-              _toggle(Icons.vibration, 'Getaran', _notifVibrate, (v) {
-                setState(() => _notifVibrate = v);
-                _saveLocalPref('notif_vibrate', v);
-              }),
-              const Divider(height: 1),
-              _toggle(Icons.chat_bubble_outline, 'Notifikasi Chat Masuk', _notifChat, (v) {
-                setState(() => _notifChat = v);
-                _saveNotifPref('chat', v);
-              }),
-              _toggle(Icons.videocam_outlined, 'Notifikasi Panggilan', _notifCall, (v) {
-                setState(() => _notifCall = v);
-                _saveNotifPref('call', v);
-              }),
-              _toggle(Icons.mail_outline, 'Notifikasi Surat Cinta', _notifLetter, (v) {
-                setState(() => _notifLetter = v);
-                _saveNotifPref('letter', v);
-              }),
-              _toggle(Icons.cake_outlined, 'Pengingat Ultah & Anniversary', _notifBirthday, (v) {
-                setState(() => _notifBirthday = v);
-                _saveNotifPref('birthday', v);
-              }),
-              _tile(
-                Icons.settings_suggest_outlined,
-                'Izin Notifikasi Sistem',
-                'Buka pengaturan Android',
-                () => openAppSettings(),
-              ),
-            ],
+          _categoryTile(
+            icon: Icons.person_outline_rounded,
+            title: 'Akun',
+            subtitle: 'Profil kamu & dia, kode pairing, ekspor data, hapus akun',
+            onTap: () => _openSubPage('Akun', _accountSection()),
           ),
-
-          // 2. TAMPILAN & GAYA ANTARMUKA
-          _sectionCard(
-            title: 'Tampilan & Gaya Antarmuka',
+          _categoryTile(
             icon: Icons.palette_outlined,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                child: const Text('Mode Tema', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-              _themeRow(),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                child: const Text('Gaya Desain Antarmuka', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-              _uiStyleRow(),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                child: const Text('Ukuran Teks', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SegmentedButton<double>(
-                  segments: const [
-                    ButtonSegment(value: 0.9, label: Text('Kecil')),
-                    ButtonSegment(value: 1.0, label: Text('Normal')),
-                    ButtonSegment(value: 1.12, label: Text('Besar')),
-                  ],
-                  selected: {_fontScale},
-                  onSelectionChanged: (s) => _setFontScale(s.first),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                child: const Text('Bentuk Bubble Chat', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _bubbleChip(0, 'Bulat', Icons.circle_outlined),
-                    _bubbleChip(1, 'Kotak', Icons.square_outlined),
-                    _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline),
-                    _bubbleChip(3, 'Pil', Icons.panorama_fish_eye),
-                    _bubbleChip(4, 'Abstrak', Icons.auto_awesome),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              ListenableBuilder(
-                listenable: BubbleStyle.instance,
-                builder: (context, _) => SwitchListTile(
-                  secondary: Icon(Icons.format_indent_decrease, color: DyKalTheme.textSecondaryOf(context), size: 20),
-                  title: const Text('Status & Waktu di Dalam Bubble', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                  subtitle: Text(
-                    BubbleStyle.instance.metaInside ? 'Ala WhatsApp (mepet teks)' : 'Ala iOS (di bawah bubble)',
-                    style: TextStyle(fontSize: 11, color: DyKalTheme.textSecondaryOf(context)),
-                  ),
-                  value: BubbleStyle.instance.metaInside,
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: DyKalTheme.primary,
-                  onChanged: (v) => BubbleStyle.instance.setMetaInside(v),
-                ),
-              ),
-              const Divider(height: 20),
-              ListenableBuilder(
-                listenable: WallpaperSettings.instance,
-                builder: (context, _) {
-                  final w = WallpaperSettings.instance;
-                  final chatSub = w.chatType == 0
-                      ? 'Default (mengikuti tema)'
-                      : (w.chatType == 1 ? 'Warna solid' : 'Foto dari galeri');
-                  return Column(
-                    children: [
-                      _tile(
-                        Icons.wallpaper_outlined,
-                        'Wallpaper Chat',
-                        chatSub,
-                        _chatWallpaperDialog,
-                      ),
-                      _tile(
-                        Icons.photo_library_outlined,
-                        'Latar Belakang Beranda',
-                        w.homePath != null ? 'Foto kustom aktif' : 'Default (tanpa latar)',
-                        _homeBgSheet,
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+            title: 'Tampilan & Tema',
+            subtitle: 'Mode tema, gaya antarmuka, wallpaper, bubble chat',
+            onTap: () => _openSubPage('Tampilan & Tema', _displaySection()),
           ),
-
-          // 3. PRIVASI & KEAMANAN
-          _sectionCard(
-            title: 'Privasi & Keamanan',
-            icon: Icons.security_outlined,
-            children: [
-              FutureBuilder<String>(
-                future: E2EService.statusLabel(),
-                builder: (_, snap) => _infoTile(
-                  Icons.lock_outline,
-                  'Enkripsi End-to-End Media Chat',
-                  snap.data ?? 'Memeriksa...',
-                ),
-              ),
-              // BATCH I: ubah kata sandi akun (re-auth email dulu, wajib aman).
-              _tile(
-                Icons.password_outlined,
-                'Ubah Kata Sandi',
-                'Verifikasi sandi lama sebelum mengganti',
-                _changePasswordDialog,
-              ),
-              _tile(
-                Icons.save_alt_outlined,
-                'Ekspor Data (Cadangan)',
-                'Arsip teks: profil, pesan, surat, daftar media',
-                _exportData,
-              ),
-              _tile(
-                Icons.delete_forever_outlined,
-                'Hapus Akun (Permanen)',
-                'Lenyapkan akun, username & kunci E2E — jujur, tak bisa balik',
-                _deleteAccountDialog,
-              ),
-              // BATCH I: opt-in "Lagi buka TikTok" — pasangan bisa melihat
-              // aplikasi apa yang sedang kamu buka saat DyKal tertutup.
-              SwitchListTile(
-                secondary: Icon(
-                  Icons.location_searching_outlined,
-                  color: _activityShare ? DyKalTheme.primary : DyKalTheme.textGrey,
-                ),
-                title: const Text('Bagikan Aktivitas Perangkat', style: TextStyle(fontSize: 14)),
-                subtitle: Text(
-                  _activityShare
-                      ? 'Aktif — pasangan melihat "Lagi buka TikTok/IG/..."'
-                      : 'Nonaktif — pasangan hanya melihat Online/Terakhir dilihat',
-                  style: TextStyle(fontSize: 11.5, color: DyKalTheme.textSecondaryOf(context)),
-                ),
-                value: _activityShare,
-                activeThumbColor: Colors.white,
-                activeTrackColor: DyKalTheme.primary,
-                onChanged: _toggleActivityShare,
-              ),
-              FutureBuilder<bool>(
-                future: FloatingService.hasOverlayPermission(),
-                builder: (_, snap) => ListTile(
-                  leading: Icon(
-                    Icons.picture_in_picture_alt_outlined,
-                    color: snap.data == true ? DyKalTheme.online : Colors.orange,
-                  ),
-                  title: const Text('Izin Floating Bubble / Overlay', style: TextStyle(fontSize: 14)),
-                  subtitle: Text(
-                    snap.data == true ? 'Aktif (dapat melayang di atas aplikasi lain)' : 'Belum aktif (ketuk untuk izin)',
-                    style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context)),
-                  ),
-                  trailing: Icon(
-                    snap.data == true ? Icons.check_circle : Icons.warning_amber_rounded,
-                    color: snap.data == true ? DyKalTheme.online : Colors.orange,
-                  ),
-                  onTap: () => FloatingService.requestOverlayPermission(),
-                ),
-              ),
-              SwitchListTile(
-                secondary: Icon(
-                  Icons.bubble_chart,
-                  color: _bubbleEnabled ? DyKalTheme.primary : DyKalTheme.textGrey,
-                ),
-                title: const Text('Floating Bubble (Chat Head)', style: TextStyle(fontSize: 14)),
-                subtitle: Text(
-                  _bubbleEnabled
-                      ? 'Bubble melayang di atas aplikasi lain'
-                      : 'Tampilkan bubble chat saat keluar aplikasi',
-                  style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context)),
-                ),
-                value: _bubbleEnabled,
-                activeThumbColor: DyKalTheme.primary,
-                onChanged: _toggleFloatingBubble,
-              ),
-              _tile(
-                Icons.visibility_outlined,
-                'Visibilitas Media di Galeri',
-                _mediaVisibility == 0 ? 'Semua Disimpan' : (_mediaVisibility == 1 ? 'Hanya Foto' : 'Manual (Tidak)'),
-                () => _selectMediaVisibilityDialog(),
-              ),
-            ],
+          _categoryTile(
+            icon: Icons.accessibility_new_outlined,
+            title: 'Aksesibilitas',
+            subtitle: 'Ukuran font/skala teks, haptic feedback, mode hemat data',
+            onTap: () => _openSubPage('Aksesibilitas', _accessibilitySection()),
           ),
-
-          // 4. PENYIMPANAN & DATA
-          _sectionCard(
-            title: 'Penyimpanan & Data',
+          _categoryTile(
             icon: Icons.storage_outlined,
-            children: [
-              // BATCH I: hemat data — kompresi upload lebih agresif, media
-              // tetap offline-first (lokal menjadi prioritas baca).
-              SwitchListTile(
-                secondary: Icon(
-                  Icons.data_saver_on_outlined,
-                  color: _dataSaver ? DyKalTheme.online : DyKalTheme.textGrey,
-                ),
-                title: const Text('Mode Hemat Data & Cloud', style: TextStyle(fontSize: 14)),
-                subtitle: Text(
-                  _dataSaver
-                      ? 'Aktif — foto diupload lebih kecil (kualitas 58, maks 1280px)'
-                      : 'Normal — kualitas 80, maks 1080p. Media yang sudah diunduh disimpan lokal.',
-                  style: TextStyle(fontSize: 11.5, color: DyKalTheme.textSecondaryOf(context)),
-                ),
-                value: _dataSaver,
-                activeThumbColor: Colors.white,
-                activeTrackColor: DyKalTheme.online,
-                onChanged: (v) async {
-                  setState(() => _dataSaver = v);
-                  await _saveLocalPref('data_saver', v);
-                },
-              ),
-              _infoTile(
-                Icons.folder_outlined,
-                'Lokasi Scoped Media',
-                'Android/media/com.dykal.app/Dykal/Media/',
-              ),
-              // --- STATISTIK PENYIMPANAN (permintaan owner: UI bagus + statistik) ---
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Total dipakai aplikasi: ${_fmtBytes(_storageTotal)}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _clearCache,
-                      icon: const Icon(Icons.cleaning_services_outlined, size: 15, color: Colors.redAccent),
-                      label: const Text('Bersihkan Cache', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600, fontSize: 12)),
-                    ),
-                  ],
-                ),
-              ),
-              _storageBar(),
-              ..._storageLegend(),
-              const SizedBox(height: 8),
-            ],
+            title: 'Penyimpanan & Media',
+            subtitle: 'Kelola ruang, bersihkan cache media, musik cerita, cadangan',
+            onTap: () => _openSubPage('Penyimpanan & Media', _storageSection()),
           ),
-
-          // 5. AKSESIBILITAS & AUDIO CERITA
-          _sectionCard(
-            title: 'Aksesibilitas & Audio Cerita',
-            icon: Icons.graphic_eq_outlined,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-                child: Text(
-                  'Playlist Musik Story Album (diputar acak saat melihat cerita):',
-                  style: TextStyle(fontSize: 12, color: DyKalTheme.textSecondaryOf(context)),
-                ),
-              ),
-              if (_storyAudioPaths.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Center(
-                    child: Text('Belum ada berkas lagu.', style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 12)),
-                  ),
-                )
-              else
-                ..._storyAudioPaths.asMap().entries.map((e) => ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.music_note, color: DyKalTheme.primary),
-                      title: Text(e.value.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                      // BATCH I: chip suasana — dipakai story untuk memilih lagu
-                      // yang senada dengan suasana foto.
-                      subtitle: GestureDetector(
-                        onTap: () => _pickMood(e.key),
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 3),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: DyKalTheme.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            'suasana: ${StoryMoodAnalyzer.labels[_storyMoods[e.value] ?? StoryMoodAnalyzer.guessFromName(e.value)]}',
-                            style: TextStyle(fontSize: 10, color: DyKalTheme.primary),
-                          ),
-                        ),
-                      ),
-                      isThreeLine: true,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              _playingAudioPath == e.value && _audioPlayer.playing
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                              size: 18,
-                              color: _playingAudioPath == e.value ? DyKalTheme.primary : null,
-                            ),
-                            onPressed: () => _previewAudio(e.value),
-                          ),
-                          IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), onPressed: () => _removeAudio(e.key)),
-                        ],
-                      ),
-                    )),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: OutlinedButton.icon(
-                  onPressed: _addAudio,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Tambah Musik dari HP'),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: OutlinedButton.icon(
-                  onPressed: _addAudioFromVideo,
-                  icon: const Icon(Icons.video_library, size: 18),
-                  label: const Text('Tambah dari Video (jadi MP3)'),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: FilledButton.icon(
-                  onPressed: _openMusicCatalog,
-                  icon: const Icon(Icons.library_music_outlined, size: 18),
-                  label: const Text('Katalog Musik Gratis (online)'),
-                ),
-              ),
-            ],
+          _categoryTile(
+            icon: Icons.data_usage_rounded,
+            title: 'Data & Jaringan',
+            subtitle: 'Mode hemat kuota data, kualitas media, relay WebRTC ICE/TURN',
+            onTap: () => _openSubPage('Data & Jaringan', _dataSection()),
           ),
-
-          // 6. TENTANG & INFORMASI APLIKASI
-          _sectionCard(
-            title: 'Tentang & Informasi Aplikasi',
-            icon: Icons.info_outline,
-            children: [
-              FutureBuilder<String>(
-                future: () async {
-                  final info = await PackageInfo.fromPlatform();
-                  return 'DyKal v${info.version} (Build ${info.buildNumber})';
-                }(),
-                builder: (_, s) => _infoTile(
-                  Icons.verified_outlined,
-                  'Versi Aplikasi',
-                  s.data ?? 'DyKal v1.0.17',
-                ),
-              ),
-              _infoTile(
-                Icons.cloud_done_outlined,
-                'Infrastruktur Realtime',
-                'Google Firestore & Cloudflare Worker',
-              ),
-              _infoTile(
-                Icons.favorite_outline,
-                'Dibangun oleh',
-                'XYSTUDIO — untuk Dyaa & Kall',
-              ),
-              _tile(
-                Icons.article_outlined,
-                'Lisensi Open Source',
-                'Library pihak ketiga yang dipakai DyKal',
-                () => showLicensePage(
-                  context: context,
-                  applicationName: 'DyKal',
-                  applicationLegalese: '© 2026 XYSTUDIO — dibuat dengan cinta untuk Dyaa & Kall',
-                ),
-              ),
-            ],
+          _categoryTile(
+            icon: Icons.notifications_active_outlined,
+            title: 'Notifikasi & Suara',
+            subtitle: 'Nada dering default HP, getar, suara chat & panggilan',
+            onTap: () => _openSubPage('Notifikasi & Suara', _notifSection()),
           ),
-
+          _categoryTile(
+            icon: Icons.security_outlined,
+            title: 'Izin & Akses',
+            subtitle: 'Izin kamera, mikrofon, overlay bubble melayang, E2EE',
+            onTap: () => _openSubPage('Izin & Akses', _permissionsSection()),
+          ),
+          _categoryTile(
+            icon: Icons.help_outline_rounded,
+            title: 'Pusat Bantuan & Privasi',
+            subtitle: 'Lisensi GitHub, lisensi XYSTUDIO, privasi, info versi DyKal',
+            onTap: () => _openSubPage('Pusat Bantuan & Privasi', _helpPrivacySection()),
+          ),
+          _categoryTile(
+            icon: Icons.auto_awesome_rounded,
+            title: 'Studio UI/UX Kustom',
+            subtitle: 'Editor warna tombol, bentuk bubble, & tema bebas (Premium)',
+            iconColor: const Color(0xFFFFC857),
+            trailingBadge: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFC857).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('PREMIUM', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFD48800))),
+            ),
+            onTap: _showPremiumStudioPreview,
+          ),
           const SizedBox(height: 30),
         ],
       ),
     );
   }
+
+  Widget _categoryTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color? iconColor,
+    Widget? trailingBadge,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: DyKalTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DyKalTheme.borderOf(context)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: (iconColor ?? DyKalTheme.primary).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: iconColor ?? DyKalTheme.primary, size: 22),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: DyKalTheme.textPrimaryOf(context),
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 12,
+              color: DyKalTheme.textSecondaryOf(context),
+              height: 1.3,
+            ),
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (trailingBadge != null) trailingBadge,
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded, color: DyKalTheme.textSecondaryOf(context), size: 22),
+          ],
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  void _openSubPage(String title, List<Widget> children) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
+          backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+              ? DyKalTheme.backgroundDark
+              : DyKalTheme.background,
+          appBar: AppBar(
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            children: children,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPremiumStudioPreview() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DyKalTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFFFFC857), Color(0xFFFF6B8A)]),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 36),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Studio UI/UX Kustom (Premium)',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Bebas berkreasi tanpa batas: kustomisasi warna tombol, desain bubble eksklusif, font khusus, dan tata letak interaktif.
+
+Khusus untuk Pelanggan Premium XYSTUDIO di versi mendatang!',
+                style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFC857),
+                    foregroundColor: Colors.black,
+                  ),
+                  child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCopyGitHubDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Repository GitHub DyKal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: const SelectableText('https://github.com/xykalnotkel/DyKal.git
+
+Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: 'https://github.com/xykalnotkel/DyKal.git'));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('URL GitHub disalin')));
+            },
+            child: const Text('Salin URL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _accountSection() => [
+        _sectionCard(
+          title: 'Profil & Hubungan',
+          icon: Icons.favorite_outline,
+          children: [
+            _tile(Icons.person_outline, 'Lihat Profil Kamu', 'Edit nama, status, dan foto avatar', () => Navigator.pushNamed(context, '/profile')),
+            _infoTile(Icons.link, 'ID Pasangan', _partnerId.isNotEmpty ? _partnerId : 'Belum terhubung'),
+          ],
+        ),
+        _sectionCard(
+          title: 'Cadangan & Keamanan Akun',
+          icon: Icons.backup_outlined,
+          children: [
+            _tile(Icons.download_outlined, 'Ekspor Data (JSON)', 'Simpan arsip profil, pesan, dan log ke penyimpanan HP', _exportData),
+            _tile(Icons.cloud_upload_outlined, 'Cadangan & Pulihkan', 'Kelola backup riwayat chat di Google Drive / memori lokal', _showBackupDialog),
+            _tile(Icons.delete_forever_outlined, 'Hapus Akun Permanen', 'Musnahkan username, riwayat chat, dan kunci kriptografi', _confirmDeleteAccount),
+          ],
+        ),
+      ];
+
+  List<Widget> _displaySection() => [
+        _sectionCard(
+          title: 'Mode Tema',
+          icon: Icons.brightness_6_outlined,
+          children: [
+            _themeRow(),
+          ],
+        ),
+        _sectionCard(
+          title: 'Gaya Antarmuka (UI Style)',
+          icon: Icons.auto_awesome_mosaic_outlined,
+          children: [
+            _uiStyleRow(),
+          ],
+        ),
+        _sectionCard(
+          title: 'Wallpaper & Gaya Bubble',
+          icon: Icons.wallpaper_outlined,
+          children: [
+            _tile(Icons.image_outlined, 'Wallpaper Chat', 'Atur latar belakang layar percakapan', _openWallpaperPicker),
+            _tile(Icons.chat_bubble_outline, 'Gaya Bubble Chat', 'Ubah bentuk dan aksen gelembung pesan', _showBubbleStyleDialog),
+          ],
+        ),
+      ];
+
+  List<Widget> _accessibilitySection() => [
+        _sectionCard(
+          title: 'Skala Ukuran Teks',
+          icon: Icons.format_size_rounded,
+          children: [
+            _fontScaleRow(),
+          ],
+        ),
+        _sectionCard(
+          title: 'Efek Visual & Getar',
+          icon: Icons.vibration_rounded,
+          children: [
+            _toggle(Icons.vibration, 'Getar Notifikasi', _notifVibrate, (v) {
+              setState(() => _notifVibrate = v);
+              SharedPreferences.getInstance().then((p) => p.setBool('notif_vibrate', v));
+            }),
+            _toggle(Icons.data_saver_on, 'Mode Hemat Data & Animasi', _dataSaver, (v) {
+              setState(() => _dataSaver = v);
+              SharedPreferences.getInstance().then((p) => p.setBool('data_saver', v));
+            }),
+          ],
+        ),
+      ];
+
+  List<Widget> _storageSection() => [
+        _sectionCard(
+          title: 'Statistik Penyimpanan',
+          icon: Icons.storage_rounded,
+          children: [
+            ListTile(
+              title: Text('Total Terpakai: ${_formatBytes(_storageTotal)}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              subtitle: const Text('Ruang cache media lokal yang diunduh aplikasi', style: TextStyle(fontSize: 11)),
+            ),
+            _storageBar(),
+            const SizedBox(height: 12),
+            ..._storageLegend(),
+            const SizedBox(height: 8),
+          ],
+        ),
+        _sectionCard(
+          title: 'Kelola Cache & Musik',
+          icon: Icons.cleaning_services_outlined,
+          children: [
+            _tile(Icons.delete_outline, 'Bersihkan Cache Media', 'Hapus salinan sementara tanpa menghapus chat di server', _confirmClearCache),
+            _tile(Icons.music_note_outlined, 'Daftar Putar Musik Cerita', 'Kelola audio latar yang terunduh', _manageStoryAudio),
+            _infoTile(Icons.photo_library_outlined, 'Galeri HP', 'Media tersimpan aman di Android/media/com.dykal.app'),
+          ],
+        ),
+      ];
+
+  List<Widget> _dataSection() => [
+        _sectionCard(
+          title: 'Hemat Kuota Data',
+          icon: Icons.data_usage_rounded,
+          children: [
+            _toggle(Icons.data_saver_on, 'Mode Hemat Data', _dataSaver, (v) {
+              setState(() => _dataSaver = v);
+              SharedPreferences.getInstance().then((p) => p.setBool('data_saver', v));
+            }),
+            _infoTile(Icons.high_quality_outlined, 'Kualitas Unggah Foto', _dataSaver ? 'Hemat Kuota (58% lebih kecil)' : 'Kualitas Tinggi (WebP HD)'),
+          ],
+        ),
+        _sectionCard(
+          title: 'Relay Panggilan WebRTC',
+          icon: Icons.router_outlined,
+          children: [
+            _infoTile(Icons.hub_outlined, 'ICE Server', '10 STUN Google/Cloudflare + TURN Relay ExpressTURN'),
+            _infoTile(Icons.security_outlined, 'Koneksi P2P', 'Langsung antar perangkat, fallback TURN saat NAT ketat'),
+          ],
+        ),
+      ];
+
+  List<Widget> _notifSection() => [
+        _sectionCard(
+          title: 'Nada Dering & Getar OS',
+          icon: Icons.notifications_active_outlined,
+          children: [
+            _tile(
+              Icons.music_note_outlined,
+              'Nada Notifikasi',
+              _notifRingtone,
+              () => _selectRingtoneDialog(
+                type: 2,
+                prefKey: 'notif_ringtone_title',
+                currentVal: _notifRingtone,
+                onSelect: (v) => setState(() => _notifRingtone = v),
+              ),
+            ),
+            _tile(
+              Icons.phone_in_talk_outlined,
+              'Nada Panggilan',
+              _callRingtone,
+              () => _selectRingtoneDialog(
+                type: 1,
+                prefKey: 'call_ringtone_title',
+                currentVal: _callRingtone,
+                onSelect: (v) => setState(() => _callRingtone = v),
+              ),
+            ),
+            _toggle(Icons.volume_up_outlined, 'Suara Notifikasi Dalam Aplikasi', _notifSound, (v) {
+              setState(() => _notifSound = v);
+              SharedPreferences.getInstance().then((p) => p.setBool('notif_sound', v));
+            }),
+            _toggle(Icons.vibration_outlined, 'Getar', _notifVibrate, (v) {
+              setState(() => _notifVibrate = v);
+              SharedPreferences.getInstance().then((p) => p.setBool('notif_vibrate', v));
+            }),
+          ],
+        ),
+        _sectionCard(
+          title: 'Preferensi Kategori Notifikasi',
+          icon: Icons.category_outlined,
+          children: [
+            _toggle(Icons.chat_bubble_outline, 'Chat Baru', _notifChat, (v) {
+              setState(() => _notifChat = v);
+              _saveNotifPref('chat', v);
+            }),
+            _toggle(Icons.phone_outlined, 'Panggilan Masuk', _notifCall, (v) {
+              setState(() => _notifCall = v);
+              _saveNotifPref('call', v);
+            }),
+            _toggle(Icons.mail_outline, 'Surat Cinta', _notifLetter, (v) {
+              setState(() => _notifLetter = v);
+              _saveNotifPref('letter', v);
+            }),
+            _toggle(Icons.cake_outlined, 'Hari Ulang Tahun', _notifBirthday, (v) {
+              setState(() => _notifBirthday = v);
+              _saveNotifPref('birthday', v);
+            }),
+          ],
+        ),
+      ];
+
+  List<Widget> _permissionsSection() => [
+        _sectionCard(
+          title: 'Izin Aplikasi',
+          icon: Icons.security_outlined,
+          children: [
+            _toggle(
+              Icons.timelapse_outlined,
+              'Bagikan Aktivitas Aplikasi (Opt-in)',
+              _activityShare,
+              (v) async {
+                final ok = await ActivityShareService.hasUsagePermission();
+                if (v && !ok) {
+                  await ActivityShareService.openUsageSettings();
+                  return;
+                }
+                setState(() => _activityShare = v);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('activity_share_enabled', v);
+                if (v) {
+                  try { await _chActivity.invokeMethod('start'); } catch (_) {}
+                } else {
+                  try { await _chActivity.invokeMethod('stop'); } catch (_) {}
+                }
+              },
+            ),
+            _toggle(
+              Icons.chat_bubble_outline,
+              'Bubble Melayang (Ala WA)',
+              _bubbleEnabled,
+              (v) async {
+                final ok = await FloatingService.hasOverlayPermission();
+                if (v && !ok) {
+                  await FloatingService.requestPermission();
+                  return;
+                }
+                setState(() => _bubbleEnabled = v);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('floating_bubble_enabled', v);
+                if (v) {
+                  await FloatingService.showChatBubble();
+                } else {
+                  await FloatingService.hideBubble();
+                }
+              },
+            ),
+          ],
+        ),
+        _sectionCard(
+          title: 'Keamanan End-to-End Encryption',
+          icon: Icons.enhanced_encryption_rounded,
+          children: [
+            _infoTile(Icons.key_outlined, 'Algoritma Kunci', 'ECDH X25519 Keypair + AES-256-GCM'),
+            _infoTile(Icons.fingerprint_rounded, 'Sidik Jari Keamanan', 'Kunci privat tersimpan aman di Android Keystore (tanpa backend)'),
+          ],
+        ),
+      ];
+
+  List<Widget> _helpPrivacySection() => [
+        _sectionCard(
+          title: 'Lisensi & Hak Cipta',
+          icon: Icons.copyright_outlined,
+          children: [
+            _tile(Icons.code, 'Repository GitHub DyKal', 'https://github.com/xykalnotkel/DyKal.git', _showCopyGitHubDialog),
+            _infoTile(Icons.favorite_rounded, 'Lisensi Aplikasi', 'XYSTUDIO oleh Kall (2026) — Aplikasi Ekosistem Privat Berdua'),
+            _tile(
+              Icons.description_outlined,
+              'Lisensi Pihak Ketiga',
+              'Library open-source yang dipakai DyKal',
+              () => showLicensePage(
+                context: context,
+                applicationName: 'DyKal',
+                applicationLegalese: '© 2026 XYSTUDIO — dibuat dengan cinta untuk Dyaa & Kall',
+              ),
+            ),
+          ],
+        ),
+        _sectionCard(
+          title: 'Privasi & Keamanan',
+          icon: Icons.privacy_tip_outlined,
+          children: [
+            _infoTile(Icons.verified_user_outlined, 'Privasi Nol-Distraksi', 'Hanya kamu & pasangan, tanpa iklan, tanpa analitik pelacakan'),
+            _infoTile(Icons.lock_rounded, 'Penyimpanan Media', 'Cloudinary Unsigned CDN & Enkripsi Kunci Lokal'),
+          ],
+        ),
+        _sectionCard(
+          title: 'Tentang Aplikasi',
+          icon: Icons.info_outline_rounded,
+          children: [
+            _infoTile(Icons.verified_outlined, 'Versi Aplikasi', 'DyKal v1.3.0+13'),
+            _tile(Icons.update, 'Periksa Pembaruan', 'Cek rilis terbaru di GitHub XYSTUDIO', () {
+              UpdateService.instance.checkForUpdate();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Memeriksa pembaruan dari GitHub...')),
+              );
+            }),
+          ],
+        ),
+      ];
 
   /// REVISI OWNER: judul section DI LUAR card, isi tetap di dalam card.
   /// (Pola settings modern — judul melayang di atas kontennya.)

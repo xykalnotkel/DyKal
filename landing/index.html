@@ -25,7 +25,7 @@
       --text: #F8FAFC;
       --text-muted: #94A3B8;
       --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
-      --morph-opacity: 0.22;
+      --morph-opacity: 0.18;
     }
 
     /* Mode Terang Mengikuti Sistem HP (prefers-color-scheme: light) */
@@ -39,7 +39,7 @@
         --text: #12141D;
         --text-muted: #64748B;
         --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
-        --morph-opacity: 0.15;
+        --morph-opacity: 0.12;
       }
     }
 
@@ -58,7 +58,7 @@
       position: relative;
     }
 
-    /* Morphing Background Bebas Lag (60/120 FPS tanpa filter blur GPU) */
+    /* GPU-Only Morphing Background (100% Bebas Lag di 60/120 FPS, 0% CPU Repaint) */
     .morph-bg {
       position: fixed;
       top: 0;
@@ -68,46 +68,58 @@
       overflow: hidden;
       z-index: -1;
       pointer-events: none;
+      background: var(--bg);
     }
 
     .morph-shape {
       position: absolute;
       opacity: var(--morph-opacity);
-      will-change: transform, border-radius;
-      animation: morphing 18s ease-in-out infinite alternate;
+      will-change: transform;
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
     }
 
     .morph-1 {
-      top: -10%;
-      left: -5%;
-      width: 55vw;
-      height: 55vw;
-      background: radial-gradient(circle, var(--primary) 0%, transparent 75%);
-      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+      top: -15%;
+      left: -10%;
+      width: 65vw;
+      height: 65vw;
+      background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: floatGpu1 20s ease-in-out infinite alternate;
     }
 
     .morph-2 {
-      bottom: -15%;
-      right: -10%;
-      width: 60vw;
-      height: 60vw;
-      background: radial-gradient(circle, var(--secondary) 0%, transparent 75%);
-      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-      animation-delay: -9s;
+      bottom: -20%;
+      right: -15%;
+      width: 70vw;
+      height: 70vw;
+      background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: floatGpu2 24s ease-in-out infinite alternate;
     }
 
-    @keyframes morphing {
+    @keyframes floatGpu1 {
       0% {
-        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
       }
       50% {
-        border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
-        transform: translate3d(4%, 6%, 0) rotate(120deg) scale(1.06);
+        transform: translate3d(8%, 10%, 0) scale(1.12);
       }
       100% {
-        border-radius: 30% 70% 40% 60% / 60% 40% 60% 40%;
-        transform: translate3d(-4%, -4%, 0) rotate(240deg) scale(0.96);
+        transform: translate3d(-6%, -6%, 0) scale(0.92);
+      }
+    }
+
+    @keyframes floatGpu2 {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      50% {
+        transform: translate3d(-8%, -10%, 0) scale(1.15);
+      }
+      100% {
+        transform: translate3d(6%, 6%, 0) scale(0.95);
       }
     }
 
@@ -517,7 +529,7 @@
 </head>
 <body>
 
-  <!-- Morphing Fluid Background (Bebas Lag 60/120 FPS) -->
+  <!-- GPU-Only Morphing Fluid Background (60/120 FPS tanpa Repaint Lag) -->
   <div class="morph-bg">
     <div class="morph-shape morph-1"></div>
     <div class="morph-shape morph-2"></div>

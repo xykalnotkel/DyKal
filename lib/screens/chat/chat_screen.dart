@@ -219,8 +219,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (type == MessageType.voice) {
       MediaSaver.save(url, type: 'audio');
     } else if (type == MessageType.image) {
-      MediaSaver.save(url, type: 'foto', isPrivate: viewOnce).then((path) {
-        if (path != null && !viewOnce) MediaCache.put(url, path);
+      // 'mediaUrl' local final: promosi null-check 'url' tidak menembus
+      // closure .then() (url di-assign ulang di fungsi ini) -> analyzer error.
+      final mediaUrl = url;
+      MediaSaver.save(mediaUrl, type: 'foto', isPrivate: viewOnce).then((path) {
+        if (path != null && !viewOnce) MediaCache.put(mediaUrl, path);
       });
     }
     final preview = type == MessageType.voice

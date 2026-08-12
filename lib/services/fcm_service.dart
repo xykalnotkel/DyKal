@@ -230,21 +230,30 @@ class FCMService {
   // Helper render bersama (dipakai foreground & isolate latar)
   // ------------------------------------------------------------------
 
-  /// Unduh avatar -> ikon untuk Person/MessagingStyle.
-  /// PENTING (pelajaran CI): Person.icon mengambil hierarki AndroidIcon,
-  /// diawali "ByteArrayAndroidIcon" — BUKAN ByteArrayAndroidBitmap (itu
-  /// hierarki AndroidBitmap untuk largeIcon/bigPicture). Salah hierarki =
-  /// argument_type_not_assignable. Tipe AndroidIcon sendiri sengaja
-  /// `hide` dari barrel FLN, jadi tidak bisa dinamai sebagai return type.
-  static Future<ByteArrayAndroidIcon?> _avatarBmp(String? url) async {
+  /// Unduh avatar sekali -> byte mentah (dipakai dua varian ikon di bawah).
+  static Future<Uint8List?> _avatarBytes(String? url) async {
     if (url == null || url.isEmpty) return null;
     try {
       final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
       if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) {
-        return ByteArrayAndroidIcon(Uint8List.fromList(r.bodyBytes));
+        return Uint8List.fromList(r.bodyBytes);
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Untuk `largeIcon`: hierarki AndroidBitmap.
+  /// Untuk `Person.icon`: hierarki AndroidIcon (lihat _avatarIcon).
+  /// Keduanya BEDA hierarki di FLN 19 — mencampurnya = argument_type_not_assignable.
+  static Future<ByteArrayAndroidBitmap?> _avatarBmp(String? url) async {
+    final b = await _avatarBytes(url);
+    return b == null ? null : ByteArrayAndroidBitmap(b);
+  }
+
+  /// Untuk `Person.icon`: hierarki AndroidIcon (ByteArrayAndroidIcon).
+  static Future<ByteArrayAndroidIcon?> _avatarIcon(String? url) async {
+    final b = await _avatarBytes(url);
+    return b == null ? null : ByteArrayAndroidIcon(b);
   }
 
   /// Notif CHAT/SURAT ala WhatsApp: MessagingStyle + avatar + aksi.
@@ -257,9 +266,10 @@ class FCMService {
     String channelId = 'dykal_chat',
     String channelName = 'DyKal Chat',
   }) async {
-    final avatar = await _avatarBmp(avatarUrl);
+    final avatar = await _avatarBmp(avatarUrl);       // largeIcon (AndroidBitmap)
+    final avatarIco = await _avatarIcon(avatarUrl);   // Person.icon (AndroidIcon)
     final me = const Person(name: 'Saya', key: 'dykal_me');
-    final partner = Person(name: title, key: 'dykal_partner', icon: avatar);
+    final partner = Person(name: title, key: 'dykal_partner', icon: avatarIco);
     final style = MessagingStyleInformation(
       me,
       conversationTitle: title,

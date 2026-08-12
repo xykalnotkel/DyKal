@@ -20,6 +20,8 @@ import '../../services/theme_controller.dart';
 import '../../services/floating_service.dart';
 import '../../services/ringtone_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/backup_service.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:dio/dio.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -423,6 +425,127 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Aktivitas perangkat kini dibagikan ke pasangan')));
+    }
+  }
+
+  /// BATCH M: ekspor arsip teks (profil/pesan/surat/album meta) -> JSON lokal,
+  /// lalu ditawarkan untuk dibagikan. Bukan restore — tulis itu jujur ke user.
+  Future<void> _exportData() async {
+    var busy = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(children: [
+          SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
+          SizedBox(width: 16),
+          Expanded(child: Text('Mengumpulkan data...')),
+        ]),
+      ),
+    );
+    try {
+      final path = await BackupService.exportData();
+      busy = false;
+      if (!mounted) return;
+      Navigator.pop(context);
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Arsip siap', style: TextStyle(fontSize: 16)),
+          content: Text(
+            'Cadangan teks tersimpan di:\n$path\n\nIsinya profil, pesan, surat, dan daftar media (URL-nya). '
+            'File foto/video/audio tidak ikut — tetap di cloud & HP.',
+            style: const TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Share.shareXFiles([XFile(path)], text: 'Cadangan DyKal');
+              },
+              icon: const Icon(Icons.share_outlined, size: 18),
+              label: const Text('Bagikan'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (busy && mounted) Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengekspor: $e')),
+        );
+      }
+    }
+  }
+
+  /// BATCH M: hapus akun permanen — konsekuensi ditulis gamblang, sandi = konfirmasi.
+  Future<void> _deleteAccountDialog() async {
+    final pwC = TextEditingController();
+    String? err;
+    var busy = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, ss) => AlertDialog(
+          title: const Text('Hapus Akun?', style: TextStyle(fontSize: 16, color: Colors.redAccent)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Ini PERMANEN dan tidak bisa dibatalkan:\n'
+                  '• Akun & username kamu lenyap\n'
+                  '• Kunci E2E di HP ini musnah — semua foto/video terenkripsi '
+                  'tidak bisa dibuka lagi oleh siapa pun (memang begitu tujuannya)\n'
+                  '• Riwayat chat di HP pasangan TETAP ADA (itu datanya dia)\n\n'
+                  'Ketik sandi untuk konfirmasi:',
+                  style: TextStyle(fontSize: 12.5),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: pwC,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Sandi',
+                    errorText: err,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: busy
+                  ? null
+                  : () async {
+                      ss(() { busy = true; err = null; });
+                      try {
+                        await BackupService.deleteAccount(pwC.text);
+                        if (ctx.mounted) Navigator.pop(ctx, true);
+                      } catch (e) {
+                        ss(() { busy = false; err = '$e'.replaceFirst('Exception: ', ''); });
+                      }
+                    },
+              child: const Text('Hapus Permanen'),
+            ),
+          ],
+        ),
+      ),
+    );
+    pwC.dispose();
+    if (ok == true && mounted) {
+      // Sesi auth sudah hilang — kembali ke layar login (biarkan alur app yang mengurus).
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Akun terhapus. Sampai jumpa lagi.')),
+      );
+      Navigator.of(context).popUntil((r) => r.isFirst);
     }
   }
 
@@ -911,6 +1034,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Ubah Kata Sandi',
                 'Verifikasi sandi lama sebelum mengganti',
                 _changePasswordDialog,
+              ),
+              _tile(
+                Icons.save_alt_outlined,
+                'Ekspor Data (Cadangan)',
+                'Arsip teks: profil, pesan, surat, daftar media',
+                _exportData,
+              ),
+              _tile(
+                Icons.delete_forever_outlined,
+                'Hapus Akun (Permanen)',
+                'Lenyapkan akun, username & kunci E2E — jujur, tak bisa balik',
+                _deleteAccountDialog,
               ),
               // BATCH I: opt-in "Lagi buka TikTok" — pasangan bisa melihat
               // aplikasi apa yang sedang kamu buka saat DyKal tertutup.

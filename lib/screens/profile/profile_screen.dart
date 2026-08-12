@@ -77,6 +77,16 @@ class ProfileScreen extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), image: const DecorationImage(image: AssetImage('assets/banners/profile_banner_card.webp'), fit: BoxFit.cover)),
+      // FIX (laporan owner "teks ga kelihatan"): scrim hitam tipis di ATAS art
+      // banner -> teks putih selalu terbaca berapa pun tone gambarnya.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black.withValues(alpha: 0.15), Colors.black.withValues(alpha: 0.45)],
+        ),
+      ),
       child: Row(children: [
         Expanded(child: _memberCol(myId, '')),
         const Icon(Icons.favorite, color: Colors.white, size: 28),

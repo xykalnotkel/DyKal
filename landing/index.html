@@ -367,6 +367,137 @@
       color: var(--primary);
     }
 
+    /* Modal Validasi Konfirmasi Unduhan */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 24px;
+    }
+
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 32px 28px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 0.25s ease;
+    }
+
+    .modal-backdrop.show .modal-box {
+      transform: scale(1);
+    }
+
+    .modal-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: rgba(255, 107, 138, 0.15);
+      border: 1px solid rgba(255, 107, 138, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .modal-box h3 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .modal-box p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .modal-info-box {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 18px;
+      text-align: left;
+      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modal-info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+
+    .modal-info-row span {
+      color: var(--text-muted);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-modal-cancel {
+      flex: 1;
+      padding: 14px;
+      border-radius: 14px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-modal-cancel:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-modal-confirm {
+      flex: 1;
+      padding: 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), #FF4870);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 18px rgba(255, 107, 138, 0.35);
+      transition: all 0.15s ease;
+    }
+
+    .btn-modal-confirm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(255, 107, 138, 0.45);
+    }
+
     /* Section & Cards */
     .section {
       padding: 70px 0;
@@ -559,7 +690,7 @@
             <div class="android-icon">
               <!-- SVG Android Icon -->
               <svg viewBox="0 0 24 24" class="icon" style="stroke: none; fill: currentColor; width: 24px; height: 24px;">
-                <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 7.8427 13.8532 7.29 12 7.29c-1.8532 0-3.5902.5527-5.1368 1.6597L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
+                <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9997c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 7.8427 13.8532 7.29 12 7.29c-1.8532 0-3.5902.5527-5.1368 1.6597L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
               </svg>
             </div>
             <div>
@@ -574,8 +705,8 @@
         </div>
 
         <div class="apk-grid">
-          <!-- Tombol ARM64 -->
-          <a href="DyKal-arm64.apk" class="apk-card" id="btn-arm64">
+          <!-- Tombol ARM64 (Langsung tembak ke GitHub Releases resmi) -->
+          <a href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-arm64.apk" class="apk-card" id="btn-arm64">
             <div>
               <div class="apk-title">
                 <span>Android 64-bit</span>
@@ -589,7 +720,7 @@
           </a>
 
           <!-- Tombol ARMEABI (32-bit) -->
-          <a href="DyKal-armeabi-v7a.apk" class="apk-card" id="btn-armeabi">
+          <a href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-armeabi-v7a.apk" class="apk-card" id="btn-armeabi">
             <div>
               <div class="apk-title">
                 <span>Android 32-bit</span>
@@ -603,7 +734,7 @@
           </a>
 
           <!-- Tombol Universal -->
-          <a href="DyKal-universal.apk" class="apk-card" id="btn-universal">
+          <a href="https://github.com/xykalnotkel/DyKal/releases/latest/download/DyKal-universal.apk" class="apk-card" id="btn-universal">
             <div>
               <div class="apk-title">
                 <span>APK Universal</span>
@@ -619,6 +750,37 @@
       </div>
     </div>
   </section>
+
+  <!-- Modal Validasi Konfirmasi Unduh -->
+  <div class="modal-backdrop" id="download-modal">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24" class="icon" style="width: 32px; height: 32px; color: var(--primary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </div>
+      <h3 id="modal-title">Konfirmasi Pengunduhan</h3>
+      <p id="modal-desc">Kamu akan mengunduh file APK resmi dari server distribusi XYSTUDIO.</p>
+      
+      <div class="modal-info-box">
+        <div class="modal-info-row">
+          <span>Arsitektur:</span>
+          <strong id="modal-arch-text">ARM64-V8A</strong>
+        </div>
+        <div class="modal-info-row">
+          <span>Versi Aplikasi:</span>
+          <strong>v1.4.0+14 (Rilis Resmi)</strong>
+        </div>
+        <div class="modal-info-row">
+          <span>Sumber File:</span>
+          <strong>GitHub Releases (SSL Aman)</strong>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-cancel" id="modal-btn-cancel">Batal</button>
+        <a href="#" class="btn-modal-confirm" id="modal-btn-confirm">Unduh Sekarang</a>
+      </div>
+    </div>
+  </div>
 
   <!-- Fitur Utama -->
   <section class="section" id="fitur">
@@ -750,7 +912,7 @@
     </div>
   </footer>
 
-  <!-- Automatic ABI Detection Engine & Download Redirector -->
+  <!-- Automatic ABI Detection Engine & Download Confirmation Modal -->
   <script>
     (function initDyKalLanding() {
       const ua = navigator.userAgent || navigator.vendor || window.opera || "";
@@ -769,7 +931,7 @@
         return;
       }
 
-      // 1. Tembak Cek Langsung ke Architecture (Modern Browser API / UserAgentData)
+      // 1. Deteksi ABI & Arsitektur langsung dari kernel
       if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
         navigator.userAgentData.getHighEntropyValues(["architecture", "bitness", "model"])
           .then(values => {
@@ -788,7 +950,7 @@
       function fallbackABIProbe() {
         const is64Bit = /arm64|aarch64|x86_64|64/i.test(ua);
         const is32Bit = /armv7|armv7l|armeabi|armv6|i686|i386/i.test(ua);
-        const is64 = is64Bit || !is32Bit; // default modern Android ke 64-bit jika ambigu
+        const is64 = is64Bit || !is32Bit;
         const archLabel = is64 ? "ARM64 (64-bit)" : "ARMEABI-V7A (32-bit)";
         applyABIMode(is64, archLabel, "Perangkat Android");
       }
@@ -812,28 +974,61 @@
         }
       }
 
-      // 2. Redirect ke thanks.html setelah mulai mengunduh APK
+      // 2. Modal Validasi sebelum unduh APK (Tunggu konfirmasi pengguna)
+      const modal = document.getElementById("download-modal");
+      const modalTitle = document.getElementById("modal-title");
+      const modalArch = document.getElementById("modal-arch-text");
+      const btnCancel = document.getElementById("modal-btn-cancel");
+      const btnConfirm = document.getElementById("modal-btn-confirm");
+
+      let currentApkUrl = "";
+
       const downloadCards = document.querySelectorAll(".apk-card");
       downloadCards.forEach(card => {
         card.addEventListener("click", function(e) {
           if (this.classList.contains("btn-disabled")) return;
           e.preventDefault();
-          const apkUrl = this.getAttribute("href");
           
-          // Mulai pengunduhan APK di background
+          const titleEl = this.querySelector(".apk-title span");
+          const badgeEl = this.querySelector(".badge");
+          const apkName = titleEl ? titleEl.textContent : "APK DyKal";
+          const badgeText = badgeEl ? badgeEl.textContent : "ARM64-V8A";
+          
+          currentApkUrl = this.getAttribute("href");
+          modalTitle.textContent = "Unduh " + apkName + "?";
+          modalArch.textContent = badgeText;
+          modal.classList.add("show");
+        });
+      });
+
+      if (btnCancel && modal && btnConfirm) {
+        btnCancel.addEventListener("click", () => {
+          modal.classList.remove("show");
+        });
+
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) modal.classList.remove("show");
+        });
+
+        btnConfirm.addEventListener("click", function(e) {
+          e.preventDefault();
+          if (!currentApkUrl) return;
+          modal.classList.remove("show");
+
+          // Unduh APK nyata langsung dari GitHub Releases (SSL aman)
           const a = document.createElement("a");
-          a.href = apkUrl;
-          a.download = apkUrl;
+          a.href = currentApkUrl;
+          a.download = "";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
 
-          // Redirect ke halaman Terima Kasih setelah 650ms
+          // Alihkan ke halaman Thanks setelah konfirmasi unduh
           setTimeout(() => {
-            window.location.href = "thanks.html?apk=" + encodeURIComponent(apkUrl);
-          }, 650);
+            window.location.href = "thanks.html?apk=" + encodeURIComponent(currentApkUrl);
+          }, 800);
         });
-      });
+      }
     })();
   </script>
 

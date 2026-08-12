@@ -11,16 +11,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0d0f17;
-      --surface: #151824;
-      --surface-card: rgba(26, 31, 46, 0.7);
+      --bg: #0F1219;
+      --surface: #171A24;
+      --surface-card: #1D212E;
       --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.18);
       --primary: #FF6B8A;
-      --primary-glow: rgba(255, 107, 138, 0.35);
+      --primary-dark: #D94A68;
       --secondary: #7B6CF6;
-      --secondary-glow: rgba(123, 108, 246, 0.35);
+      --secondary-dark: #5849D6;
+      --accent: #00D68F;
       --text: #F8FAFC;
       --text-muted: #94A3B8;
+      --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
     }
 
     * {
@@ -35,77 +38,33 @@
       color: var(--text);
       line-height: 1.6;
       overflow-x: hidden;
-      position: relative;
     }
 
-    /* Morphing Fluid Background Shapes */
-    .morph-bg {
+    /* Ambient Static Glows (Bebas Lag GPU) */
+    .ambient-bg {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      overflow: hidden;
-      z-index: -1;
       pointer-events: none;
+      z-index: -1;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(255, 107, 138, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(123, 108, 246, 0.12) 0%, transparent 45%);
     }
 
-    .blob {
-      position: absolute;
-      filter: blur(80px);
-      opacity: 0.45;
-      animation: morph 16s ease-in-out infinite alternate;
-    }
-
-    .blob-1 {
-      top: -10%;
-      left: -10%;
-      width: 55vw;
-      height: 55vw;
-      background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
-      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-    }
-
-    .blob-2 {
-      bottom: -15%;
-      right: -10%;
-      width: 60vw;
-      height: 60vw;
-      background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
-      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-      animation-delay: -8s;
-    }
-
-    @keyframes morph {
-      0% {
-        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-        transform: translate(0, 0) rotate(0deg) scale(1);
-      }
-      50% {
-        border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%;
-        transform: translate(5%, 8%) rotate(120deg) scale(1.08);
-      }
-      100% {
-        border-radius: 30% 70% 40% 60% / 60% 40% 60% 40%;
-        transform: translate(-5%, -5%) rotate(240deg) scale(0.95);
-      }
-    }
-
-    /* Container & Navigation */
     .container {
-      max-width: 1140px;
+      max-width: 1120px;
       margin: 0 auto;
       padding: 0 24px;
     }
 
+    /* Navigation */
     header {
-      padding: 24px 0;
+      padding: 20px 0;
       border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(16px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(13, 15, 23, 0.75);
+      background: rgba(15, 18, 25, 0.9);
     }
 
     .nav-inner {
@@ -132,31 +91,28 @@
     }
 
     .badge-ver {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      padding: 4px 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-light);
+      padding: 4px 14px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.5px;
-      color: #fff;
-      box-shadow: 0 4px 12px var(--primary-glow);
+      color: var(--text);
     }
 
     /* Hero Section */
     .hero {
-      padding: 80px 0 60px;
+      padding: 60px 0 50px;
       text-align: center;
     }
 
     .hero-title {
       font-family: 'Poppins', sans-serif;
-      font-size: clamp(38px, 6vw, 64px);
+      font-size: clamp(36px, 5.5vw, 58px);
       font-weight: 800;
       line-height: 1.15;
-      margin-bottom: 24px;
-      background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      margin-bottom: 20px;
+      color: #FFFFFF;
     }
 
     .hero-title span {
@@ -166,169 +122,272 @@
     }
 
     .hero-subtitle {
-      font-size: clamp(16px, 2vw, 20px);
+      font-size: clamp(16px, 1.8vw, 19px);
       color: var(--text-muted);
-      max-width: 680px;
-      margin: 0 auto 40px;
+      max-width: 650px;
+      margin: 0 auto 36px;
     }
 
-    .cta-group {
+    /* 3D Tactile Download Panel (2D Terlihat 3D) */
+    .download-panel {
+      max-width: 780px;
+      margin: 0 auto 50px;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 32px 28px;
+      box-shadow: var(--card-shadow);
+      text-align: left;
+    }
+
+    .download-header {
       display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      display: inline-flex;
       align-items: center;
-      gap: 10px;
-      padding: 16px 32px;
-      border-radius: 16px;
-      font-weight: 700;
-      font-size: 16px;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .download-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .android-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(0, 214, 143, 0.15);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .download-header h2 {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .download-header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .abi-status {
+      font-size: 12px;
+      color: #7DD3FC;
+      background: rgba(125, 211, 252, 0.12);
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(125, 211, 252, 0.25);
+      margin-bottom: 24px;
+    }
+
+    .apk-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+
+    /* Tactile 3D Button Style */
+    .apk-card {
+      position: relative;
+      background: #232838;
+      border-radius: 18px;
+      padding: 22px 18px;
       text-decoration: none;
-      transition: all 0.25s ease;
-      cursor: pointer;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--primary), #FF4870);
-      color: #fff;
-      box-shadow: 0 8px 24px var(--primary-glow);
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px var(--primary-glow);
-    }
-
-    .btn-outline {
-      background: var(--surface-card);
       color: var(--text);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255, 255, 255, 0.25);
+      border-left: 1px solid rgba(255, 255, 255, 0.12);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 5px solid #0F1219;
+      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transition: transform 0.15s ease, border-bottom-width 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.08);
-      transform: translateY(-2px);
+    .apk-card:hover {
+      background: #2A3042;
     }
 
-    /* Grid Fitur */
+    .apk-card:active {
+      transform: translateY(3px);
+      border-bottom-width: 2px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .apk-card.btn-recommended {
+      background: linear-gradient(135deg, #1E293B, #0F172A);
+      border-color: var(--primary);
+      border-bottom: 5px solid var(--primary-dark);
+    }
+
+    .apk-card.btn-disabled {
+      opacity: 0.45;
+      filter: grayscale(1);
+      cursor: not-allowed;
+    }
+
+    .apk-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .apk-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .badge-green {
+      background: rgba(0, 214, 143, 0.2);
+      color: var(--accent);
+    }
+
+    .badge-blue {
+      background: rgba(123, 108, 246, 0.2);
+      color: #A5B4FC;
+    }
+
+    .badge-red {
+      background: rgba(255, 107, 138, 0.2);
+      color: var(--primary);
+    }
+
+    /* Section & Cards */
     .section {
-      padding: 80px 0;
+      padding: 70px 0;
     }
 
     .section-title {
       font-family: 'Poppins', sans-serif;
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 800;
       text-align: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .section-desc {
       text-align: center;
       color: var(--text-muted);
-      max-width: 600px;
-      margin: 0 auto 50px;
+      max-width: 580px;
+      margin: 0 auto 46px;
+      font-size: 15px;
     }
 
     .grid-3 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 22px;
     }
 
+    /* Tactile 2.5D Feature Card */
     .card {
       background: var(--surface-card);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 36px 28px;
-      backdrop-filter: blur(16px);
-      transition: transform 0.3s ease, border-color 0.3s ease;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      border-right: 1px solid rgba(0, 0, 0, 0.2);
+      border-bottom: 4px solid #10121C;
+      border-radius: 20px;
+      padding: 32px 26px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s ease;
     }
 
     .card:hover {
-      transform: translateY(-6px);
-      border-color: rgba(255, 107, 138, 0.4);
+      transform: translateY(-4px);
     }
 
-    .card-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, rgba(255, 107, 138, 0.2), rgba(123, 108, 246, 0.2));
+    .card-icon-wrap {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      background: rgba(255, 107, 138, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 24px;
-      font-size: 26px;
-      color: var(--primary);
+      margin-bottom: 20px;
     }
 
     .card h3 {
-      font-size: 20px;
-      margin-bottom: 12px;
+      font-size: 18px;
+      margin-bottom: 10px;
       font-weight: 700;
     }
 
     .card p {
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.6;
     }
 
-    /* Panduan Langkah (Steps) */
+    /* Panduan Langkah */
     .steps-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 28px;
-      margin-top: 40px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-top: 36px;
     }
 
     .step-card {
-      position: relative;
       background: var(--surface-card);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 32px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      border-bottom: 4px solid #10121C;
+      border-radius: 20px;
+      padding: 28px;
+      position: relative;
     }
 
     .step-num {
-      position: absolute;
-      top: -16px;
-      left: 28px;
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: inline-block;
+      background: var(--primary);
       color: #fff;
       font-weight: 800;
-      font-size: 14px;
-      padding: 4px 16px;
-      border-radius: 999px;
-      box-shadow: 0 4px 12px var(--primary-glow);
+      font-size: 12px;
+      padding: 4px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
     }
 
     /* FAQ Accordion */
     .faq-list {
-      max-width: 800px;
+      max-width: 760px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     .faq-item {
       background: var(--surface-card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 3px solid #10121C;
+      border-radius: 16px;
       overflow: hidden;
     }
 
     .faq-q {
-      padding: 20px 24px;
+      padding: 18px 22px;
       font-weight: 700;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
@@ -337,9 +396,9 @@
     }
 
     .faq-a {
-      padding: 0 24px 20px;
+      padding: 0 22px 18px;
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.6;
       display: none;
     }
@@ -351,7 +410,7 @@
     /* Footer */
     footer {
       border-top: 1px solid var(--border);
-      padding: 40px 0;
+      padding: 36px 0;
       text-align: center;
       color: var(--text-muted);
       font-size: 13px;
@@ -360,17 +419,25 @@
     footer strong {
       color: var(--text);
     }
+
+    /* SVG inline styling */
+    svg.icon {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Morphing Glass Background -->
-  <div class="morph-bg">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-  </div>
+  <!-- Static Ambient Background (Zero GPU Lag) -->
+  <div class="ambient-bg"></div>
 
-  <!-- Header / Navigation -->
+  <!-- Header -->
   <header>
     <div class="container nav-inner">
       <a href="#" class="brand">
@@ -385,47 +452,121 @@
   <section class="hero">
     <div class="container">
       <h1 class="hero-title">Ruang Digital Privat<br><span>Untuk Kamu & Dia</span></h1>
-      <p class="hero-subtitle">Satu aplikasi, dua orang, nol distraksi. Percakapan realtime, panggilan suara & video berkualitas jernih, album kenangan bersama, dan surat cinta abadi.</p>
-      <div class="cta-group">
-        <a href="#download" class="btn btn-primary">Unduh Aplikasi Sekarang</a>
-        <a href="#panduan" class="btn btn-outline">Panduan Cara Pakai</a>
+      <p class="hero-subtitle">Satu aplikasi, dua orang, nol distraksi. Percakapan realtime, panggilan suara & video P2P, album bersama, dan surat cinta dengan enkripsi End-to-End.</p>
+
+      <!-- Tactile 3D Download Panel + ABI Detector -->
+      <div class="download-panel" id="download">
+        <div class="download-header">
+          <div class="download-header-left">
+            <div class="android-icon">
+              <!-- SVG Android Icon -->
+              <svg viewBox="0 0 24 24" class="icon" style="stroke: none; fill: currentColor; width: 24px; height: 24px;">
+                <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 7.8427 13.8532 7.29 12 7.29c-1.8532 0-3.5902.5527-5.1368 1.6597L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Unduh Aplikasi DyKal untuk Android</h2>
+              <p>Pilih arsitektur prosesor ponselmu (otomatis terdeteksi sistem)</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="abi-status" id="abi-status-text">
+          Mendeteksi arsitektur prosesor ponsel Android kamu...
+        </div>
+
+        <div class="apk-grid">
+          <!-- Tombol ARM64 -->
+          <a href="DyKal-arm64.apk" class="apk-card" id="btn-arm64">
+            <div>
+              <div class="apk-title">
+                <span>Android 64-bit</span>
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </div>
+              <div class="apk-desc">Ponsel modern (arm64-v8a)</div>
+            </div>
+            <div>
+              <span class="badge badge-blue" id="badge-arm64">ARM64-V8A</span>
+            </div>
+          </a>
+
+          <!-- Tombol ARMEABI (32-bit) -->
+          <a href="DyKal-armeabi-v7a.apk" class="apk-card" id="btn-armeabi">
+            <div>
+              <div class="apk-title">
+                <span>Android 32-bit</span>
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </div>
+              <div class="apk-desc">Ponsel lawas (armeabi-v7a)</div>
+            </div>
+            <div>
+              <span class="badge badge-blue" id="badge-armeabi">ARMEABI-V7A</span>
+            </div>
+          </a>
+
+          <!-- Tombol Universal -->
+          <a href="DyKal-universal.apk" class="apk-card" id="btn-universal">
+            <div>
+              <div class="apk-title">
+                <span>APK Universal</span>
+                <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </div>
+              <div class="apk-desc">Semua ponsel Android</div>
+            </div>
+            <div>
+              <span class="badge badge-green">SEMUA PERANGKAT</span>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Fitur Utama -->
+  <!-- Fitur Utama (Semua Ikon murni SVG tanpa Emoji) -->
   <section class="section" id="fitur">
     <div class="container">
       <h2 class="section-title">Fasilitas Eksklusif Berdua</h2>
       <p class="section-desc">Semua fitur didesain khusus agar hubungan kamu dan pasangan makin hangat dan terhubung setiap saat.</p>
       <div class="grid-3">
         <div class="card">
-          <div class="card-icon">⚡</div>
+          <div class="card-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--primary);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
           <h3>Chat Realtime & Voice Note</h3>
           <p>Kirim pesan teks, foto, stiker, dan voice note seketika. Dilengkapi kontrol rekam geser ala WhatsApp dan foto sekali lihat (ViewOnce).</p>
         </div>
         <div class="card">
-          <div class="card-icon">📞</div>
+          <div class="card-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--primary);"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          </div>
           <h3>Panggilan Suara & Video P2P</h3>
           <p>Panggilan suara jernih dan video call HD antar perangkat secara langsung (WebRTC peer-to-peer) tanpa delay server perantara.</p>
         </div>
         <div class="card">
-          <div class="card-icon">🔒</div>
+          <div class="card-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--primary);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
           <h3>Enkripsi End-to-End (E2EE)</h3>
           <p>Kriptografi ECDH X25519 & AES-256-GCM. Kunci rahasia hanya ada di HP kamu dan dia — bahkan sistem tidak bisa membukanya.</p>
         </div>
         <div class="card">
-          <div class="card-icon">💌</div>
+          <div class="card-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--primary);"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </div>
           <h3>Surat Cinta Digital</h3>
           <p>Tulis surat cinta mendalam dengan segel gembok istimewa dan catatan waktu abadi untuk kenangan yang tidak akan pernah pudar.</p>
         </div>
         <div class="card">
-          <div class="card-icon">📸</div>
+          <div class="card-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--primary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          </div>
           <h3>Album Berdua & Live Photo</h3>
           <p>Simpan momen foto dan video bersama dalam satu galeri rapi. Dukungan pembuatan Live Photo langsung dari ponselmu.</p>
         </div>
         <div class="card">
-          <div class="card-icon">🔔</div>
+          <div class="card-icon-wrap">
+            <svg class="icon" viewBox="0 0 24 24" style="color: var(--primary);"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          </div>
           <h3>Notifikasi Nyala Selalu</h3>
           <p>Pemberitahuan pesan dan panggilan masuk tetap berdering walau aplikasi ditutup, didukung sistem push interaktif nan responsif.</p>
         </div>
@@ -433,7 +574,7 @@
     </div>
   </section>
 
-  <!-- Panduan Cara Pakai -->
+  <!-- Panduan Langkah -->
   <section class="section" id="panduan">
     <div class="container">
       <h2 class="section-title">Cara Mulai Menggunakan DyKal</h2>
@@ -442,17 +583,17 @@
         <div class="step-card">
           <div class="step-num">Langkah 1</div>
           <h3>Daftar & Buat Akun</h3>
-          <p style="margin-top: 12px; color: var(--text-muted);">Unduh aplikasi DyKal, lalu daftar menggunakan alamat email dan kata sandimu. Lengkapi nama panggilan dan foto avatarmu.</p>
+          <p style="margin-top: 10px; color: var(--text-muted); font-size: 13.5px;">Unduh aplikasi DyKal, lalu daftar menggunakan alamat email dan kata sandimu. Lengkapi nama panggilan dan foto avatarmu.</p>
         </div>
         <div class="step-card">
           <div class="step-num">Langkah 2</div>
           <h3>Buat atau Input Kode</h3>
-          <p style="margin-top: 12px; color: var(--text-muted);">Salah satu membuat kode undangan unik (contoh: DYKAL-ABCD). Pasangan lainnya cukup memasukkan kode tersebut untuk terhubung.</p>
+          <p style="margin-top: 10px; color: var(--text-muted); font-size: 13.5px;">Salah satu membuat kode undangan unik (contoh: DYKAL-ABCD). Pasangan lainnya cukup memasukkan kode tersebut untuk terhubung.</p>
         </div>
         <div class="step-card">
           <div class="step-num">Langkah 3</div>
           <h3>Selesai, Terhubung!</h3>
-          <p style="margin-top: 12px; color: var(--text-muted);">Kalian resmi terhubung. Seluruh riwayat obrolan, panggilan, dan media akan tersinkronisasi khusus hanya untuk kalian berdua.</p>
+          <p style="margin-top: 10px; color: var(--text-muted); font-size: 13.5px;">Kalian resmi terhubung. Seluruh riwayat obrolan, panggilan, dan media akan tersinkronisasi khusus hanya untuk kalian berdua.</p>
         </div>
       </div>
     </div>
@@ -510,6 +651,56 @@
       <p><strong>XYSTUDIO</strong> oleh Kall — Ruang Privat Eksklusif Untuk Dyaa & Kall &bull; 2026</p>
     </div>
   </footer>
+
+  <!-- Automatic ABI Detection Engine -->
+  <script>
+    (function detectAndroidABI() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera || "";
+      const isAndroid = /Android/i.test(ua);
+      const is64Bit = /arm64|aarch64|x86_64|64/i.test(ua) || 
+                      (navigator.userAgentData && navigator.userAgentData.platform === "Android");
+      
+      const btn64 = document.getElementById("btn-arm64");
+      const btn32 = document.getElementById("btn-armeabi");
+      const badge64 = document.getElementById("badge-arm64");
+      const badge32 = document.getElementById("badge-armeabi");
+      const statusText = document.getElementById("abi-status-text");
+
+      if (!btn64 || !btn32 || !statusText) return;
+
+      if (!isAndroid) {
+        statusText.textContent = "Sistem siap. Silakan unduh APK Universal atau ARM64 untuk dipasang di perangkat Android kamu.";
+        return;
+      }
+
+      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        navigator.userAgentData.getHighEntropyValues(["bitness", "architecture"]).then(values => {
+          applyABIMode(values.bitness === "64" || values.architecture === "arm64");
+        }).catch(() => applyABIMode(is64Bit));
+      } else {
+        applyABIMode(is64Bit);
+      }
+
+      function applyABIMode(is64) {
+        if (is64) {
+          btn64.classList.add("btn-recommended");
+          badge64.textContent = "DIREKOMENDASIKAN (64-BIT)";
+          badge64.classList.add("badge-green");
+          statusText.textContent = "Sistem mendeteksi perangkat Android 64-bit modern. APK ARM64 siap diunduh.";
+        } else {
+          btn64.classList.add("btn-disabled");
+          btn64.style.pointerEvents = "none";
+          badge64.textContent = "TIDAK COCOK (64-BIT)";
+          badge64.classList.add("badge-red");
+
+          btn32.classList.add("btn-recommended");
+          badge32.textContent = "DIREKOMENDASIKAN (32-BIT)";
+          badge32.classList.add("badge-green");
+          statusText.textContent = "Sistem mendeteksi perangkat Android 32-bit. Tombol ARM64 dinonaktifkan agar tidak terjadi error pemasangan.";
+        }
+      }
+    })();
+  </script>
 
 </body>
 </html>

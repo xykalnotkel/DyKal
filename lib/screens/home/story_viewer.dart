@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -77,8 +78,10 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       final randomPath = (_audioPaths..shuffle()).first;
       try {
         await _audioPlayer.setFilePath(randomPath);
-        await _audioPlayer.setVolume(0.7);
+        // BATCH H: musik fade-in halus (menyesuaikan suasana — tidak nyentak).
+        await _audioPlayer.setVolume(0.0);
         await _audioPlayer.play();
+        _startFadeIn();
       } catch (_) {}
     }
 
@@ -86,6 +89,19 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
       setState(() => _loading = false);
       _animController.forward();
     }
+  }
+
+  Timer? _fadeTimer;
+
+  /// Volume naik pelan 0 -> 0.65 dalam ~1 detik.
+  void _startFadeIn() {
+    _fadeTimer?.cancel();
+    var step = 0;
+    _fadeTimer = Timer.periodic(const Duration(milliseconds: 90), (t) {
+      step++;
+      _audioPlayer.setVolume((0.65 * step / 12).clamp(0.0, 0.65));
+      if (step >= 12) t.cancel();
+    });
   }
 
   void _nextStory() {
@@ -96,7 +112,14 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
         _animController.forward();
       });
     } else {
-      Navigator.pop(context);
+      // BATCH H (owner): deck habis -> ACAK ULANG & PUTAR LAGI (revert terus
+      // "sampai ada stock lain"), bukan langsung menutup cerita.
+      setState(() {
+        _photoUrls.shuffle();
+        _currentIndex = 0;
+        _animController.reset();
+        _animController.forward();
+      });
     }
   }
 
@@ -129,6 +152,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    _fadeTimer?.cancel();
     _animController.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -214,14 +238,30 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
         },
         child: Stack(
           children: [
-            // Center Image
+            // BATCH H: latar hitam diganti PREVIEW BLUR dari foto yang sedang
+            // tampil (ala IG) — layar tak pernah kosong hitam, sekaligus jadi
+            // "preview loading" saat gambar utama masih memuat.
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: CachedNetworkImage(
+                  imageUrl: _photoUrls[_currentIndex],
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Container(color: Colors.black),
+                ),
+              ),
+            ),
+            // Lapisan gelap tipis agar foto utama tetap fokus
+            Positioned.fill(
+              child: Container(color: Colors.black.withValues(alpha: 0.35)),
+            ),
+
+            // Foto utama (contain, utuh tak terpotong)
             Center(
               child: CachedNetworkImage(
                 imageUrl: _photoUrls[_currentIndex],
                 fit: BoxFit.contain,
-                placeholder: (_, __) => const Center(
-                  child: CircularProgressIndicator(color: DyKalTheme.primary),
-                ),
+                placeholder: (_, __) => const SizedBox.shrink(), // blur sudah jadi preview
                 errorWidget: (_, __, ___) => const Center(
                   child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
                 ),

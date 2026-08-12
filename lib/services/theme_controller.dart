@@ -20,6 +20,9 @@ class ThemeController extends ChangeNotifier {
   static const _keyMode = 'dykal_theme_mode';
   static const _keyStyle = 'dykal_ui_style';
 
+  // BATCH H (aturan owner): SEMUA komponen minimal rounded — tidak ada radius
+  // tajam di bawah 12 di mana pun lewat jalan tema. Perbedaan gaya kini hanya
+  // nuansa (seberapa tumpul), bukan tajam vs bulat.
   double get cardRadius {
     switch (_style) {
       case AppUiStyle.rounded:
@@ -27,7 +30,7 @@ class ThemeController extends ChangeNotifier {
       case AppUiStyle.ios:
         return 14.0;
       case AppUiStyle.sharp:
-        return 8.0;
+        return 12.0; // naik dari 8 — lantai konsistensi rounded
     }
   }
 
@@ -38,7 +41,7 @@ class ThemeController extends ChangeNotifier {
       case AppUiStyle.ios:
         return 12.0;
       case AppUiStyle.sharp:
-        return 6.0;
+        return 12.0; // naik dari 6 — lantai konsistensi rounded
     }
   }
 

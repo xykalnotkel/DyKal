@@ -151,6 +151,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       tempBytes = await dirSize(tempDir.path);
       m['Cache sementara'] = tempBytes;
 
+      // BATCH H (owner: "bukan cuma static cache, tapi total yang dipakai
+      // aplikasi"): tambah cache internal app (image cache Flutter, dll) ke
+      // statistik & tombol bersihkan.
+      try {
+        final cacheDir = await getApplicationCacheDirectory();
+        m['Cache aplikasi'] = await dirSize(cacheDir.path);
+      } catch (_) {}
+
       const root = '/storage/emulated/0/Android/media/com.dykal.app/Dykal/Media';
       m['Foto & Gambar'] = await dirSize('$root/Dykal Images');
       m['Video'] = await dirSize('$root/Dykal Video');
@@ -186,6 +194,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await tempDir.delete(recursive: true);
         await tempDir.create();
       }
+      // BATCH H: cache internal aplikasi juga ikut dibersihkan (image cache
+      // flutter engine, thumbnail, dsb) — bukan cuma folder temp.
+      try {
+        final cacheDir = await getApplicationCacheDirectory();
+        if (await cacheDir.exists()) {
+          await cacheDir.delete(recursive: true);
+          await cacheDir.create();
+        }
+      } catch (_) {}
       await _calculateCacheSize();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -282,10 +299,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // BATCH H (owner: "audio playlist tes suaranya masih gada pause"):
+  // tombol jadi TOGGLE play/pause; ikon berubah mengikuti trek yang bunyi.
+  String? _playingAudioPath;
+
   Future<void> _previewAudio(String path) async {
     try {
-      await _audioPlayer.setFilePath(path);
-      await _audioPlayer.play();
+      if (_playingAudioPath == path && _audioPlayer.playing) {
+        await _audioPlayer.pause();
+      } else if (_playingAudioPath == path) {
+        await _audioPlayer.play();
+      } else {
+        await _audioPlayer.stop();
+        await _audioPlayer.setFilePath(path);
+        await _audioPlayer.play();
+      }
+      if (mounted) setState(() => _playingAudioPath = path);
+      _audioPlayer.playerStateStream.firstWhere((s) => s.processingState == ProcessingState.completed).then((_) {
+        if (mounted) setState(() => _playingAudioPath = null);
+      }).catchError((_) {});
     } catch (_) {}
   }
 
@@ -527,7 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Total: ${_fmtBytes(_storageTotal)}',
+                        'Total dipakai aplikasi: ${_fmtBytes(_storageTotal)}',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -572,7 +604,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(icon: const Icon(Icons.play_arrow, size: 18), onPressed: () => _previewAudio(e.value)),
+                          IconButton(
+                            icon: Icon(
+                              _playingAudioPath == e.value && _audioPlayer.playing
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
+                              size: 18,
+                              color: _playingAudioPath == e.value ? DyKalTheme.primary : null,
+                            ),
+                            onPressed: () => _previewAudio(e.value),
+                          ),
                           IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent), onPressed: () => _removeAudio(e.key)),
                         ],
                       ),
@@ -687,6 +728,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   static const _storageColors = <String, Color>{
     'Cache sementara': Colors.orange,
+    'Cache aplikasi': Color(0xFF9E7BFF),
     'Foto & Gambar': Color(0xFFFF6B8A),
     'Video': Color(0xFF7B6CF6),
     'Audio & Voice Note': Color(0xFF00BFA5),

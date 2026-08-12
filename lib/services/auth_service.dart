@@ -49,8 +49,25 @@ class AuthService {
   static String? validateUsernameFormat(String? v) {
     final u = (v ?? '').trim();
     if (u.isEmpty) return null;
-    if (!RegExp(r'^[a-zA-Z0-9_.]{3,20}$').hasMatch(u)) {
-      return 'Username 3-20 karakter (huruf, angka, titik, underscore)';
+    // BATCH H: validasi dipertajam agar registrasi benar-benar "berguna":
+    // wajib huruf kecil/angka/titik/underscore, DIAWALI huruf, tanpa ".."
+    // beruntun, dan menolak kata-kata cadangan sistem/brand.
+    if (!RegExp(r'^[a-z0-9_.]{3,20}$').hasMatch(u)) {
+      return 'Username 3-20 karakter, huruf KECIL, angka, titik, underscore';
+    }
+    if (!RegExp(r'^[a-z]').hasMatch(u)) {
+      return 'Username harus diawali huruf';
+    }
+    if (u.contains('..') || u.endsWith('.') || u.endsWith('_')) {
+      return 'Format titik/underscore tidak valid';
+    }
+    const reserved = {
+      'admin', 'administrator', 'root', 'system', 'support', 'help',
+      'xystudio', 'dykal', 'official', 'staff', 'moderator', 'null',
+      'undefined', 'api', 'www', 'mail',
+    };
+    if (reserved.contains(u)) {
+      return 'Username ini dicadangkan sistem';
     }
     return null;
   }
@@ -58,14 +75,15 @@ class AuthService {
   /// Cek ketersediaan username (pre-check UX; gerbang final tetap transaksi
   /// di register() yang atomik). Fail-open saat offline: transaksi register
   /// tetap menolak duplikat, jadi tidak ada celah duplikat permanen.
-  Future<bool> isUsernameAvailable(String username) async {
+  /// Return null = terjadi error jaringan (UI harus tampilkan "tak bisa dicek").
+  Future<bool?> isUsernameAvailable(String username) async {
     final uname = username.trim().toLowerCase();
     if (validateUsernameFormat(uname) != null) return false;
     try {
-      final s = await _db.doc('usernames/$uname').get();
+      final s = await _db.doc('usernames/$uname').get().timeout(const Duration(seconds: 8));
       return !s.exists;
     } catch (_) {
-      return true;
+      return null; // error -> UI tunjukkan state netral, jangan pura-pura tersedia
     }
   }
 

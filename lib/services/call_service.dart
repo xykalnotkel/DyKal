@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_constants.dart';
 import 'auth_service.dart';
 import 'push_service.dart';
+import 'ringtone_player.dart';
 
 /// Service WebRTC dengan signaling via Firestore (top-level doc calls/{coupleId}).
 /// - Caller: startOutgoing -> offer + status 'ringing'
@@ -39,6 +40,11 @@ class DyKalCallService extends ChangeNotifier {
   String? lastError; // FIX: pesan error screen-share dll, biar UI bisa tampilkan (bukan silent crash)
   bool connected = false;
   String peerFilter = 'none';
+
+  /// BATCH H: penanda panggilan diakhiri LAWAN (hangUp/tolak remote) — layar
+  /// call menutup diri saat membaca flag ini (dulu layar caller bisa STUCK
+  /// terbuka saat partner menolak; hanya nada sibuk tanpa nutup layar).
+  bool endedByRemote = false;
 
   StreamSubscription? _ansSub;       // answerCandidates (dipakai caller)
   StreamSubscription? _offerCandSub; // offerCandidates (dipakai callee)
@@ -154,14 +160,31 @@ class DyKalCallService extends ChangeNotifier {
       callType: callType,
     );
     _becomeCurrent();
+    // BATCH H: nada sambung "tuuuut" ala telepon/WA selama menunggu diangkat.
+    unawaited(RingtonePlayer.startRingback());
 
     // Dengar jawaban & ICE lawan
     _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
       final data = doc.data();
       if (data == null) return;
-      if (data['status'] == 'answered' && _answeredAt == null) _answeredAt = DateTime.now();
+      if (data['status'] == 'answered' && _answeredAt == null) {
+        _answeredAt = DateTime.now();
+        // Dijawab -> nada sambung berhenti tepat saat lawan angkat.
+        unawaited(RingtonePlayer.stopRingback());
+        notifyListeners();
+      }
       if (data['declined'] == true) _declinedFlag = true;
-      if (data['status'] == 'ended') { await _cleanup(); return; }
+      if (data['status'] == 'ended') {
+        unawaited(RingtonePlayer.stopRingback());
+        // Ditolak sebelum sempat dijawab -> nada sibuk "tut-tut-tut" (Batch H).
+        if (_callerFlag && _answeredAt == null && data['declined'] == true) {
+          unawaited(RingtonePlayer.playBusyOnce());
+        }
+        endedByRemote = true;
+        notifyListeners();
+        await _cleanup();
+        return;
+      }
       final pf = data['calleeFilter'] as String?;
       if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
       // ICE restart: kalau reconnect di-trigger, jawaban lama tidak berlaku
@@ -227,7 +250,13 @@ class DyKalCallService extends ChangeNotifier {
     });
     _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
       final d = doc.data();
-      if (d == null || d['status'] == 'ended') { await _cleanup(); return; }
+      if (d == null || d['status'] == 'ended') {
+        // BATCH H: layar penerima ikut menutup saat caller mengakhiri.
+        endedByRemote = true;
+        notifyListeners();
+        await _cleanup();
+        return;
+      }
       final pf = d['callerFilter'] as String?;
       if (pf != null && pf != peerFilter) { peerFilter = pf; notifyListeners(); }
       // ICE restart: penerima harus menjawab offer baru
@@ -284,11 +313,23 @@ class DyKalCallService extends ChangeNotifier {
   }
 
   bool _frontCamera = true;
+  bool _flipping = false; // BATCH H: guard — flip beruntun = crash/stuck kamera
 
   /// Ganti kamera depan/belakang saat panggilan berlangsung (live replace track).
   Future<void> flipCamera() async {
+    if (_flipping) return;
+    _flipping = true;
     _frontCamera = !_frontCamera;
     try {
+      // BATCH H (keluhan owner: switch belakang STUCK): di banyak perangkat,
+      // getUserMedia GAGAL/beku bila kamera lama masih memegang hardware.
+      // Solusi: lepas (stop) track video lama DULU, baru buka kamera baru,
+      // lalu replaceTrack — ada kedipan 1-2 frame, tapi tidak pernah beku.
+      final oldTracks = [...?localStream?.getVideoTracks()];
+      for (final t in oldTracks) {
+        localStream?.removeTrack(t);
+        try { await t.stop(); } catch (_) {}
+      }
       final stream = await navigator.mediaDevices.getUserMedia({
         'audio': false,
         'video': {
@@ -306,14 +347,10 @@ class DyKalCallService extends ChangeNotifier {
           break;
         }
       }
-      // Hentikan track video lama & ganti di localStream
-      for (final t in [...?localStream?.getVideoTracks()]) {
-        localStream?.removeTrack(t);
-        await t.stop();
-      }
       localStream?.addTrack(newTrack);
       notifyListeners();
     } catch (_) {}
+    _flipping = false;
   }
 
   /// Tulis filter pilihanku ke call doc -> lawan lihat aku ter-filter (filter di-display sisi penerima)

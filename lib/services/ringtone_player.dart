@@ -20,4 +20,37 @@ class RingtonePlayer {
     _on = false;
     try { await _p.stop(); } catch (_) {}
   }
+
+  // ============ Nada sambung panggilan KELUAR (Batch H) ============
+  // ringback.wav: "tuuuut" 425 Hz, 1 dtk nyala + 4 dtk diam (baku nada
+  // sambung Indonesia/ITU) — di-loop sampai diangkat/ditolak.
+  // busy.wav: nada sibuk 0.5-0.5 x3 (diputar sekali saat panggilan ditolak).
+  static final _rb = AudioPlayer();
+  static bool _rbOn = false;
+
+  static Future<void> startRingback() async {
+    if (_rbOn) return;
+    _rbOn = true;
+    try {
+      await _rb.setLoopMode(LoopMode.one);
+      await _rb.setVolume(0.9);
+      await _rb.setAsset('assets/sounds/ringback.wav');
+      await _rb.play();
+    } catch (_) {}
+  }
+
+  static Future<void> stopRingback() async {
+    _rbOn = false;
+    try { await _rb.stop(); } catch (_) {}
+  }
+
+  static Future<void> playBusyOnce() async {
+    try {
+      _rbOn = false;
+      await _rb.stop();
+      await _rb.setLoopMode(LoopMode.off);
+      await _rb.setAsset('assets/sounds/busy.wav');
+      await _rb.play();
+    } catch (_) {}
+  }
 }

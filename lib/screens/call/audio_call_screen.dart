@@ -16,6 +16,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   // BATCH G: late — rejoin menempel ke DyKalCallService.current, bukan sesi baru.
   late DyKalCallService call;
   bool _rejoin = false;
+  bool _attached = false; // call sudah ter-assign & listener terpasang
   Timer? _timer;
   int _elapsed = 0;
   double volume = 0.8;
@@ -37,6 +38,8 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       call = existing;
       _rejoin = true;
       call.addListener(_onStateChanged);
+      _attached = true;
+      if (mounted) setState(() {});
       final at = existing.answeredAt;
       if (at != null) {
         _elapsed = DateTime.now().difference(at).inSeconds;
@@ -48,6 +51,7 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
 
     call = DyKalCallService();
     call.addListener(_onStateChanged);
+    _attached = true;
     try {
       if (isCaller == true) {
         await call.startOutgoing('audio');
@@ -72,17 +76,25 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   }
 
   void _onStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // BATCH H: lawan menutup/menolak -> layar menutup diri.
+    if (call.endedByRemote) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {});
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    call.removeListener(_onStateChanged);
-    // BATCH G: sesi hidup (DyKalCallService.current) jangan dibunuh saat
-    // layar cuma dikecilkan.
-    if (!identical(call, DyKalCallService.current) && !_rejoin) {
-      call.dispose();
+    if (_attached) {
+      call.removeListener(_onStateChanged);
+      // BATCH G: sesi hidup (DyKalCallService.current) jangan dibunuh saat
+      // layar cuma dikecilkan.
+      if (!identical(call, DyKalCallService.current) && !_rejoin) {
+        call.dispose();
+      }
     }
     super.dispose();
   }
@@ -115,6 +127,13 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   @override
   Widget build(BuildContext context) {
     final partnerName = AuthService().partnerName ?? 'Pasangan';
+    // `call` late — guard frame pertama sebelum _init menempelkan sesi.
+    if (!_attached) {
+      return const Scaffold(
+        backgroundColor: DyKalTheme.backgroundDark,
+        body: SafeArea(child: Center(child: CircularProgressIndicator(color: DyKalTheme.primary))),
+      );
+    }
     return Scaffold(
       backgroundColor: DyKalTheme.backgroundDark,
       body: SafeArea(
@@ -195,7 +214,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
                 const Icon(Icons.graphic_eq, color: DyKalTheme.online, size: 16),
                 const SizedBox(width: 6),
                 Text(
-                  call.connected ? 'Tersambung • HD Voice' : 'Menghubungkan...',
+                  // BATCH H: bahasa manusia, bukan bahasa mesin ("Menghubungkan").
+                  call.connected
+                      ? 'Tersambung • HD Voice'
+                      : (call.isCaller ? 'Memanggil...' : 'Menyambungkan...'),
                   style: const TextStyle(color: DyKalTheme.textMutedDark, fontSize: 13),
                 ),
               ],

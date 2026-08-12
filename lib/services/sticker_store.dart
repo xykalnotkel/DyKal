@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:encrypt/encrypt.dart';
@@ -7,6 +8,14 @@ import 'package:path_provider/path_provider.dart';
 import 'media_saver.dart';
 
 class StickerStore {
+  /// Nama acak panjang ala WhatsApp (.crypt15) — BATCH H (owner): file stiker
+  /// terenkripsi TIDAK boleh membawa nama asli/pola stiker_<timestamp>;
+  /// isi gallery/file manager pun tak bisa ditebak isinya apa.
+  static String _randomName() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    final r = Random.secure();
+    return List.generate(32, (_) => chars[r.nextInt(chars.length)]).join();
+  }
   // Key derivasi konsisten 32 byte (AES-256)
   static final Key _key = Key.fromUtf8('DyKalSecureStickerVault2026!Key'.padRight(32, '0'));
 
@@ -47,7 +56,7 @@ class StickerStore {
       );
       final webpBytes = (res != null) ? await File(res.path).readAsBytes() : await src.readAsBytes();
       final encrypted = _encrypt(Uint8List.fromList(webpBytes));
-      final name = 'stiker_${DateTime.now().millisecondsSinceEpoch}.webp.crypt15';
+      final name = '${_randomName()}.webp.crypt15';
       final dest = '${d.path}/$name';
       await File(dest).writeAsBytes(encrypted);
       return dest;

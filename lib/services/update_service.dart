@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'fcm_service.dart';
 
 class UpdateInfo {
@@ -112,10 +113,21 @@ class UpdateService extends ChangeNotifier {
     notifyListeners();
     try {
       availableUpdate = await _checkGithubRelease() ?? await _checkFirestoreConfig();
-      // Batch D: update realtime — bukan cuma banner di home, muncul juga
-      // sebagai NOTIFIKASI SISTEM dengan aksi "Unduh Sekarang".
+      // BATCH H (keluhan owner: "notif update muncul aneh pas baru buka app"):
+      // notif SISTEM hanya sekali per versi (bukan tiap startup). Penemuan
+      // pasif cukup diwakili tip bubble di lonceng home; notif sistem tetap
+      // dipakai utk push realtime topic app_updates & cek manual di settings.
       if (availableUpdate != null) {
-        try { await FCMService().showUpdateNotif('DyKal v${availableUpdate!.versionName} tersedia'); } catch (_) {}
+        final ver = availableUpdate!.versionName;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final last = prefs.getString('update_notified_for') ?? '';
+          final startup = last == 'STARTUP_$ver';
+          if (!startup) {
+            await FCMService().showUpdateNotif('DyKal v$ver tersedia');
+            await prefs.setString('update_notified_for', 'STARTUP_$ver');
+          }
+        } catch (_) {}
       }
     } catch (_) {
       availableUpdate = null;

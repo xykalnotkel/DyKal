@@ -60,8 +60,15 @@ Future<void> main() async {
   DevLogger.instance.info('app', 'Starting DyKal...');
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi yang TIDAK butuh Firebase — jalan di background,
-  // tidak memblokir runApp (splash langsung tampil).
+  // BATCH H (keluhan owner: tema "flash" & terasa tergantung server):
+  // Theme/BubbleStyle/WallpaperSettings itu 100% LOKAL (SharedPreferences) —
+  // muat SEBELUM runApp agar frame pertama langsung benar (tanpa flash tema
+  // default) dan bekerja penuh walau HP offline total.
+  try { await ThemeController.instance.load(); } catch (_) {}
+  try { await BubbleStyle.instance.load(); } catch (_) {}
+  try { await WallpaperSettings.instance.load(); } catch (_) {}
+
+  // Sisanya (birthday, callback update) non-kritis — background.
   unawaited(_initNonFirebase());
 
   // Firebase — background juga; hasilnya dibaca AuthGate via appInitStatus.
@@ -108,9 +115,6 @@ Future<void> _initNonFirebase() async {
   // Aksi "Unduh Sekarang" dari notif update (diputus via callback agar
   // fcm_service tidak import update_service -> siklus).
   FCMService.onUpdateDownload = () => UpdateService.instance.downloadAndInstall();
-  try { await ThemeController.instance.load(); } catch (_) {}
-  try { await BubbleStyle.instance.load(); } catch (_) {}
-  try { await WallpaperSettings.instance.load(); } catch (_) {}
   try { await BirthdayService().init().timeout(const Duration(seconds: 5)); } catch (_) {}
 }
 
@@ -220,7 +224,10 @@ Widget _splash() => Scaffold(
                 ),
               ),
               const SizedBox(height: 12),
-              Text(bootStage, style: TextStyle(fontSize: 12, color: DyKalTheme.textGrey)),
+              // BATCH H (owner): tanpa teks teknis "Menghubungi Firebase..." —
+              // splash bermerek saja, detail tahap hanya relevan di layar error.
+              const Text('Ruang kecil kalian berdua',
+                  style: TextStyle(fontSize: 12, color: DyKalTheme.textGrey)),
             ],
           ),
         ),

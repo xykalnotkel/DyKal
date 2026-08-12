@@ -109,6 +109,6 @@ flutter_launcher_icons:
   # Logo di dalam app memakai dykal_logo_transparent.png karena UI punya custom
   # background sendiri. Kit format lain (ICO/SVG/favicon/OG) ada di folder
   # branding/ — sengaja TIDAK dideklarasikan di sini agar tidak membundel APK.
-  adaptive_icon_background: "#FFE9EE"
+  adaptive_icon_background: "assets/logo/adaptive_background.png"
   adaptive_icon_foreground: "assets/logo/adaptive_foreground.png"
   min_sdk_android: 24

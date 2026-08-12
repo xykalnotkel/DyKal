@@ -22,6 +22,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   // bar "kembali ke panggilan" kita MENEMPEL ke sesi hidup (current).
   late DyKalCallService call;
   bool _rejoin = false;
+  bool _attached = false; // call sudah ter-assign & listener terpasang
   Timer? _timer;
   int _elapsed = 0;
   String _filter = 'none';
@@ -55,6 +56,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       _rejoin = true;
       _isCaller = existing.isCaller;
       call.addListener(_onChanged);
+      _attached = true;
+      if (mounted) setState(() {});
       final at = existing.answeredAt;
       if (at != null) {
         _elapsed = DateTime.now().difference(at).inSeconds;
@@ -66,6 +69,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     call = DyKalCallService();
     call.addListener(_onChanged);
+    _attached = true;
     try {
       if (isCaller == true) {
         await call.startOutgoing(type);
@@ -191,7 +195,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 const SizedBox(height: 12),
                 Text(name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 14),
-                _VoiceWave(muted: muted, color: DyKalTheme.primary),
+                // BATCH H (owner): gelombang suara hanya saat panggilan SUDAH
+                // diangkat — sebelumnya muncul sejak fase memanggil (misleading).
+                if (call.connected)
+                  _VoiceWave(muted: muted, color: DyKalTheme.primary)
+                else
+                  Text(
+                    _isCaller ? 'Menunggu diangkat...' : 'Menyambungkan...',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
               ],
             ),
           ),
@@ -220,6 +232,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   void _onChanged() {
     if (!mounted) return;
+    // BATCH H: lawan menutup/menolak -> layar menutup diri (dulu caller stuck
+    // di layar "Memanggil..." walau partner sudah menolak).
+    if (call.endedByRemote) {
+      Navigator.of(context).pop();
+      return;
+    }
     _local.srcObject = call.localStream;
     _remote.srcObject = call.remoteStream;
     setState(() {});
@@ -228,12 +246,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    call.removeListener(_onChanged);
-    // BATCH G: kalau instance ini masih sesi HIDUP (user hanya mengecilkan
-    // layar), JANGAN dimatikan — panggilan lanjut, bar "kembali ke
-    // panggilan" tampil. Sesi hanya mati via tombol merah / lawan menutup.
-    if (!identical(call, DyKalCallService.current) && !_rejoin) {
-      call.dispose();
+    if (_attached) {
+      call.removeListener(_onChanged);
+      // BATCH G: kalau instance ini masih sesi HIDUP (user hanya mengecilkan
+      // layar), JANGAN dimatikan — panggilan lanjut, bar "kembali ke
+      // panggilan" tampil. Sesi hanya mati via tombol merah / lawan menutup.
+      if (!identical(call, DyKalCallService.current) && !_rejoin) {
+        call.dispose();
+      }
     }
     _local.dispose();
     _remote.dispose();
@@ -266,6 +286,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // `call` late — sebelum _init selesai menempelkan sesi, build hitung
+    // apa pun akan LateError. Tampilkan koneksi singkat saja.
+    if (!_attached) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(child: Center(child: CircularProgressIndicator(color: DyKalTheme.primary))),
+      );
+    }
     final bigIsLocal = _swapped;
     final bigIsRemote = !bigIsLocal;
     final bigFilter = bigIsLocal ? _filter : call.peerFilter;

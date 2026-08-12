@@ -272,24 +272,42 @@ class _ChatScreenState extends State<ChatScreen> {
   /// mematikan internet (ConnectivityResult.none) — itu hak dia. Popup hanya
   /// muncul saat interface NYALA (wifi/seluler) TAPI paket benar-benar tidak
   /// tembus (kuota habis, sinyal bohong, dsb) = koneksi "nyala palsu".
+  // Cooldown popup: maksimal sekali per 3 menit (anti spam).
+  static DateTime? _connPopupShownAt;
+
   Future<void> _checkConn() async {
     try {
       final r = await Connectivity().checkConnectivity();
       final noInterface = r.isEmpty || r.every((e) => e == ConnectivityResult.none);
       if (noInterface) return; // user mematikan koneksi -> diamkan (offline mode WA)
 
-      // Interface nyala -> UJI KONEKSI BENERAN ke server kita (bukan cuma
-      // nanya OS, karena OS bilang "connected" walau kuota habis).
-      final ok = await Dio()
-          .head('https://push.xystudio.my.id/health')
-          .timeout(const Duration(seconds: 4))
+      // BATCH H (keluhan owner: "popup muncul padahal kuota ada"):
+      // dulu SATU probe 4 dtk ke worker — DNS dingin/cold-start Cloudflare
+      // bisa menembus 4 dtk -> SALAH TUDUH offline. Sekarang: 2 endpoint
+      // berbeda (worker + Google 204), masing-masing 6 dtk, 2 kali percobaan.
+      // Popup hanya kalau SEMUA percobaan gagal -> hampir mustahil salah tuduh.
+      Future<bool> probe(String url) => Dio()
+          .head(url)
+          .timeout(const Duration(seconds: 6))
           .then((_) => true)
           .catchError((_) => false);
+
+      Future<bool> tryOnce() async => await probe('https://push.xystudio.my.id/health') ||
+          await probe('https://clients3.google.com/generate_204');
+
+      var ok = await tryOnce();
+      if (!ok) {
+        await Future.delayed(const Duration(milliseconds: 1200));
+        ok = await tryOnce(); // percobaan kedua (jeda agar DNS/radio stabil)
+      }
       if (!ok && mounted) {
+        final last = _connPopupShownAt;
+        if (last != null && DateTime.now().difference(last).inMinutes < 3) return;
+        _connPopupShownAt = DateTime.now();
         showDialog(context: context, builder: (_) => AlertDialog(
           icon: const Icon(Icons.wifi_tethering_off, color: Color(0xFFFF6B8A), size: 40),
           title: const Text('Internet nyala tapi tak tembus'),
-          content: const Text('WiFi/data nyala tapi paket tidak sampai — kemungkinan kuota habis atau jaringan macet. Pesan tertahan (ikon jam) dan terkirim otomatis saat akses pulih.'),
+          content: const Text('WiFi/data nyala tapi paket tidak sampai ke dua server uji — kemungkinan kuota habis, jaringan macet, atau provider sedang gangguan. Pesan tertahan (ikon jam) dan terkirim otomatis saat akses pulih.'),
           actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
         ));
       }

@@ -38,21 +38,35 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     } catch (_) {}
   }
 
+  bool _switching = false; // guard anti double-tap saat ganti kamera
+
   Future<void> _setupController(CameraDescription camera) async {
-    _controller?.dispose();
-    _controller = CameraController(
+    // BATCH H (keluhan owner: switch kamera belakang malah STUCK):
+    // akar bug — controller LAMA di-dispose tapi _isInit tetap true, jadi
+    // CameraPreview merender controller mati (preview beku). Plus flip tak
+    // di-await -> dua initialize berpotongan. Sekarang: state dimatikan dulu,
+    // dispose di-await, init baru di-await, baru preview nyala lagi.
+    final old = _controller;
+    _controller = null;
+    if (mounted) setState(() => _isInit = false);
+    try { await old?.dispose(); } catch (_) {}
+
+    final next = CameraController(
       camera,
       ResolutionPreset.high,
       enableAudio: true,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
-
     try {
-      await _controller!.initialize();
-      if (mounted) {
-        setState(() => _isInit = true);
-      }
-    } catch (_) {}
+      await next.initialize();
+      if (!mounted) { try { await next.dispose(); } catch (_) {} return; }
+      setState(() {
+        _controller = next;
+        _isInit = true;
+      });
+    } catch (_) {
+      try { await next.dispose(); } catch (_) {}
+    }
   }
 
   @override
@@ -74,10 +88,12 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     super.dispose();
   }
 
-  void _flipCamera() {
-    if (_cameras.length < 2) return;
+  Future<void> _flipCamera() async {
+    if (_cameras.length < 2 || _switching) return;
+    _switching = true;
     _selectedCameraIdx = (_selectedCameraIdx + 1) % _cameras.length;
-    _setupController(_cameras[_selectedCameraIdx]);
+    await _setupController(_cameras[_selectedCameraIdx]);
+    _switching = false;
   }
 
   void _toggleFlash() async {

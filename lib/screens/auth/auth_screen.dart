@@ -28,19 +28,34 @@ class _AuthScreenState extends State<AuthScreen> {
   Timer? _unameDebounce;
   bool? _unameAvailable;
   bool _unameChecking = false;
+  bool _unameCheckFailed = false; // jaringan error -> state netral, jangan bohong
 
   void _onUsernameChanged(String v) {
+    // BATCH H: auto-lowercase saat mengetik (validasi kini mewajibkan huruf
+    // kecil — jangan paksa user menulis ulang).
+    final lower = v.toLowerCase();
+    if (lower != v) {
+      _username.value = TextEditingValue(
+        text: lower,
+        selection: TextSelection.collapsed(offset: lower.length),
+      );
+      return; // onChanged akan terpanggil ulang dengan nilai kecil
+    }
     _unameDebounce?.cancel();
     final u = v.trim();
     if (u.isEmpty || AuthService.validateUsernameFormat(u) != null) {
       setState(() { _unameAvailable = null; _unameChecking = false; });
       return;
     }
-    setState(() { _unameChecking = true; _unameAvailable = null; });
+    setState(() { _unameChecking = true; _unameAvailable = null; _unameCheckFailed = false; });
     _unameDebounce = Timer(const Duration(milliseconds: 500), () async {
       final ok = await AuthService().isUsernameAvailable(u);
       if (mounted && _username.text.trim() == u) {
-        setState(() { _unameAvailable = ok; _unameChecking = false; });
+        setState(() {
+          _unameAvailable = ok;
+          _unameChecking = false;
+          _unameCheckFailed = ok == null; // null = error jaringan (bukan tersedia)
+        });
       }
     });
   }
@@ -110,6 +125,8 @@ class _AuthScreenState extends State<AuthScreen> {
         padding: EdgeInsets.all(12),
         child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
       );
+    } else if (_unameCheckFailed) {
+      suffix = const Icon(Icons.cloud_off, color: Colors.orange, size: 20);
     } else if (_unameAvailable == true) {
       suffix = const Icon(Icons.check_circle, color: Colors.green, size: 20);
     } else if (_unameAvailable == false) {
@@ -128,7 +145,9 @@ class _AuthScreenState extends State<AuthScreen> {
       },
       decoration: InputDecoration(
         hintText: 'Username (opsional, unik)',
-        helperText: _unameAvailable == true ? 'Username tersedia' : null,
+        helperText: _unameCheckFailed
+            ? 'Tidak bisa mengecek sekarang (offline?) — dicek ulang saat mendaftar'
+            : (_unameAvailable == true ? 'Username tersedia' : null),
         prefixIcon: Icon(Icons.alternate_email, color: DyKalTheme.textGrey),
         suffixIcon: suffix,
         filled: true, fillColor: DyKalTheme.cardOf(context),

@@ -259,27 +259,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                // Satu entri cerita -> membuka StoryViewer (semua foto album)
-                Column(
-                  children: [
-                    StoryAvatar(
-                      imageUrl: partnerPhoto,
-                      fallbackText: partnerName.isNotEmpty ? partnerName[0] : 'D',
-                      storyCount: docs.length,
-                      allSeen: false,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => StoryViewer(coupleId: coupleId)),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Cerita Kita',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                // Satu entri cerita -> membuka StoryViewer (semua foto album).
+                // BATCH H: preview avatar diambil dari FOTO ALBUM terbaru
+                // (bukan foto profil), ring reset harian.
+                _StoryEntry(
+                  coupleId: coupleId,
+                  storyCount: docs.length,
+                  albumIds: docs.map((d) => d.id).toList(),
+                  fallbackText: partnerName.isNotEmpty ? partnerName[0] : 'D',
+                  fallbackPhoto: partnerPhoto,
                 ),
               ],
             );
@@ -691,4 +679,113 @@ class _TipTailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TipTailPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// Entri cerita (Batch H): avatar = foto TERBARU dari album (preview cerita
+/// beneran, bukan foto profil), ring pink hilang setelah dilihat dan kembali
+/// lagi keesokan harinya ("terganti setiap 24 jam" — daily reset).
+class _StoryEntry extends StatefulWidget {
+  final String coupleId;
+  final int storyCount;
+  final List<String> albumIds;
+  final String fallbackText;
+  final String? fallbackPhoto;
+
+  const _StoryEntry({
+    required this.coupleId,
+    required this.storyCount,
+    required this.albumIds,
+    required this.fallbackText,
+    required this.fallbackPhoto,
+  });
+
+  @override
+  State<_StoryEntry> createState() => _StoryEntryState();
+}
+
+class _StoryEntryState extends State<_StoryEntry> {
+  String? _coverUrl;
+  bool _tried = false;
+  bool _seenToday = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  static String _todayKey() {
+    final n = DateTime.now();
+    return '${n.year}-${n.month}-${n.day}';
+  }
+
+  Future<void> _load() async {
+    // Ring reset harian
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _seenToday = prefs.getString('story_seen_day') == _todayKey();
+    } catch (_) {}
+
+    // Ambil foto terbaru dari album-album (maks 4 album dicek — cukup ringan)
+    for (final aid in widget.albumIds.take(4)) {
+      try {
+        var qs = await FirebaseFirestore.instance
+            .collection('couples/${widget.coupleId}/albums/$aid/photos')
+            .limit(4)
+            .get();
+        // Pilih placeholder paling "segar": dokumen dengan createdAt terbesar
+        // (orderBy ditulis defensif — dok lama mungkin tak punya field-nya).
+        String? url;
+        Timestamp? best;
+        for (final d in qs.docs) {
+          final data = d.data();
+          final u = data['url'] as String?;
+          if (u == null || u.isEmpty) continue;
+          final ts = data['createdAt'] as Timestamp?;
+          if (best == null || (ts != null && ts.compareTo(best) > 0)) {
+            best = ts;
+            url = u;
+          }
+        }
+        if (url != null) {
+          _coverUrl = url;
+          break;
+        }
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _tried = true);
+  }
+
+  Future<void> _open() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => StoryViewer(coupleId: widget.coupleId)),
+    );
+    // Tandai sudah dilihat HARI INI — ring kembali pink besok (rotasi harian).
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('story_seen_day', _todayKey());
+    } catch (_) {}
+    if (mounted) setState(() => _seenToday = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        StoryAvatar(
+          imageUrl: _coverUrl ?? (_tried ? widget.fallbackPhoto : null),
+          fallbackText: widget.fallbackText,
+          storyCount: widget.storyCount,
+          allSeen: _seenToday,
+          onTap: _open,
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Cerita Kita',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
 }

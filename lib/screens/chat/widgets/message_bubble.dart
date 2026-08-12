@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
+import '../../../services/bubble_style.dart';
 import '../../../services/sticker_store.dart';
 import '../../../services/voice_cache.dart';
 import '../../../widgets/fullscreen_media_viewer.dart';
@@ -276,12 +277,8 @@ class MessageBubble extends StatelessWidget {
                     : const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: isMe ? DyKalTheme.primary : DyKalTheme.cardOf(context),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(18),
-                    topRight: const Radius.circular(18),
-                    bottomLeft: Radius.circular(isMe ? 18 : 4),
-                    bottomRight: Radius.circular(isMe ? 4 : 18),
-                  ),
+                  // Radius mengikuti gaya pilihan pengguna (Bulat/Kotak/Ekor)
+                  borderRadius: BubbleStyle.instance.radius(isMe),
                   border: isMe ? null : Border.all(color: DyKalTheme.borderOf(context)),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6),

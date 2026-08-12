@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/bubble_style.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -644,7 +645,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return GestureDetector(
       onTap: () {
         setState(() => _bubbleStyle = style);
-        _saveLocalPref('bubble_style', style);
+        BubbleStyle.instance.set(style); // sinkron ke bubble (bukan pajangan lagi)
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),

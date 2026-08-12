@@ -29,6 +29,7 @@ import 'services/app_logger.dart';
 import 'services/fcm_service.dart';
 import 'services/floating_service.dart';
 import 'services/theme_controller.dart';
+import 'services/bubble_style.dart';
 import 'widgets/update_banner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -100,6 +101,7 @@ Future<void> _initNonFirebase() async {
     await FlutterDisplayMode.setPreferredMode(high);
   } catch (_) {}
   try { await ThemeController.instance.load(); } catch (_) {}
+  try { await BubbleStyle.instance.load(); } catch (_) {}
   try { await BirthdayService().init().timeout(const Duration(seconds: 5)); } catch (_) {}
 }
 
@@ -138,8 +140,16 @@ class DyKalApp extends StatelessWidget {
         title: 'DyKal',
         debugShowCheckedModeBanner: false,
         themeMode: ThemeController.instance.mode,
-        theme: DyKalTheme.lightTheme,
-        darkTheme: DyKalTheme.darkTheme,
+        // Tema dibangun dari GAYA aktif (rounded/ios/sharp) — lihat theme.dart.
+        // ListenableBuilder di atas memastikan pergantian gaya langsung menempel.
+        theme: DyKalTheme.lightTheme(
+          cardRadius: ThemeController.instance.cardRadius,
+          buttonRadius: ThemeController.instance.buttonRadius,
+        ),
+        darkTheme: DyKalTheme.darkTheme(
+          cardRadius: ThemeController.instance.cardRadius,
+          buttonRadius: ThemeController.instance.buttonRadius,
+        ),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),
           child: child!,

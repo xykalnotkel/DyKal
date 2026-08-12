@@ -125,7 +125,9 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       await File(outPath).writeAsBytes(byteData!.buffer.asUint8List());
       return File(outPath);
     } catch (_) {
-      return file; // gagal mirror, pakai asli
+      // Fallback: pakai file asli (lebih baik un-mirror daripada gagal total).
+      // Gambar full-res 12MP+ di HP 32-bit berisiko OOM di instantiateImageCodec.
+      return file;
     }
   }
 
@@ -147,7 +149,14 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       if (result != null && mounted) {
         Navigator.pop(context, result);
       }
-    } catch (_) {}
+    } catch (_) {
+      // FIX: dulu gagal jepret diam-diam (terasa "berantakan"). Sekarang kasih tahu.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mengambil foto, coba lagi')),
+        );
+      }
+    }
   }
 
   Future<void> _openGallery() async {

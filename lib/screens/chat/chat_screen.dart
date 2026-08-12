@@ -15,6 +15,7 @@ import '../../services/auth_service.dart';
 import '../../services/dev_logger.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/media_saver.dart';
+import '../../services/bubble_style.dart';
 import '../../services/voice_cache.dart';
 import '../../services/push_service.dart';
 import '../../services/theme_controller.dart';
@@ -476,7 +477,11 @@ class _ChatScreenState extends State<ChatScreen> {
       title: const Text("Gaya Bubble"),
       children: [
         for (final e in const [("Bulat", 0), ("Kotak", 1), ("Ekor", 2)])
-          SimpleDialogOption(onPressed: () async { await prefs.setInt("bubble_style", e.$2); setS(() => cur = e.$2); },
+          SimpleDialogOption(onPressed: () async {
+            await BubbleStyle.instance.set(e.$2); // satu sumber kebenaran
+            setS(() => cur = e.$2);
+            if (mounted) setState(() {}); // rebuild gelembung langsung
+          },
             child: Row(children: [Text(e.$1), const Spacer(), if (cur == e.$2) Icon(Icons.check, color: DyKalTheme.primary, size: 18)])),
       ],
     )));

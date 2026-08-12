@@ -37,7 +37,7 @@ class DyKalTheme {
     end: Alignment.bottomRight,
   );
 
-  static ThemeData lightTheme = ThemeData(
+  static final ThemeData _baseLight = ThemeData(
     useMaterial3: true,
     scaffoldBackgroundColor: background,
     colorScheme: const ColorScheme(
@@ -94,7 +94,7 @@ class DyKalTheme {
     ),
   );
 
-  static ThemeData darkTheme = ThemeData(
+  static final ThemeData _baseDark = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: backgroundDark,
@@ -153,6 +153,87 @@ class DyKalTheme {
       ),
     ),
   );
+
+  // Dynamic Theme Helpers
+  /// Bangun ThemeData sesuai gaya UI (ThemeController: rounded/ios/sharp).
+  /// FIX (laporan owner "theme style belum berfungsi"): dulu tema STATIK —
+  /// segmented di Settings menyimpan preferensi tapi tidak mengubah apa pun
+  /// secara visual. Sekarang radius kartu/tombol/dialog/sheet/input benar-benar
+  /// direkonstruksi dari gaya aktif, dan main.dart me-rebuild saat gaya berubah.
+  static ThemeData lightTheme({double cardRadius = 20, double buttonRadius = 16}) =>
+      _themed(_baseLight, cardRadius, buttonRadius);
+
+  static ThemeData darkTheme({double cardRadius = 20, double buttonRadius = 16}) =>
+      _themed(_baseDark, cardRadius, buttonRadius);
+
+  static ThemeData _themed(ThemeData base, double cardR, double btnR) {
+    final dark = base.brightness == Brightness.dark;
+    final borderCol = dark ? borderSoftDark : borderSoft;
+    final primaryCol = dark ? primaryDark : primary;
+    return base.copyWith(
+      cardTheme: base.cardTheme.copyWith(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(cardR),
+          side: BorderSide(color: borderCol, width: 1),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primaryCol,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(btnR)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(btnR)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(btnR)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(btnR)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: dark ? surfaceDark : surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(cardR + 4)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: dark ? surfaceDark : surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(cardR + 4)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(btnR)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: dark ? surfaceSubduedDark : surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(btnR),
+          borderSide: BorderSide(color: borderCol),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(btnR),
+          borderSide: BorderSide(color: borderCol),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(btnR),
+          borderSide: BorderSide(color: primaryCol, width: 1.6),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
 
   // Dynamic Theme Helpers
   static Color cardOf(BuildContext context) =>

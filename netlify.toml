@@ -1,0 +1,15 @@
+# Landing DyKal — Netlify static host (Bosku pilih: Netlify ATAU GitHub Pages).
+# Cukup satu file ini: New Site from Git -> publish auto ke folder landing/.
+[build]
+  publish = "landing"
+  command = ""
+
+# aset statis berat (logo/shots) di-cache agresif; html selalu segar
+[[headers]]
+  for = "/*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+[[headers]]
+  for = "/music/*.json"
+  [headers.values]
+    Cache-Control = "public, max-age=300"

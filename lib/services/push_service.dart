@@ -23,6 +23,13 @@ class PushService {
   static bool get _enabled =>
       workerUrl.startsWith('https://') && !workerUrl.contains('example');
 
+  static String? _cachedToken;
+  static bool? _cachedV2;
+  static Map<String, dynamic>? _cachedPrefs;
+  static DateTime? _cacheFetchedAt;
+
+  static void invalidateCache() => _cacheFetchedAt = null;
+
   /// Panggil saat: kirim chat baru / mulai panggilan.
   static Future<void> notifyPartner({
     required String title,
@@ -36,18 +43,29 @@ class PushService {
     if (partnerId.isEmpty) return;
     try {
       final me = AuthService();
-      final snap = await FirebaseFirestore.instance.doc('users/$partnerId').get();
-      final data = snap.data();
-      final token = data?['fcmToken'] as String?;
+      String? token = _cachedToken;
+      bool dataOnly = _cachedV2 ?? false;
+      Map<String, dynamic>? prefs = _cachedPrefs;
+
+      final now = DateTime.now();
+      if (token == null || _cacheFetchedAt == null || now.difference(_cacheFetchedAt!).inMinutes > 10) {
+        final snap = await FirebaseFirestore.instance.doc('users/$partnerId').get();
+        final data = snap.data();
+        token = data?['fcmToken'] as String?;
+        dataOnly = data?['notifCap'] == 'v2';
+        prefs = data?['notifPrefs'] as Map<String, dynamic>?;
+        if (token != null) {
+          _cachedToken = token;
+          _cachedV2 = dataOnly;
+          _cachedPrefs = prefs;
+          _cacheFetchedAt = now;
+        }
+      }
+
       if (token == null || token.isEmpty) return;
       // FIX #12: hormati preferensi notifikasi pasangan (kalau dimatikan, skip push)
-      final prefs = data?['notifPrefs'] as Map<String, dynamic>?;
       final key = type.startsWith('call') ? 'call' : (type == 'letter' ? 'letter' : 'chat');
       if (prefs != null && prefs[key] == false) return;
-      // BATCH G (spek v2 #4): data-only HANYA bila device tujuan mengklaim
-      // notifCap 'v2' (mampu merender notif kaya sendiri di semua state).
-      // Device app lama tetap menerima payload hybrid dari worker.
-      final dataOnly = data?['notifCap'] == 'v2';
       await http.post(
         Uri.parse(workerUrl),
         headers: {

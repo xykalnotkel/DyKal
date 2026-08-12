@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/wallpaper_settings.dart';
 import '../../widgets/story_avatar.dart';
 import '../call/call_log_screen.dart';
 import 'story_viewer.dart';
@@ -27,7 +29,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final coupleId = AuthService().coupleId;
-    return CustomScrollView(
+    return ListenableBuilder(
+      listenable: WallpaperSettings.instance,
+      builder: (context, _) {
+        // Latar beranda kustom (foto dari galeri) — fitur Batch C.
+        // Overlay lembut diberi agar konten tetap kebaca di atas foto apa pun.
+        final homeBg = WallpaperSettings.instance.homePath;
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          decoration: homeBg != null && File(homeBg).existsSync()
+              ? BoxDecoration(
+                  image: DecorationImage(
+                    image: FileImage(File(homeBg)),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      (dark ? Colors.black : Colors.white).withValues(alpha: dark ? 0.72 : 0.78),
+                      dark ? BlendMode.darken : BlendMode.lighten,
+                    ),
+                  ),
+                )
+              : null,
+          child: CustomScrollView(
       slivers: [
         SliverAppBar(
           floating: true,
@@ -96,6 +118,9 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverToBoxAdapter(child: _stats(context)),
         const SliverToBoxAdapter(child: SizedBox(height: 110)),
       ],
+          ),
+        );
+      },
     );
   }
 

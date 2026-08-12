@@ -7,10 +7,67 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../config/theme.dart';
 import '../../../models/chat_message.dart';
 import '../../../services/bubble_style.dart';
+import '../../../services/media_cache.dart';
 import '../../../services/sticker_store.dart';
 import '../../../services/voice_cache.dart';
 import '../../../widgets/fullscreen_media_viewer.dart';
 import '../../../services/auth_service.dart';
+
+/// Gambar OFFLINE-FIRST ala WA: cek file lokal (MediaCache) duluan —
+/// media yang pernah terunduh tetap tampil walau internet mati. Kalau belum
+/// ada di lokal, fallback ke CDN (CachedNetworkImage punya disk cache sendiri).
+class OfflineFirstImage extends StatelessWidget {
+  final String url;
+  final BoxFit fit;
+  final double? width;
+  final double? height;
+  final Widget? placeholder;
+  const OfflineFirstImage({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+    this.width,
+    this.height,
+    this.placeholder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: MediaCache.get(url),
+      builder: (_, snap) {
+        final path = snap.data;
+        if (path != null) {
+          return Image.file(
+            File(path),
+            fit: fit,
+            width: width,
+            height: height,
+            errorBuilder: (_, __, ___) => _cdn(),
+          );
+        }
+        return _cdn();
+      },
+    );
+  }
+
+  Widget _cdn() {
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: fit,
+      width: width,
+      height: height,
+      placeholder: placeholder != null ? (_, __) => placeholder! : null,
+      errorWidget: (_, __, ___) => Container(
+        width: width,
+        height: height ?? 120,
+        color: const Color(0x22000000),
+        child: const Icon(Icons.wifi_off_outlined, color: Colors.white54),
+      ),
+    );
+  }
+}
+
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -109,12 +166,12 @@ class MessageBubble extends StatelessWidget {
               crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 if (message.imageUrl != null)
-                  CachedNetworkImage(
-                    imageUrl: message.imageUrl!,
+                  OfflineFirstImage(
+                    url: message.imageUrl!,
                     width: 140,
                     height: 140,
                     fit: BoxFit.contain,
-                    placeholder: (_, __) => const SizedBox(
+                    placeholder: const SizedBox(
                       width: 140,
                       height: 140,
                       child: Center(
@@ -385,10 +442,10 @@ class MessageBubble extends StatelessWidget {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: CachedNetworkImage(
-                            imageUrl: message.imageUrl!,
+                          child: OfflineFirstImage(
+                            url: message.imageUrl!,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: Container(
                               height: 180,
                               color: DyKalTheme.borderOf(context),
                             ),
@@ -635,7 +692,7 @@ class MessageBubble extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CachedNetworkImage(imageUrl: message.imageUrl!, width: 120, height: 120, fit: BoxFit.contain),
+              OfflineFirstImage(url: message.imageUrl!, width: 120, height: 120, fit: BoxFit.contain),
               const SizedBox(height: 12),
               const Text('Stiker Kustom DyKal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
               const Text('Format: WebP Terenkripsi (AES-256-GCM)', style: TextStyle(color: DyKalTheme.textMutedDark, fontSize: 12)),

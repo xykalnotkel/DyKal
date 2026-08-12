@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
@@ -16,10 +17,33 @@ class _AuthScreenState extends State<AuthScreen> {
   final _email = TextEditingController();
   final _pass = TextEditingController();
   final _name = TextEditingController();
+  final _username = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool loading = false;
   File? _photo;
   bool _showPass = false;
+
+  // Cek ketersediaan username live (debounce 500ms):
+  // null = belum dicek/kosong, true/waiting = tersedia, false = sudah dipakai.
+  Timer? _unameDebounce;
+  bool? _unameAvailable;
+  bool _unameChecking = false;
+
+  void _onUsernameChanged(String v) {
+    _unameDebounce?.cancel();
+    final u = v.trim();
+    if (u.isEmpty || AuthService.validateUsernameFormat(u) != null) {
+      setState(() { _unameAvailable = null; _unameChecking = false; });
+      return;
+    }
+    setState(() { _unameChecking = true; _unameAvailable = null; });
+    _unameDebounce = Timer(const Duration(milliseconds: 500), () async {
+      final ok = await AuthService().isUsernameAvailable(u);
+      if (mounted && _username.text.trim() == u) {
+        setState(() { _unameAvailable = ok; _unameChecking = false; });
+      }
+    });
+  }
 
   Future<void> _pickPhoto() async {
     final file = await Navigator.push<File>(context, MaterialPageRoute(builder: (_) => const GalleryPickerScreen(allowVideo: false)));
@@ -38,11 +62,15 @@ class _AuthScreenState extends State<AuthScreen> {
         if (_photo != null) {
           photoUrl = await CloudinaryService().uploadAvatar(_photo!);
         }
+        if (_unameAvailable == false) {
+          throw Exception('Username itu sudah dipakai. Ganti yang lain ya.');
+        }
         await auth.register(
           email: _email.text.trim(),
           password: _pass.text.trim(),
           displayName: _name.text.trim(),
           photoUrl: photoUrl,
+          username: _username.text.trim(),
         );
       }
       // AuthGate akan otomatis route via authState
@@ -70,8 +98,43 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
-    _email.dispose(); _pass.dispose(); _name.dispose();
+    _unameDebounce?.cancel();
+    _email.dispose(); _pass.dispose(); _name.dispose(); _username.dispose();
     super.dispose();
+  }
+
+  Widget _usernameField() {
+    Widget? suffix;
+    if (_unameChecking) {
+      suffix = const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    } else if (_unameAvailable == true) {
+      suffix = const Icon(Icons.check_circle, color: Colors.green, size: 20);
+    } else if (_unameAvailable == false) {
+      suffix = const Icon(Icons.cancel, color: Colors.redAccent, size: 20);
+    }
+    return TextFormField(
+      controller: _username,
+      onChanged: _onUsernameChanged,
+      validator: (v) {
+        final formatErr = AuthService.validateUsernameFormat(v);
+        if (formatErr != null) return formatErr;
+        if ((v ?? '').trim().isNotEmpty && _unameAvailable == false) {
+          return 'Username sudah dipakai';
+        }
+        return null;
+      },
+      decoration: InputDecoration(
+        hintText: 'Username (opsional, unik)',
+        helperText: _unameAvailable == true ? 'Username tersedia' : null,
+        prefixIcon: Icon(Icons.alternate_email, color: DyKalTheme.textGrey),
+        suffixIcon: suffix,
+        filled: true, fillColor: DyKalTheme.cardOf(context),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+      ),
+    );
   }
 
   @override
@@ -127,6 +190,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   _avatarPicker(),
                   const SizedBox(height: 16),
                   _field(_name, "Nama Panggilan", Icons.person, false, validator: (v) => (v != null && v.trim().length >= 2 && v.trim().length <= 20) ? null : "Nama 2-20 karakter"),
+                  const SizedBox(height: 12),
+                  _usernameField(),
                   const SizedBox(height: 12),
                 ],
                 _field(_email, "Email", Icons.email, false, validator: (v) { final e = (v ?? '').trim(); final a = e.indexOf('@'); return (a > 0 && e.indexOf('.', a) > a) ? null : 'Email tidak valid'; }),

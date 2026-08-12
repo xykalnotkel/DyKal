@@ -32,6 +32,18 @@ service cloud.firestore {
       allow write: if signedIn() && request.auth.uid == uid;
     }
 
+    // Registry USERNAME UNIK — usernames/{username_lowercase}.
+    // get longgar (dipakai pre-check ketersediaan saat daftar), list dilarang
+    // (biar daftar username tidak bisa di-dump). Claim hanya untuk diri
+    // sendiri (uid di dalam data == auth.uid); lepas username juga hanya
+    // oleh pemiliknya. Race dua pendaftar dilawan transaksi di AuthService.
+    match /usernames/{name} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // Invite code pairing
     // FIX #1: user ke-2 (pasangan) HARUS bisa baca kode SEBELUM join.
     // Rules lama menolak karena dia belum member -> permission-denied di

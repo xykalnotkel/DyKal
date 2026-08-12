@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/bubble_style.dart';
+import '../../services/wallpaper_settings.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -362,15 +363,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Expanded(child: _bubbleChip(0, 'Bulat', Icons.circle_outlined)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _bubbleChip(1, 'Kotak', Icons.square_outlined)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline)),
+                    _bubbleChip(0, 'Bulat', Icons.circle_outlined),
+                    _bubbleChip(1, 'Kotak', Icons.square_outlined),
+                    _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline),
+                    _bubbleChip(3, 'Pil', Icons.panorama_fish_eye),
+                    _bubbleChip(4, 'Abstrak', Icons.auto_awesome),
                   ],
                 ),
+              ),
+              const Divider(height: 20),
+              ListenableBuilder(
+                listenable: WallpaperSettings.instance,
+                builder: (context, _) {
+                  final w = WallpaperSettings.instance;
+                  final chatSub = w.chatType == 0
+                      ? 'Default (mengikuti tema)'
+                      : (w.chatType == 1 ? 'Warna solid' : 'Foto dari galeri');
+                  return Column(
+                    children: [
+                      _tile(
+                        Icons.wallpaper_outlined,
+                        'Wallpaper Chat',
+                        chatSub,
+                        _chatWallpaperDialog,
+                      ),
+                      _tile(
+                        Icons.photo_library_outlined,
+                        'Latar Belakang Beranda',
+                        w.homePath != null ? 'Foto kustom aktif' : 'Default (tanpa latar)',
+                        _homeBgSheet,
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 8),
             ],
@@ -524,6 +553,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'Infrastruktur Realtime',
                 'Google Firestore & Cloudflare Worker',
               ),
+              _infoTile(
+                Icons.favorite_outline,
+                'Dibangun oleh',
+                'XYSTUDIO — untuk Dyaa & Kall',
+              ),
+              _tile(
+                Icons.article_outlined,
+                'Lisensi Open Source',
+                'Library pihak ketiga yang dipakai DyKal',
+                () => showLicensePage(
+                  context: context,
+                  applicationName: 'DyKal',
+                  applicationLegalese: '© 2026 XYSTUDIO — dibuat dengan cinta untuk Dyaa & Kall',
+                ),
+              ),
             ],
           ),
 
@@ -648,6 +692,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         BubbleStyle.instance.set(style); // sinkron ke bubble (bukan pajangan lagi)
       },
       child: Container(
+        width: 96,
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: active ? DyKalTheme.primary : DyKalTheme.cardOf(context),
@@ -712,6 +757,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Dialog wallpaper chat: Default / Warna solid / Foto galeri (Batch C).
+  Future<void> _chatWallpaperDialog() async {
+    const palette = <Color>[
+      Color(0xFFFFF0F3), // pink muda DyKal
+      Color(0xFFFFFFFF), // putih
+      Color(0xFFFFF3E4), // peach
+      Color(0xFFE8F8EF), // mint
+      Color(0xFFE8F1FB), // biru muda
+      Color(0xFFF3EAFE), // ungu muda
+      Color(0xFFFAF6EC), // krem
+      Color(0xFF1B1B22), // gelap
+    ];
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Wallpaper Chat', style: TextStyle(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.restore, size: 20),
+              title: const Text('Default (mengikuti tema)', style: TextStyle(fontSize: 13)),
+              onTap: () {
+                WallpaperSettings.instance.setChatDefault();
+                Navigator.pop(ctx);
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8, bottom: 8),
+              child: Text('Warna solid', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final c in palette)
+                  GestureDetector(
+                    onTap: () {
+                      WallpaperSettings.instance.setChatColor(c);
+                      Navigator.pop(ctx);
+                    },
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: c,
+                      child: c.computeLuminance() > 0.5
+                          ? null
+                          : const Icon(Icons.check, size: 14, color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+            const Divider(height: 24),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.photo_outlined, size: 20),
+              title: const Text('Foto dari galeri', style: TextStyle(fontSize: 13)),
+              subtitle: const Text('Disalin ke penyimpanan privat aplikasi', style: TextStyle(fontSize: 11)),
+              onTap: () async {
+                final r = await FilePicker.platform.pickFiles(type: FileType.image);
+                final path = r?.files.single.path;
+                if (path != null) {
+                  await WallpaperSettings.instance.setChatImage(File(path));
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bottom sheet latar beranda: pilih foto / hapus kustom (Batch C).
+  Future<void> _homeBgSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih foto dari galeri', style: TextStyle(fontSize: 14)),
+              onTap: () async {
+                final r = await FilePicker.platform.pickFiles(type: FileType.image);
+                final path = r?.files.single.path;
+                if (path != null) {
+                  await WallpaperSettings.instance.setHomeImage(File(path));
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+            ),
+            if (WallpaperSettings.instance.homePath != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text('Hapus latar kustom', style: TextStyle(fontSize: 14, color: Colors.redAccent)),
+                onTap: () {
+                  WallpaperSettings.instance.clearHome();
+                  Navigator.pop(ctx);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );

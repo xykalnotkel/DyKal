@@ -30,6 +30,7 @@ import 'services/fcm_service.dart';
 import 'services/floating_service.dart';
 import 'services/theme_controller.dart';
 import 'services/bubble_style.dart';
+import 'services/wallpaper_settings.dart';
 import 'widgets/update_banner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -102,6 +103,7 @@ Future<void> _initNonFirebase() async {
   } catch (_) {}
   try { await ThemeController.instance.load(); } catch (_) {}
   try { await BubbleStyle.instance.load(); } catch (_) {}
+  try { await WallpaperSettings.instance.load(); } catch (_) {}
   try { await BirthdayService().init().timeout(const Duration(seconds: 5)); } catch (_) {}
 }
 
@@ -116,6 +118,16 @@ Future<void> _initFirebase() async {
       return;
     }
     await Firebase.initializeApp().timeout(const Duration(seconds: 15));
+    // OFFLINE-FIRST ala WA (permintaan owner): persistence sebenarnya sudah
+    // default ON di Android, tapi kita kunci eksplisit + cache tak terbatas
+    // agar riwayat chat SELALU bisa dibaca tanpa internet. Harus diset
+    // SEBELUM instance Firestore dipakai pertama kali.
+    try {
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+    } catch (_) {}
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     appInitStatus = AppInitStatus.ready;
     bootStage = 'Firebase siap';

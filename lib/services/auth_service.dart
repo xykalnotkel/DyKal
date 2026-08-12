@@ -42,7 +42,32 @@ class AuthService {
     return _db.doc('users/$uid').snapshots().map((s) => s.data()?['coupleId'] as String?);
   }
 
-  Future<UserCredential> register({required String email, required String password, required String displayName, String? photoUrl}) async {
+  /// Validasi FORMAT username (opsional — kosong = lolos).
+  /// Aturan: 3-20 karakter, huruf/angka/titik/underscore.
+  static String? validateUsernameFormat(String? v) {
+    final u = (v ?? '').trim();
+    if (u.isEmpty) return null;
+    if (!RegExp(r'^[a-zA-Z0-9_.]{3,20}$').hasMatch(u)) {
+      return 'Username 3-20 karakter (huruf, angka, titik, underscore)';
+    }
+    return null;
+  }
+
+  /// Cek ketersediaan username (pre-check UX; gerbang final tetap transaksi
+  /// di register() yang atomik). Fail-open saat offline: transaksi register
+  /// tetap menolak duplikat, jadi tidak ada celah duplikat permanen.
+  Future<bool> isUsernameAvailable(String username) async {
+    final uname = username.trim().toLowerCase();
+    if (validateUsernameFormat(uname) != null) return false;
+    try {
+      final s = await _db.doc('usernames/$uname').get();
+      return !s.exists;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<UserCredential> register({required String email, required String password, required String displayName, String? photoUrl, String? username}) async {
     UserCredential cred;
     try {
       cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
@@ -61,16 +86,46 @@ class AuthService {
     // Non-fatal: kalau gagal (jaringan/rules), doc disembuhkan otomatis oleh
     // ensureUserDoc() pada login/app-start berikutnya — displayName TIDAK akan
     // hilang permanen sampai harus edit profil manual seperti dulu.
+    final uname = (username ?? '').trim().toLowerCase();
     try {
       await _db.doc('users/$uid').set({
         'uid': uid,
         'displayName': displayName,
         'email': email,
         'photoUrl': photoUrl,
+        if (uname.isNotEmpty) 'username': uname,
         'coupleId': null,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (_) {}
+    // Claim username SECARA ATOMIK via transaksi ke registry usernames/{name}.
+    // Pre-check di UI cuma UX; transaksi inilah gerbang anti-duplikat
+    // (melawan race dua pendaftar mengambil nama yang sama bersamaan).
+    if (uname.isNotEmpty) {
+      final ref = _db.doc('usernames/$uname');
+      var taken = false;
+      try {
+        await _db.runTransaction((tx) async {
+          final snap = await tx.get(ref);
+          if (snap.exists) {
+            taken = true;
+            return;
+          }
+          tx.set(ref, {
+            'uid': uid,
+            'username': uname,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        });
+      } catch (_) {
+        // Jaringan putus: akun tetap jalan, claim bisa dicoba ulang saat
+        // user mengedit profil nanti. Non-fatal by design.
+        taken = false;
+      }
+      if (taken) {
+        throw Exception('Username @$uname sudah dipakai. Coba yang lain ya.');
+      }
+    }
     _myName = displayName;   // cache langsung
     myPhotoUrl = photoUrl;
     // updateDisplayName Auth non-kritis (jangan block registrasi kalau gagal)

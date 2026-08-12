@@ -15,8 +15,10 @@ import '../../services/auth_service.dart';
 import '../../services/dev_logger.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/media_saver.dart';
+import '../../services/media_cache.dart';
 import '../../services/bubble_style.dart';
 import '../../services/voice_cache.dart';
+import '../../services/wallpaper_settings.dart';
 import '../../services/push_service.dart';
 import '../../services/theme_controller.dart';
 import '../call/call_log_screen.dart';
@@ -93,7 +95,14 @@ class _ChatScreenState extends State<ChatScreen> {
           MediaSaver.save(voice, type: 'audio').then((path) {
             if (path != null) VoiceCache.put(voice, path);
           });
-        } else if (img != null) { _savedMedia.add(id); MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto'); }
+        } else if (img != null) {
+          _savedMedia.add(id);
+          // Foto/video masuk: simpan lokal + catat mapping URL->path di
+          // MediaCache agar bisa DIBUKA OFFLINE (offline-first ala WA).
+          MediaSaver.save(img, type: mt == 'video' ? 'video' : 'foto').then((path) {
+            if (path != null) MediaCache.put(img, path);
+          });
+        }
       }
     });
   }
@@ -204,11 +213,15 @@ class _ChatScreenState extends State<ChatScreen> {
       if (type == MessageType.voice) 'voiceUrl': url,
       'status': 'sent',
     });
-    // Simpan salinan lokal + push notif ke pasangan
+    // Simpan salinan lokal + push notif ke pasangan.
+    // MediaCache dicatat juga untuk sisi pengirim: media milik sendiri
+    // tetap bisa dibuka OFFLINE (selama ini hanya sisi penerima yang dicatat).
     if (type == MessageType.voice) {
       MediaSaver.save(url, type: 'audio');
     } else if (type == MessageType.image) {
-      MediaSaver.save(url, type: 'foto', isPrivate: viewOnce);
+      MediaSaver.save(url, type: 'foto', isPrivate: viewOnce).then((path) {
+        if (path != null && !viewOnce) MediaCache.put(url, path);
+      });
     }
     final preview = type == MessageType.voice
         ? 'Voice note'
@@ -425,16 +438,23 @@ class _ChatScreenState extends State<ChatScreen> {
           ? DyKalTheme.backgroundDark
           : DyKalTheme.background,
       body: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(Theme.of(context).brightness == Brightness.dark
-                  ? 'assets/backgrounds/chat_bg_dark.webp'
-                  : 'assets/backgrounds/chat_bg_light.webp'),
-              fit: BoxFit.cover,
-              opacity: Theme.of(context).brightness == Brightness.dark ? 0.55 : 0.9,
-            ),
-          ),
+        child: ListenableBuilder(
+          listenable: WallpaperSettings.instance,
+          builder: (context, _) {
+            final dark = Theme.of(context).brightness == Brightness.dark;
+            // Wallpaper kustom (warna/foto dari galeri) menimpa aset bawaan.
+            final deco = WallpaperSettings.instance.chatDecoration(dark: dark) ??
+                BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(dark
+                        ? 'assets/backgrounds/chat_bg_dark.webp'
+                        : 'assets/backgrounds/chat_bg_light.webp'),
+                    fit: BoxFit.cover,
+                    opacity: dark ? 0.55 : 0.9,
+                  ),
+                );
+            return Container(
+          decoration: deco,
           child: Column(
             children: [
               _header(),
@@ -445,6 +465,8 @@ class _ChatScreenState extends State<ChatScreen> {
               _input(),
             ],
           ),
+            );
+          },
         ),
       ),
     );
@@ -476,7 +498,7 @@ class _ChatScreenState extends State<ChatScreen> {
     showDialog(context: context, builder: (_) => StatefulBuilder(builder: (_, setS) => SimpleDialog(
       title: const Text("Gaya Bubble"),
       children: [
-        for (final e in const [("Bulat", 0), ("Kotak", 1), ("Ekor", 2)])
+        for (final e in const [("Bulat", 0), ("Kotak", 1), ("Ekor", 2), ("Pil", 3), ("Abstrak", 4)])
           SimpleDialogOption(onPressed: () async {
             await BubbleStyle.instance.set(e.$2); // satu sumber kebenaran
             setS(() => cur = e.$2);

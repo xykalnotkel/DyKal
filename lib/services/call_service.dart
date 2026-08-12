@@ -354,6 +354,25 @@ class DyKalCallService extends ChangeNotifier {
     await _pc?.close();
     _pc = null;
     localStream = remoteStream = null;
+    // FIX (owner): dok signaling ICE candidates dulu NUNGGAK selamanya —
+    // pernah nemu 218 dok busuk di satu couple. ICE yang sudah terpakai
+    // tidak berguna lagi, jadi auto-dibersihkan tiap panggilan berakhir.
+    unawaited(_deleteSignalingDocs());
+  }
+
+  Future<void> _deleteSignalingDocs() async {
+    if (coupleId.isEmpty) return;
+    for (final col in ['offerCandidates', 'answerCandidates']) {
+      try {
+        final snap = await _db.collection('calls/$coupleId/$col').get();
+        if (snap.docs.isEmpty) continue;
+        final batch = _db.batch();
+        for (final d in snap.docs) {
+          batch.delete(d.reference);
+        }
+        await batch.commit();
+      } catch (_) {}
+    }
   }
 
   @override

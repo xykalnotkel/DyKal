@@ -221,7 +221,7 @@ class FCMService {
           // BATCH G: klaim kemampuan render notif kaya (data-only) — pengirim
           // membaca flag ini sebelum memutuskan payload dataOnly ke worker.
           'notifCap': 'v2',
-          'appVer': '1.3.0',
+          'appVer': '1.4.0',
         }, SetOptions(merge: true));
         await _db.doc('presence/$uid').set({'fcmToken': token}, SetOptions(merge: true));
       }

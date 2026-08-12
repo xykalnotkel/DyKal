@@ -1482,8 +1482,8 @@ Khusus untuk Pelanggan Premium XYSTUDIO di versi mendatang!''',
           title: 'Tentang Aplikasi',
           icon: Icons.info_outline_rounded,
           children: [
-            _infoTile(Icons.verified_outlined, 'Versi Aplikasi', 'DyKal v1.3.0+13'),
-            _tile(Icons.update, 'Periksa Pembaruan', 'Cek rilis terbaru di GitHub XYSTUDIO', () {
+            _infoTile(Icons.verified_outlined, 'Versi Aplikasi', 'DyKal v1.4.0+14'),
+            _tile(Icons.update, 'Periksa Pembaruan', 'Periksa ketersediaan rilis versi baru', () {
               UpdateService.instance.checkForUpdate();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Memeriksa pembaruan dari GitHub...')),

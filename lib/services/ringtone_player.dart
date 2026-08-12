@@ -53,4 +53,35 @@ class RingtonePlayer {
       await _rb.play();
     } catch (_) {}
   }
+
+  static final _s = AudioPlayer();
+  static Future<void> playMsgSent() async {
+    try {
+      await _s.stop();
+      await _s.setLoopMode(LoopMode.off);
+      await _s.setVolume(0.7);
+      await _s.setAsset('assets/sounds/msg_sent.wav');
+      await _s.play();
+    } catch (_) {}
+  }
+
+  static Future<void> playNotif() async {
+    try {
+      await _s.stop();
+      await _s.setLoopMode(LoopMode.off);
+      await _s.setVolume(0.8);
+      await _s.setAsset('assets/sounds/notif.wav');
+      await _s.play();
+    } catch (_) {}
+  }
+
+  static Future<void> playCallEnded() async {
+    try {
+      await _s.stop();
+      await _s.setLoopMode(LoopMode.off);
+      await _s.setVolume(0.8);
+      await _s.setAsset('assets/sounds/busy.wav');
+      await _s.play();
+    } catch (_) {}
+  }
 }

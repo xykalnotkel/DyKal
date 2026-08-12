@@ -401,6 +401,7 @@ class DyKalCallService extends ChangeNotifier {
 
   // ---------- Akhir panggilan ----------
   Future<void> hangUp() async {
+    unawaited(RingtonePlayer.playCallEnded());
     try {
       await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()});
     } catch (_) {}
@@ -408,6 +409,7 @@ class DyKalCallService extends ChangeNotifier {
   }
 
   Future<void> declineIncoming() async {
+    unawaited(RingtonePlayer.playCallEnded());
     try {
       // 'declined: true' -> sisi caller mencatat riwayat sebagai DITOLAK,
       // bukan sekadar "tak terjawab".

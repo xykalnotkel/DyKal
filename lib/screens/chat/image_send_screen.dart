@@ -409,7 +409,12 @@ class _ImageSendScreenState extends State<ImageSendScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Tambah keterangan...',
                         hintStyle: TextStyle(color: DyKalTheme.textMutedDark, fontSize: 14),
+                        filled: false,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
                     ),

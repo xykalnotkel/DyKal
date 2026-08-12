@@ -26,22 +26,22 @@ class ThemeController extends ChangeNotifier {
   double get cardRadius {
     switch (_style) {
       case AppUiStyle.rounded:
-        return 20.0;
+        return 24.0;
       case AppUiStyle.ios:
-        return 14.0;
+        return 16.0;
       case AppUiStyle.sharp:
-        return 12.0; // naik dari 8 — lantai konsistensi rounded
+        return 10.0;
     }
   }
 
   double get buttonRadius {
     switch (_style) {
       case AppUiStyle.rounded:
-        return 16.0;
+        return 20.0;
       case AppUiStyle.ios:
-        return 12.0;
+        return 14.0;
       case AppUiStyle.sharp:
-        return 12.0; // naik dari 6 — lantai konsistensi rounded
+        return 10.0;
     }
   }
 

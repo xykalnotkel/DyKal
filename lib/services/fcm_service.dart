@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../screens/call/incoming_call_screen.dart';
 import 'auth_service.dart';
+import 'call_service.dart';
 import 'ringtone_player.dart';
 
 /// ===== Handler ISOLATE LATAR (app killed) untuk AKSI notifikasi lokal =====
@@ -373,6 +374,7 @@ class FCMService {
     final body = (data['messageBody'] as String?)?.isNotEmpty == true
         ? data['messageBody'] as String
         : (notif?.body ?? 'Pesan baru');
+    unawaited(RingtonePlayer.playNotif());
     await showRichChatNotif(
       _local,
       title: title,
@@ -387,6 +389,7 @@ class FCMService {
     _callType = callType;
     _callCoupleId = msg.data['coupleId'];
     if (!_localReady) return;
+    if (DyKalCallService.inCall.value || IncomingCallScreen.isShowing) return;
     await showRichCallNotif(_local, msg.data);
   }
 
@@ -534,6 +537,7 @@ class FCMService {
     if (myUid == null) return;
 
     _db.collection('chats').doc(coupleId).collection('messages')
+      .orderBy('createdAt', descending: true)
       .limit(1)
       .snapshots()
       .listen((snap) async {
@@ -542,6 +546,8 @@ class FCMService {
         final data = doc.data();
         final fromId = data['fromId'];
         if (fromId == myUid) return;
+        final ts = data['createdAt'] as Timestamp?;
+        if (ts != null && DateTime.now().difference(ts.toDate()).inSeconds > 15) return;
         // Dedupe: kalau push FCM-nya SUDAH ditangani < 3 dtk lalu, jangan
         // dobel (dua jalur: server push + listener realtime).
         final last = _lastChatFcmAt;
@@ -552,10 +558,14 @@ class FCMService {
           if (prefs != null && prefs['chat'] == false) return;
         } catch (_) {}
         final text = data['text'] ?? (data['imageUrl'] != null ? 'Foto' : 'Pesan baru');
+        final title = (data['fromName'] as String?)?.isNotEmpty == true
+            ? data['fromName'] as String
+            : 'Pasangan';
         if (!_localReady) return;
+        unawaited(RingtonePlayer.playNotif());
         await showRichChatNotif(
           _local,
-          title: data['fromName'] ?? '',
+          title: title,
           body: text,
           coupleId: coupleId,
           channelId: 'dykal_chat_realtime',

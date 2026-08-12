@@ -23,6 +23,7 @@ import '../../services/voice_cache.dart';
 import '../../services/wallpaper_settings.dart';
 import '../../services/e2e_service.dart';
 import '../../services/push_service.dart';
+import '../../services/ringtone_player.dart';
 import '../../services/theme_controller.dart';
 import '../call/call_log_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -171,6 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (imageUrl != null) MediaSaver.save(imageUrl); // auto-save foto terkirim ke Dykal Images
     if (voiceUrl != null) MediaSaver.save(voiceUrl, type: 'audio');
     final ref = FirebaseFirestore.instance.collection('chats/$_coupleId/messages').doc(msg.id);
+    unawaited(RingtonePlayer.playMsgSent());
     // Tulis (offline-persist: pesan muncul dgn icon jam). Saat sync -> 'sent' + push.
     ref.set(msg.toMap()).then((_) {
       ref.update({'status': 'sent'});
@@ -272,7 +274,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     await ref.update({
-      if (type == MessageType.image || type == MessageType.sticker) 'imageUrl': url,
+      if (type == MessageType.image || type == MessageType.sticker || type == MessageType.viewOnce) 'imageUrl': url,
       if (type == MessageType.voice) 'voiceUrl': url,
       'status': 'sent',
     });
@@ -281,7 +283,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // tetap bisa dibuka OFFLINE (selama ini hanya sisi penerima yang dicatat).
     if (type == MessageType.voice) {
       MediaSaver.save(url, type: 'audio');
-    } else if (type == MessageType.image) {
+    } else if (type == MessageType.image || type == MessageType.viewOnce) {
       // 'mediaUrl' local final: promosi null-check 'url' tidak menembus
       // closure .then() (url di-assign ulang di fungsi ini) -> analyzer error.
       final mediaUrl = url;
@@ -856,14 +858,56 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _recordingBar() => Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: DyKalTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24)),
-        child: Row(children: [
-          Icon(_locked ? Icons.lock : Icons.fiber_manual_record, color: DyKalTheme.primary, size: 16),
-          const SizedBox(width: 8),
-          Expanded(child: Text(_locked ? 'Terkunci ${_fmtRec(_recSecs)} — tap STOP untuk preview' : 'Merekam ${_fmtRec(_recSecs)} — lepas=kirim · geser kiri=batal · atas=kunci', style: TextStyle(color: DyKalTheme.primary, fontWeight: FontWeight.w600, fontSize: 12))),
-          if (_locked) GestureDetector(onTap: () => _stopRec(send: false), child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.stop_circle, color: Colors.red, size: 22))),
-        ]),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(color: DyKalTheme.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(28)),
+        child: _locked
+            ? Row(
+                children: [
+                  IconButton(
+                    onPressed: _discardRec,
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 24),
+                    tooltip: 'Hapus voice note',
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.fiber_manual_record, color: Colors.red, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    _fmtRec(_recSecs),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.red),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => _stopRec(send: false),
+                    icon: const Icon(Icons.stop_circle_outlined, color: DyKalTheme.primary, size: 28),
+                    tooltip: 'Preview',
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _stopRec(send: true),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF00D68F),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  const Icon(Icons.fiber_manual_record, color: DyKalTheme.primary, size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Merekam ${_fmtRec(_recSecs)} — lepas=kirim · kiri=batal · atas=kunci',
+                      style: TextStyle(color: DyKalTheme.primary, fontWeight: FontWeight.w600, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
       );
 
   Future<void> _openCamera() async {
@@ -1051,7 +1095,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Tulis pesan...',
                     hintStyle: TextStyle(fontSize: 14),
+                    filled: false,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),

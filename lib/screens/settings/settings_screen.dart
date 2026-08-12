@@ -21,6 +21,7 @@ import '../../services/floating_service.dart';
 import '../../services/ringtone_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/backup_service.dart';
+import '../../services/update_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:dio/dio.dart';
 
@@ -1085,22 +1086,164 @@ Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
     );
   }
 
+  void _showBackupDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cadangan & Pulihkan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: const Text('Gunakan tombol "Ekspor Data Akun" di atas untuk mengunduh seluruh arsip data akun, pesan, dan surat ke folder Dokumen HP kamu.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
+        ],
+      ),
+    );
+  }
+
+  void _showBubbleStyleDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DyKalTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Bentuk Bubble Chat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _bubbleChip(0, 'Bulat', Icons.circle_outlined),
+                  _bubbleChip(1, 'Kotak', Icons.square_outlined),
+                  _bubbleChip(2, 'Ekor', Icons.chat_bubble_outline),
+                  _bubbleChip(3, 'Pil', Icons.panorama_fish_eye),
+                  _bubbleChip(4, 'Abstrak', Icons.auto_awesome),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ListenableBuilder(
+                listenable: BubbleStyle.instance,
+                builder: (context, _) => SwitchListTile(
+                  secondary: Icon(Icons.format_indent_decrease, color: DyKalTheme.textSecondaryOf(context), size: 20),
+                  title: const Text('Waktu di Dalam Bubble', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  subtitle: Text(
+                    BubbleStyle.instance.metaInside ? 'Ala WhatsApp (mepet teks)' : 'Ala iOS (di bawah bubble)',
+                    style: TextStyle(fontSize: 11, color: DyKalTheme.textSecondaryOf(context)),
+                  ),
+                  value: BubbleStyle.instance.metaInside,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: DyKalTheme.primary,
+                  onChanged: (v) => BubbleStyle.instance.setMetaInside(v),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fontScaleRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: SegmentedButton<double>(
+        segments: const [
+          ButtonSegment(value: 0.9, label: Text('Kecil')),
+          ButtonSegment(value: 1.0, label: Text('Normal')),
+          ButtonSegment(value: 1.12, label: Text('Besar')),
+        ],
+        selected: {_fontScale},
+        onSelectionChanged: (s) => _setFontScale(s.first),
+      ),
+    );
+  }
+
+  void _manageStoryAudio() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: DyKalTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Musik Cerita Album', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              if (_storyAudioPaths.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('Belum ada berkas lagu cerita.', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                )
+              else
+                ..._storyAudioPaths.asMap().entries.map((e) => ListTile(
+                      leading: const Icon(Icons.music_note, color: DyKalTheme.primary),
+                      title: Text(e.value.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () {
+                          _removeAudio(e.key);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    )),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _addAudio();
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah Berkas Audio'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _hasUsagePerm() async {
+    try {
+      final r = await _chActivity.invokeMethod('hasUsagePermission');
+      return r == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _openUsageSettings() async {
+    try {
+      await _chActivity.invokeMethod('openUsageSettings');
+    } catch (_) {}
+  }
+
   List<Widget> _accountSection() => [
         _sectionCard(
           title: 'Profil & Hubungan',
           icon: Icons.favorite_outline,
           children: [
             _tile(Icons.person_outline, 'Lihat Profil Kamu', 'Edit nama, status, dan foto avatar', () => Navigator.pushNamed(context, '/profile')),
-            _infoTile(Icons.link, 'ID Pasangan', _partnerId.isNotEmpty ? _partnerId : 'Belum terhubung'),
+            _infoTile(Icons.link, 'ID Pasangan', (AuthService().partnerId ?? '').isNotEmpty ? AuthService().partnerId! : 'Belum terhubung'),
           ],
         ),
         _sectionCard(
           title: 'Cadangan & Keamanan Akun',
           icon: Icons.backup_outlined,
           children: [
-            _tile(Icons.download_outlined, 'Ekspor Data (JSON)', 'Simpan arsip profil, pesan, dan log ke penyimpanan HP', _exportData),
-            _tile(Icons.cloud_upload_outlined, 'Cadangan & Pulihkan', 'Kelola backup riwayat chat di Google Drive / memori lokal', _showBackupDialog),
-            _tile(Icons.delete_forever_outlined, 'Hapus Akun Permanen', 'Musnahkan username, riwayat chat, dan kunci kriptografi', _confirmDeleteAccount),
+            _tile(Icons.download_outlined, 'Ekspor Data Akun', 'Simpan arsip profil, pesan, dan log ke folder Dokumen HP kamu', _exportData),
+            _tile(Icons.cloud_upload_outlined, 'Cadangan & Pulihkan', 'Kelola backup riwayat chat di penyimpanan lokal', _showBackupDialog),
+            _tile(Icons.delete_forever_outlined, 'Hapus Akun Permanen', 'Musnahkan username, riwayat chat, dan kunci kriptografi', _deleteAccountDialog),
           ],
         ),
       ];
@@ -1124,7 +1267,7 @@ Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
           title: 'Wallpaper & Gaya Bubble',
           icon: Icons.wallpaper_outlined,
           children: [
-            _tile(Icons.image_outlined, 'Wallpaper Chat', 'Atur latar belakang layar percakapan', _openWallpaperPicker),
+            _tile(Icons.image_outlined, 'Wallpaper Chat', 'Atur latar belakang layar percakapan', _chatWallpaperDialog),
             _tile(Icons.chat_bubble_outline, 'Gaya Bubble Chat', 'Ubah bentuk dan aksen gelembung pesan', _showBubbleStyleDialog),
           ],
         ),
@@ -1160,7 +1303,7 @@ Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
           icon: Icons.storage_rounded,
           children: [
             ListTile(
-              title: Text('Total Terpakai: ${_formatBytes(_storageTotal)}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              title: Text('Total Terpakai: ${_fmtBytes(_storageTotal)}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               subtitle: const Text('Ruang cache media lokal yang diunduh aplikasi', style: TextStyle(fontSize: 11)),
             ),
             _storageBar(),
@@ -1173,7 +1316,7 @@ Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
           title: 'Kelola Cache & Musik',
           icon: Icons.cleaning_services_outlined,
           children: [
-            _tile(Icons.delete_outline, 'Bersihkan Cache Media', 'Hapus salinan sementara tanpa menghapus chat di server', _confirmClearCache),
+            _tile(Icons.delete_outline, 'Bersihkan Cache Media', 'Hapus salinan sementara tanpa menghapus chat di server', _clearCache),
             _tile(Icons.music_note_outlined, 'Daftar Putar Musik Cerita', 'Kelola audio latar yang terunduh', _manageStoryAudio),
             _infoTile(Icons.photo_library_outlined, 'Galeri HP', 'Media tersimpan aman di Android/media/com.dykal.app'),
           ],
@@ -1273,9 +1416,9 @@ Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
               'Bagikan Aktivitas Aplikasi (Opt-in)',
               _activityShare,
               (v) async {
-                final ok = await ActivityShareService.hasUsagePermission();
+                final ok = await _hasUsagePerm();
                 if (v && !ok) {
-                  await ActivityShareService.openUsageSettings();
+                  await _openUsageSettings();
                   return;
                 }
                 setState(() => _activityShare = v);
@@ -1295,7 +1438,7 @@ Lisensi XYSTUDIO (2026) oleh Kall.', style: TextStyle(fontSize: 13)),
               (v) async {
                 final ok = await FloatingService.hasOverlayPermission();
                 if (v && !ok) {
-                  await FloatingService.requestPermission();
+                  await FloatingService.requestOverlayPermission();
                   return;
                 }
                 setState(() => _bubbleEnabled = v);

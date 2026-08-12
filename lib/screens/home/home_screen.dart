@@ -251,7 +251,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: SizedBox(
         height: 110,
         child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('couples/$coupleId/albums').snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection('couples/$coupleId/albums')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
           builder: (context, snap) {
             final docs = snap.data?.docs ?? [];
             if (docs.isEmpty) return const SizedBox.shrink();
@@ -407,7 +410,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return StreamBuilder<QuerySnapshot>(
       stream: (coupleId == null || myId.isEmpty)
           ? null
-          : FirebaseFirestore.instance.collection('chats/$coupleId/messages').snapshots(),
+          : FirebaseFirestore.instance
+              .collection('chats/$coupleId/messages')
+              .orderBy('createdAt', descending: true)
+              .limit(50)
+              .snapshots(),
       builder: (_, snap) {
         final unread = snap.data?.docs.where((d) {
               final m = d.data() as Map<String, dynamic>;

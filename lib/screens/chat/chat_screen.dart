@@ -52,6 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _recTimer;
   ChatMessage? _replyTo;
   bool _isTyping = false;
+  Timer? _typingTimer;
   bool _isRecording = false;
   bool _locked = false; // FIX #15: VN lock saat seret ke atas
   int _recSecs = 0;
@@ -85,7 +86,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _listenMedia() {
     if (_coupleId.isEmpty) return;
-    _mediaSub = FirebaseFirestore.instance.collection('chats/$_coupleId/messages').snapshots().listen((qs) {
+    _mediaSub = FirebaseFirestore.instance
+        .collection('chats/$_coupleId/messages')
+        .orderBy('createdAt', descending: false)
+        .limitToLast(150)
+        .snapshots()
+        .listen((qs) {
       for (final d in qs.docChanges) {
         if (d.type != DocumentChangeType.added) continue;
         final m = d.doc.data() as Map<String, dynamic>;
@@ -124,6 +130,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
     _setTyping(false);
     // FIX #5: JANGAN set offline di sini — offline cuma pas keluar app (lifecycle MainNav). Keluar chat != offline.
     _mediaSub?.cancel();
@@ -171,6 +178,7 @@ class _ChatScreenState extends State<ChatScreen> {
       PushService.notifyPartner(title: AuthService().myName, body: preview);
     });
     _msgController.clear();
+    _typingTimer?.cancel();
     setState(() { _replyTo = null; _isTyping = false; });
     _setTyping(false);
     _checkConn();
@@ -533,6 +541,15 @@ class _ChatScreenState extends State<ChatScreen> {
       _isTyping = typing;
       _setTyping(typing);
     }
+    _typingTimer?.cancel();
+    if (typing) {
+      _typingTimer = Timer(const Duration(seconds: 4), () {
+        if (_isTyping && mounted) {
+          _isTyping = false;
+          _setTyping(false);
+        }
+      });
+    }
   }
 
   @override
@@ -696,7 +713,11 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
   Widget _list() => StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('chats/$_coupleId/messages').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('chats/$_coupleId/messages')
+            .orderBy('createdAt', descending: false)
+            .limitToLast(150)
+            .snapshots(),
         builder: (_, snap) {
           if (snap.hasError) {
             DevLogger.instance.error('chat', 'Stream ERROR', snap.error);

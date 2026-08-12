@@ -13,7 +13,7 @@ import '../services/media_cache.dart';
 /// BATCH L: diekstrak dari message_bubble.dart agar bisa dipakai ulang oleh
 /// album, story viewer, fullscreen viewer, dan avatar cerita — satu jalur
 /// render untuk semua (termasuk dekripsi E2E).
-class OfflineFirstImage extends StatelessWidget {
+class OfflineFirstImage extends StatefulWidget {
   final String url;
   final BoxFit fit;
   final double? width;
@@ -44,23 +44,44 @@ class OfflineFirstImage extends StatelessWidget {
   }
 
   @override
+  State<OfflineFirstImage> createState() => _OfflineFirstImageState();
+}
+
+class _OfflineFirstImageState extends State<OfflineFirstImage> {
+  Future<String?>? _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = OfflineFirstImage._resolve(widget.url);
+  }
+
+  @override
+  void didUpdateWidget(covariant OfflineFirstImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _future = OfflineFirstImage._resolve(widget.url);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<String?>(
-      future: _resolve(url),
+      future: _future,
       builder: (_, snap) {
         final path = snap.data;
         if (path != null) {
           return Image.file(
             File(path),
-            fit: fit,
-            width: width,
-            height: height,
+            fit: widget.fit,
+            width: widget.width,
+            height: widget.height,
             errorBuilder: (_, __, ___) => _cdn(),
           );
         }
         // URL E2E yang gagal dekripsi JANGAN dilempar ke CDN (isinya
         // ciphertext — CDN akan error). Tampilkan placeholder terkunci.
-        if (E2EService.isEncryptedUrl(url)) return _locked();
+        if (E2EService.isEncryptedUrl(widget.url)) return _locked();
         return _cdn();
       },
     );
@@ -68,8 +89,8 @@ class OfflineFirstImage extends StatelessWidget {
 
   Widget _locked() {
     return Container(
-      width: width,
-      height: height ?? 120,
+      width: widget.width,
+      height: widget.height ?? 120,
       color: const Color(0x22000000),
       child: const Center(child: Icon(Icons.lock_outline, color: Colors.white54)),
     );
@@ -77,14 +98,14 @@ class OfflineFirstImage extends StatelessWidget {
 
   Widget _cdn() {
     return CachedNetworkImage(
-      imageUrl: url,
-      fit: fit,
-      width: width,
-      height: height,
-      placeholder: placeholder != null ? (_, __) => placeholder! : null,
+      imageUrl: widget.url,
+      fit: widget.fit,
+      width: widget.width,
+      height: widget.height,
+      placeholder: widget.placeholder != null ? (_, __) => widget.placeholder! : null,
       errorWidget: (_, __, ___) => Container(
-        width: width,
-        height: height ?? 120,
+        width: widget.width,
+        height: widget.height ?? 120,
         color: const Color(0x22000000),
         child: const Icon(Icons.wifi_off_outlined, color: Colors.white54),
       ),

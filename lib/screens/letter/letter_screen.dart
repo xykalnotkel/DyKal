@@ -21,7 +21,12 @@ class LetterScreen extends StatelessWidget {
         ),
         SliverToBoxAdapter(child: _intro(context)),
         StreamBuilder<QuerySnapshot>(
-          stream: coupleId == null ? null : FirebaseFirestore.instance.collection('couples/$coupleId/letters').snapshots(),
+          stream: coupleId == null
+              ? null
+              : FirebaseFirestore.instance
+                  .collection('couples/$coupleId/letters')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
           builder: (context, snap) {
             if (!snap.hasData) return const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(40), child: DyKalSpinner()));
             final docs = snap.data!.docs;

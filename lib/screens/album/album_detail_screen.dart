@@ -111,7 +111,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               ),
             ),
           StreamBuilder<QuerySnapshot>(
-            stream: _photos.snapshots(),
+            stream: _photos.orderBy('createdAt', descending: true).snapshots(),
             builder: (context, snap) {
               if (snap.hasError) {
                 return SliverFillRemaining(

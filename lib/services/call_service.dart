@@ -494,11 +494,14 @@ class DyKalCallService extends ChangeNotifier {
       try {
         final snap = await _db.collection('calls/$coupleId/$col').get();
         if (snap.docs.isEmpty) continue;
-        final batch = _db.batch();
-        for (final d in snap.docs) {
-          batch.delete(d.reference);
+        for (var i = 0; i < snap.docs.length; i += 400) {
+          final end = (i + 400 > snap.docs.length) ? snap.docs.length : i + 400;
+          final batch = _db.batch();
+          for (final d in snap.docs.sublist(i, end)) {
+            batch.delete(d.reference);
+          }
+          await batch.commit();
         }
-        await batch.commit();
       } catch (_) {}
     }
   }

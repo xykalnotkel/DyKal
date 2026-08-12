@@ -230,16 +230,18 @@ class FCMService {
   // Helper render bersama (dipakai foreground & isolate latar)
   // ------------------------------------------------------------------
 
-  /// Unduh avatar -> bitmap bundar kecil untuk Person/MessagingStyle.
-  /// Return type sengaja AndroidIcon<Object>? (bukan ByteArrayAndroidBitmap?)
-  /// — Person.icon bertipe AndroidIcon<Object>?; subtyping generik null-aware
-  /// di sini memicu argument_type_not_assignable di analyzer.
-  static Future<AndroidIcon<Object>?> _avatarBmp(String? url) async {
+  /// Unduh avatar -> ikon untuk Person/MessagingStyle.
+  /// PENTING (pelajaran CI): Person.icon mengambil hierarki AndroidIcon,
+  /// diawali "ByteArrayAndroidIcon" — BUKAN ByteArrayAndroidBitmap (itu
+  /// hierarki AndroidBitmap untuk largeIcon/bigPicture). Salah hierarki =
+  /// argument_type_not_assignable. Tipe AndroidIcon sendiri sengaja
+  /// `hide` dari barrel FLN, jadi tidak bisa dinamai sebagai return type.
+  static Future<ByteArrayAndroidIcon?> _avatarBmp(String? url) async {
     if (url == null || url.isEmpty) return null;
     try {
       final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
       if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) {
-        return ByteArrayAndroidBitmap(Uint8List.fromList(r.bodyBytes));
+        return ByteArrayAndroidIcon(Uint8List.fromList(r.bodyBytes));
       }
     } catch (_) {}
     return null;

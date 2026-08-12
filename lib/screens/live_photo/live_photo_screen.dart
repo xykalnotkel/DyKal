@@ -239,9 +239,16 @@ class _LivePhotoScreenState extends State<LivePhotoScreen> {
         mp4: mp4,
         presentationTimestampUs: coverInClipUs - clipDurUs,
       );
-      await PhotoManager.editor.saveImage(
-        data,
-        title: 'DyKal LivePhoto ${DateTime.now().millisecondsSinceEpoch}.jpg',
+      // Pakai saveImageWithPath (+title) — lintasan API paling stabil antar
+      // minor photo_manager 3.x (3.2.x mewajibkan title; 3.12.x mewajibkan
+      // filename pada saveImage(Uint8List) — path-based lolos keduanya).
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final tmp = await getTemporaryDirectory();
+      final f = File('${tmp.path}/dykal_livephoto_$ts.jpg');
+      await f.writeAsBytes(data, flush: true);
+      await PhotoManager.editor.saveImageWithPath(
+        f.path,
+        title: 'DyKal LivePhoto $ts.jpg',
       );
       _toast('Live Photo tersimpan — lihat badge muternya di Google Photos');
     } catch (e) {

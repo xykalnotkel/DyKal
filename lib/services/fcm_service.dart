@@ -231,7 +231,10 @@ class FCMService {
   // ------------------------------------------------------------------
 
   /// Unduh avatar -> bitmap bundar kecil untuk Person/MessagingStyle.
-  static Future<ByteArrayAndroidBitmap?> _avatarBmp(String? url) async {
+  /// Return type sengaja AndroidIcon<Object>? (bukan ByteArrayAndroidBitmap?)
+  /// — Person.icon bertipe AndroidIcon<Object>?; subtyping generik null-aware
+  /// di sini memicu argument_type_not_assignable di analyzer.
+  static Future<AndroidIcon<Object>?> _avatarBmp(String? url) async {
     if (url == null || url.isEmpty) return null;
     try {
       final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));

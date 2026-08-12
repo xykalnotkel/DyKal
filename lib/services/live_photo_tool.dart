@@ -88,7 +88,9 @@ class LivePhotoPreset {
   final List<double>? matrix; // null = asli (tanpa olesan)
   const LivePhotoPreset(this.id, this.label, this.matrix);
 
-  static const List<LivePhotoPreset> all = [
+  // static FINAL (bukan const): elemennya merujuk matriks static final —
+  // const list menolak referensi non-const (error analyzer batch J).
+  static final List<LivePhotoPreset> all = [
     LivePhotoPreset('asli', 'Asli', null),
     LivePhotoPreset('hangat', 'Hangat', _hangat),
     LivePhotoPreset('ccd', 'CCD 2000an', _ccd),

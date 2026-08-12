@@ -239,7 +239,7 @@ class _LivePhotoScreenState extends State<LivePhotoScreen> {
         mp4: mp4,
         presentationTimestampUs: coverInClipUs - clipDurUs,
       );
-      await PhotoManager.editor.saveImageWithData(
+      await PhotoManager.editor.saveImage(
         data,
         title: 'DyKal LivePhoto ${DateTime.now().millisecondsSinceEpoch}.jpg',
       );

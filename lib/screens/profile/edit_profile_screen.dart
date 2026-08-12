@@ -86,7 +86,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final fields = <String, dynamic>{
       'displayName': name,
       'status': _statusCtl.text.trim(),
-      'avatarShape': shapeName(_avatarShape),
+      'avatarShape': _avatarShape.name,
     };
     if (url != null) fields['photoUrl'] = url;
 
@@ -171,11 +171,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  for (final shape in [PhotoShape.bulat, PhotoShape.heart, PhotoShape.bunga, PhotoShape.abstrak])
+                  for (final shape in [PhotoShape.bulat, PhotoShape.love, PhotoShape.bunga, PhotoShape.abstrak])
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: ChoiceChip(
-                        label: Text(shapeName(shape)),
+                        label: Text(shape.label),
                         selected: _avatarShape == shape,
                         selectedColor: DyKalTheme.primary.withValues(alpha: 0.2),
                         onSelected: (_) => setState(() => _avatarShape = shape),

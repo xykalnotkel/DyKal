@@ -27,19 +27,29 @@ persis: **Import MP4 -> trim slider -> cover -> preset -> SIMPAN VIDEO + SHARE**
 - **Target kompresi**: tinggi 720 + H264/AAC; target spek <=8MB untuk 30 dtk.
   Verifikasi angka persisnya di HP nyata (bitrate encoder per-OEM beda).
 
-## Checklist tes on-device (Fase 1)
+## Sudah masuk (Batch K) — Fase 2
+
+- **Writer Motion Photo** (`lib/services/motion_photo_writer.dart`, pure Dart):
+  rangkai JPEG + APP1 XMP `GContainer` (`GCamera:MotionPhoto=1`, Item:Length =
+  ukuran MP4) + byte MP4 di ekor. Aritmetika segmen JPEG diverifikasi via
+  uji Python (3 kasus: ada APP0, tanpa APPn, APP1 eksisting).
+- Tombol **"Simpan sebagai Live Photo"** di kartu hasil -> galeri (badge LIVE
+  di Google Photos/Samsung Gallery; galeri lain tetap menampilkan foto).
+- Timestamp presentasi cover mengikuti konvensi Google (relatif ke akhir klip).
+
+## Checklist tes on-device
 
 - [ ] Pilih video 1+ menit -> trim ke 10 dtk -> hasil lancar diputar
-- [ ] Video miring/vertikal tetap benar orientasinya (doctor: Transformer urus rotasi)
+- [ ] Video miring/vertikal tetap benar orientasinya
 - [ ] Preset "Sepia"/"CCD" tampak sama di cover & klip hasil
 - [ ] Hasil 30 dtk <=8MB (atau catat ukuran sebenarnya untuk kalibrasi)
 - [ ] "Simpan Video" muncul di galeri; "Bagikan" ke WA/TikTok jalan
+- [ ] "Simpan sebagai Live Photo" -> badge motion-photo MUNCUL di Google Photos
+- [ ] File yang sama dibuka di galeri lain -> tampil sebagai foto diam
 - [ ] Batal: tutup layar saat proses -> tidak ada job zombie (`cancel` di dispose)
 
-## Belum masuk fase ini (roadmap)
+## Belum masuk (roadmap)
 
-- **Fase 2**: writer Motion Photo (JPG+XMP GCamera+append MP4) -> badge "LIVE"
-  otomatis di Google Photos/Samsung Gallery.
 - **Fase 3**: kirim ke pasangan (enkripsi E2EE + notif worker) + tahan-untuk-putar di chat.
 - **Fase 4**: preset maker (LUT, grain, light leak, cap tanggal).
 - **Fase 5**: iOS PhotoKit pair (butuh akun Apple Developer).

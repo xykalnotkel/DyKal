@@ -11,6 +11,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../config/theme.dart';
 import '../../services/live_photo_tool.dart';
+import '../../services/motion_photo_writer.dart';
 
 /// BATCH J — Live Photo Fase 1 (spek: uploads/FITUR-LIVE-PHOTO.md, roadmap Fase 1).
 /// Cakupan fase ini (persis roadmap): Import MP4 → trim slider (maks 30 dtk) →
@@ -211,6 +212,40 @@ class _LivePhotoScreenState extends State<LivePhotoScreen> {
       await Share.shareXFiles([XFile(out)], text: 'Live moment dari DyKal');
     } catch (e) {
       _toast('Gagal membagikan: $e');
+    }
+  }
+
+  /// FASE 2 (Batch K): kemas cover+klip jadi Motion Photo (format Google).
+  /// Struktur byte dirangkai pure-Dart di MotionPhotoWriter — tanpa native.
+  Future<void> _saveAsLivePhoto() async {
+    final out = _outPath;
+    final cover = _coverPath;
+    if (out == null) {
+      _toast('Proses dulu videonya');
+      return;
+    }
+    if (cover == null) {
+      _toast('Cover belum dirender — geser-slider/tunggu sebentar');
+      return;
+    }
+    try {
+      final jpeg = await File(cover).readAsBytes();
+      final mp4 = await File(out).readAsBytes();
+      // Konvensi Google: timestamp cover relatif ke AKHIR klip (negatif).
+      final clipDurUs = ((_win.end - _win.start) * 1000).round();
+      final coverInClipUs = ((_coverMs - _win.start) * 1000).round();
+      final data = MotionPhotoWriter.build(
+        jpeg: jpeg,
+        mp4: mp4,
+        presentationTimestampUs: coverInClipUs - clipDurUs,
+      );
+      await PhotoManager.editor.saveImageWithData(
+        data,
+        title: 'DyKal LivePhoto ${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+      _toast('Live Photo tersimpan — lihat badge muternya di Google Photos');
+    } catch (e) {
+      _toast('Gagal menyimpan Live Photo: $e');
     }
   }
 
@@ -460,10 +495,21 @@ class _LivePhotoScreenState extends State<LivePhotoScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _saveAsLivePhoto,
+                    icon: const Icon(Icons.motion_photos_on_rounded),
+                    label: const Text('Simpan sebagai Live Photo'),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Text(
-                  'Kirim ke Pasangan (terenkripsi) menyusul di Fase 3. '
-                  'Badge "LIVE" otomatis di galeri menyusul di Fase 2 — '
-                  'versi ini hasilnya MP4 trim + look, siap posting.',
+                  '"Simpan Video" = MP4 polos, siap posting di mana saja. '
+                  '"Simpan sebagai Live Photo" = format Motion Photo Google: '
+                  'badge LIVE muncul di Google Photos / Samsung Gallery, galeri '
+                  'lain tetap menampilkan fotonya. Kirim ke Pasangan (terenkripsi) '
+                  'menyusul di Fase 3.',
                   style: TextStyle(color: DyKalTheme.textSecondaryOf(context), fontSize: 11),
                 ),
               ],

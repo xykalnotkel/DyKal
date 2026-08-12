@@ -10,6 +10,11 @@ import '../../services/ringtone_player.dart';
 class IncomingCallScreen extends StatefulWidget {
   const IncomingCallScreen({super.key});
 
+  /// BATCH G: penanda layar ini sedang tampil — dipakai FCMService & MainNav
+  /// agar layar panggilan masuk tidak ditumpuk dua kali (push FCM + listener
+  /// Firestore bisa sama-sama memicu navigasi).
+  static bool isShowing = false;
+
   @override
   State<IncomingCallScreen> createState() => _IncomingCallScreenState();
 }
@@ -28,6 +33,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
   @override
   void initState() {
     super.initState();
+    IncomingCallScreen.isShowing = true;
     _float = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
     _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
     RingtonePlayer.start();
@@ -35,7 +41,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
     final coupleId = AuthService().coupleId ?? '';
     _sub = FirebaseFirestore.instance.doc('calls/$coupleId').snapshots().listen((doc) {
       final data = doc.data();
-      if (data == null || data['status'] == 'ended') {
+      // 'answered' = dijawab dari jalur lain (mis. aksi "Angkat" di notif
+      // tray tray saat app foreground) -> layar ini basi, tutup.
+      if (data == null || data['status'] == 'ended' || data['status'] == 'answered') {
         if (!_gone) {
           _gone = true;
           Navigator.pop(context);
@@ -67,6 +75,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> with TickerProv
 
   @override
   void dispose() {
+    IncomingCallScreen.isShowing = false;
     RingtonePlayer.stop();
     _sub?.cancel();
     _float.dispose();

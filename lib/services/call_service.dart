@@ -13,6 +13,19 @@ import 'push_service.dart';
 /// - Callee: acceptIncoming -> answer + status 'answered'
 /// - ICE ditukar via subkoleksi offerCandidates / answerCandidates
 class DyKalCallService extends ChangeNotifier {
+  // --- Sesi call yang SEDANG HIDUP (Batch G: bar "kembali ke panggilan") ---
+  // Dulu tiap layar membuat instance baru & membunuh panggilan saat layar
+  // ditutup — mustahil balik ke panggilan. Sekarang sesi aktif disimpan
+  // statis; layar video/audio me-REJOIN instance ini daripada bikin sesi baru.
+  static DyKalCallService? current;
+  static final ValueNotifier<bool> inCall = ValueNotifier(false);
+  static String activeCallType = 'video'; // 'audio' | 'video' (untuk rute bar)
+
+  /// True bila sesi signaling ada (bukan berarti sudah tersambung).
+  bool get sessionActive => _pc != null;
+  bool get isCaller => _callerFlag;
+  DateTime? get answeredAt => _answeredAt;
+
   final _db = FirebaseFirestore.instance;
   RTCPeerConnection? _pc;
   MediaStream? localStream;
@@ -75,6 +88,14 @@ class DyKalCallService extends ChangeNotifier {
   DateTime? _answeredAt;
   bool _historyWritten = false;
   bool _declinedFlag = false;
+  bool _cancelPushSent = false; // call_cancel push (Batch G) — sekali per ringing
+
+  /// Tandai instance ini sebagai sesi hidup global.
+  void _becomeCurrent() {
+    current = this;
+    activeCallType = callType;
+    inCall.value = true;
+  }
 
   Future<void> _addLocalTracks() async {
     if (localStream == null) return;
@@ -107,6 +128,7 @@ class DyKalCallService extends ChangeNotifier {
     _answeredAt = null;
     _historyWritten = false;
     _declinedFlag = false;
+    _cancelPushSent = false;
     await _openMedia(type == 'video');
     await _createPc();
     await _addLocalTracks();
@@ -131,6 +153,7 @@ class DyKalCallService extends ChangeNotifier {
       callerName: AuthService().myName,
       callType: callType,
     );
+    _becomeCurrent();
 
     // Dengar jawaban & ICE lawan
     _docSub = _db.doc('calls/$coupleId').snapshots().listen((doc) async {
@@ -189,6 +212,7 @@ class DyKalCallService extends ChangeNotifier {
       'answer': {'sdp': answer.sdp, 'type': answer.type},
       'status': 'answered',
     });
+    _becomeCurrent();
 
     // Terima ICE lawan (offerCandidates)
     _offerCandSub = _db.collection('calls/$coupleId/offerCandidates').snapshots().listen((qs) async {
@@ -356,6 +380,29 @@ class DyKalCallService extends ChangeNotifier {
   }
 
   Future<void> _cleanup() async {
+    // BATCH G (spek v2 #5A): caller membatalkan panggilan SEBELUM dijawab ->
+    // kirim sinyal 'call_cancel' agar dering/notif penuh di HP pasangan
+    // berhenti SEGERA (dulu harus nunggu ttl 45 dtk basi sendiri).
+    // Juga meng-cover kasus pasangan menolak dari layar app (notif tray-nya
+    // masih menggantung) — notif 7777 di sana turut dibersihkan.
+    if (_callerFlag &&
+        _answeredAt == null &&
+        _callStartedAt != null &&
+        !_cancelPushSent) {
+      _cancelPushSent = true;
+      unawaited(PushService.notifyPartner(
+        title: 'Panggilan dibatalkan',
+        body: '${AuthService().myName} membatalkan panggilan',
+        type: 'call_cancel',
+        callerName: AuthService().myName,
+        callType: callType,
+      ));
+    }
+    // Lepaskan status sesi-hidup global (bar "kembali ke panggilan" ikut hilang).
+    if (identical(current, this)) {
+      current = null;
+      inCall.value = false;
+    }
     await _ansSub?.cancel();
     await _offerCandSub?.cancel();
     await _docSub?.cancel();

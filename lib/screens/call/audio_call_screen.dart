@@ -13,7 +13,9 @@ class AudioCallScreen extends StatefulWidget {
 }
 
 class _AudioCallScreenState extends State<AudioCallScreen> {
-  final call = DyKalCallService();
+  // BATCH G: late — rejoin menempel ke DyKalCallService.current, bukan sesi baru.
+  late DyKalCallService call;
+  bool _rejoin = false;
   Timer? _timer;
   int _elapsed = 0;
   double volume = 0.8;
@@ -28,6 +30,23 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
     if (!mounted) return;
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final isCaller = args?['isCaller'] ?? true;
+
+    // REJOIN: ada sesi audio hidup -> tempel, jangan telpon ulang.
+    final existing = DyKalCallService.current;
+    if (existing != null && existing.sessionActive && existing.callType == 'audio') {
+      call = existing;
+      _rejoin = true;
+      call.addListener(_onStateChanged);
+      final at = existing.answeredAt;
+      if (at != null) {
+        _elapsed = DateTime.now().difference(at).inSeconds;
+      }
+      _onStateChanged();
+      _startTimer();
+      return;
+    }
+
+    call = DyKalCallService();
     call.addListener(_onStateChanged);
     try {
       if (isCaller == true) {
@@ -42,11 +61,14 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
       }
       return;
     }
-    if (mounted) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() => _elapsed++);
-      });
-    }
+    _startTimer();
+  }
+
+  void _startTimer() {
+    if (!mounted) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed++);
+    });
   }
 
   void _onStateChanged() {
@@ -57,7 +79,11 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
   void dispose() {
     _timer?.cancel();
     call.removeListener(_onStateChanged);
-    call.dispose();
+    // BATCH G: sesi hidup (DyKalCallService.current) jangan dibunuh saat
+    // layar cuma dikecilkan.
+    if (!identical(call, DyKalCallService.current) && !_rejoin) {
+      call.dispose();
+    }
     super.dispose();
   }
 
@@ -109,11 +135,10 @@ class _AudioCallScreenState extends State<AudioCallScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () {
-                      _endCallLog();
-                      call.hangUp();
-                      Navigator.pop(context);
-                    },
+                    // BATCH G: chevron = KECILKAN panggilan (lanjut di
+                    // latar, bar hijau "kembali ke panggilan" muncul) —
+                    // bukan mematikan. Tombol merah di bawah yang mematikan.
+                    onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 28),
                   ),
                   const Spacer(),

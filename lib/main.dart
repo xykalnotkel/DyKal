@@ -33,11 +33,14 @@ import 'services/bubble_style.dart';
 import 'services/wallpaper_settings.dart';
 import 'services/update_service.dart';
 import 'widgets/update_banner.dart';
+import 'widgets/return_to_call_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  // BATCH G (spek v2 #4): payload data-only dirender sebagai notif kaya
+  // (avatar + aksi) oleh FCMService — bukan lagi no-op.
+  await FCMService.firebaseMessagingBackgroundHandler(message);
 }
 
 final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
@@ -590,7 +593,7 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
       }
       final callerId = data['callerId'] as String?;
       final status = data['status'] as String?;
-      if (callerId != myId && status == 'ringing' && !handled) {
+      if (callerId != myId && status == 'ringing' && !handled && !IncomingCallScreen.isShowing) {
         handled = true;
         final type = (data['type'] as String?) ?? 'video';
         Navigator.of(context).pushNamed('/incomingCall', arguments: type);
@@ -621,6 +624,9 @@ class _MainNavState extends State<MainNav> with WidgetsBindingObserver {
           children: [
             IndexedStack(index: idx, children: pages),
             const UpdateBanner(),
+            // Spek v2 #5B: strip hijau berkedip saat panggilan aktif
+            // dikecilkan — ketuk untuk kembali ke panggilan.
+            const ReturnToCallBar(),
           ],
         ),
       ),

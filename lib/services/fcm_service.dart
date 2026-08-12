@@ -1,16 +1,96 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import '../screens/call/incoming_call_screen.dart';
 import 'auth_service.dart';
+import 'ringtone_player.dart';
 
-/// FCM Service DyKal — Gratis Spark (Tanpa Cloud Functions)
-/// Karena Spark tidak bisa pakai Cloud Functions untuk kirim push otomatis,
-/// kita pakai strategi 2 lapis:
-/// 1. FCM Token disimpan di users/{uid}.fcmToken → bisa dipakai kirim manual via Firebase Console
-/// 2. Realtime fallback: setiap chat baru di Firestore → listener di app yang background/foreground akan trigger local notification (jadi tetap ada notif walau tanpa server push)
-/// Untuk push saat app killed (100% reliable) butuh Blaze + Functions, tapi 95% kasus local listener sudah cukup untuk 2 orang.
+/// ===== Handler ISOLATE LATAR (app killed) untuk AKSI notifikasi lokal =====
+/// Wajib top-level + pragma. Berjalan tanpa UI: semua aksi menulis langsung
+/// ke Firestore (balas pesan, tandai dibaca, bisukan, tolak panggilan).
+@pragma('vm:entry-point')
+Future<void> dykalNotifBackgroundResponse(NotificationResponse r) async {
+  try {
+    if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+  } catch (_) {
+    return; // tanpa Firebase tak ada yang bisa dilakukan di background
+  }
+  Map<String, dynamic> p = {};
+  try {
+    final raw = r.payload;
+    if (raw != null && raw.startsWith('{')) p = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+  } catch (_) {}
+  final cid = (p['cid'] ?? '') as String;
+  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  final db = FirebaseFirestore.instance;
+  final local = FlutterLocalNotificationsPlugin();
+  try {
+    await local.initialize(const InitializationSettings(
+        android: AndroidInitializationSettings('@drawable/ic_notification')));
+  } catch (_) {}
+
+  try {
+    switch (r.actionId) {
+      case 'reply':
+        final text = (r.input ?? '').trim();
+        if (text.isEmpty || cid.isEmpty || uid.isEmpty) break;
+        final msgId = DateTime.now().millisecondsSinceEpoch.toString();
+        await db.collection('chats/$cid/messages').doc(msgId).set({
+          'id': msgId,
+          'fromId': uid,
+          'toId': '',
+          'text': text,
+          'type': 'text',
+          'status': 'sent',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        // Ganti isi notif jadi konfirmasi kecil (aksi sudah terkirim).
+        await local.show(770012, 'Terkirim', text,
+            const NotificationDetails(
+                android: AndroidNotificationDetails('dykal_chat', 'DyKal Chat',
+                    importance: Importance.low, priority: Priority.low)));
+        break;
+      case 'mark_read':
+        if (cid.isEmpty || uid.isEmpty) break;
+        final qs = await db.collection('chats/$cid/messages').where('fromId', isNotEqualTo: uid).get();
+        for (final d in qs.docs) {
+          if ((d.data()['status'] ?? '') != 'read') await d.reference.update({'status': 'read'});
+        }
+        break;
+      case 'mute':
+        if (uid.isEmpty) break;
+        await db.doc('users/$uid').set({'notifPrefs': {'chat': false}}, SetOptions(merge: true));
+        break;
+      case 'decline_call':
+        if (cid.isNotEmpty) {
+          await db.doc('calls/$cid').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()});
+        }
+        await local.cancel(7777);
+        break;
+      case 'accept_call':
+        // showsUserInterface: true -> seharusnya masuk jalur foreground saat
+        // app terbuka. Kalau ternyata sampai di sini, abaikan (app akan
+        // terbuka & mendeteksi panggilan lewat listener Firestore).
+        break;
+    }
+  } catch (_) {}
+}
+
+/// FCM Service DyKal — Gratis Spark (Tanpa Cloud Functions).
+///
+/// ARSITEKTUR NOTIF (Batch G, spek v2 #4):
+/// - Worker mengirim DATA-ONLY ke device ber-notifCap 'v2' (tidak ada key
+///   notification) -> app yang merender notif di SEMUA state (foreground via
+///   onMessage, killed via firebaseMessagingBackgroundHandler) lengkap dengan
+///   MessagingStyle avatar + aksi Balas / Tandai / Bisukan / Angkat / Tolak.
+/// - Device app lama tetap menerima payload hybrid (worker menyertakan key
+///   notification) supaya notif latar belakang mereka tidak hilang.
 class FCMService {
   static final FCMService _i = FCMService._();
   FCMService._();
@@ -26,6 +106,10 @@ class FCMService {
   String? _callType;     // 'audio'/'video' notif call terakhir
   String? _callCoupleId;
   bool _localReady = false; // plugin lokal siap dipakai (setelah init)
+  DateTime? _lastChatFcmAt; // dedupe fallback realtime vs push FCM (3 dtk)
+
+  static const int notifIdCall = 7777;
+  static const int notifIdChat = 770011;
 
   /// Dipanggil dari AuthGate setelah login (idempoten)
   void ensureInit() {
@@ -38,26 +122,31 @@ class FCMService {
     // 1. Request permission (Android 13+ & iOS)
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
-    // 2. Init local notifications (untuk fallback) + handler aksi (balas dari notif)
+    // 2. Init local notifications + handler aksi (foreground & BACKGROUND).
     const android = AndroidInitializationSettings('@drawable/ic_notification');
     const ios = DarwinInitializationSettings();
     await _local.initialize(
-      InitializationSettings(android: android, iOS: ios),
+      const InitializationSettings(android: android, iOS: ios),
       onDidReceiveNotificationResponse: _onNotifResponse,
+      // Aksi tanpa UI (Balas/Tandai/Bisukan/Tolak) saat app KILLED masuk ke
+      // handler isolate ini — wajib agar quick-reply benar-benar terkirim.
+      onDidReceiveBackgroundNotificationResponse: dykalNotifBackgroundResponse,
     );
     _localReady = true;
 
-    // CHANNEL LENGKAP (Batch D — notifikasi all-in).
-    // PENTING: nama/level channel Android DIKUNCI saat pertama dibuat,
-    // jadi semua channel didaftarkan di sini sejak awal, bukan menunggu
-    // notif pertama muncul. Channel lama 'dykal_call' dipertahankan demi
-    // payload worker lama.
+    // CHANNEL LENGKAP. PENTING: nama/level channel Android DIKUNCI saat
+    // pertama dibuat — channel lama dipertahankan demi worker hybrid;
+    // channel *_v2 memakai NADA DERING TELPON SISTEM (spek v2 #5A), karena
+    // suara channel lama tak bisa diubah setelah tercipta.
     final loc = _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (loc != null) {
+      const ringtone = UriAndroidNotificationSound('content://settings/system/ringtone');
       const channels = <AndroidNotificationChannel>[
         AndroidNotificationChannel('dykal_call', 'Panggilan DyKal', description: 'Panggilan masuk (kompat lama)', importance: Importance.max, playSound: true, enableVibration: true, showBadge: true),
         AndroidNotificationChannel('dykal_call_audio', 'Panggilan Suara DyKal', description: 'Panggilan suara masuk', importance: Importance.max, playSound: true, enableVibration: true, showBadge: true),
         AndroidNotificationChannel('dykal_call_video', 'Panggilan Video DyKal', description: 'Panggilan video masuk', importance: Importance.max, playSound: true, enableVibration: true, showBadge: true),
+        AndroidNotificationChannel('dykal_call_audio_v2', 'Panggilan Suara DyKal', description: 'Panggilan suara masuk (dering telepon)', importance: Importance.max, sound: ringtone, enableVibration: true, showBadge: true),
+        AndroidNotificationChannel('dykal_call_video_v2', 'Panggilan Video DyKal', description: 'Panggilan video masuk (dering telepon)', importance: Importance.max, sound: ringtone, enableVibration: true, showBadge: true),
         AndroidNotificationChannel('dykal_chat', 'DyKal Chat', description: 'Notifikasi chat, surat & media', importance: Importance.high, playSound: true, showBadge: true),
         AndroidNotificationChannel('dykal_chat_realtime', 'DyKal Realtime', description: 'Notifikasi realtime lokal (mode hemat)', importance: Importance.high, playSound: true, showBadge: true),
         AndroidNotificationChannel('dykal_birthday', 'DyKal Moment', description: 'Pengingat ultah & anniversary', importance: Importance.high, playSound: true, showBadge: true),
@@ -93,9 +182,7 @@ class FCMService {
         await _messaging.subscribeToTopic(coupleId);
       }
     }
-    // BATCH: topic 'app_updates' — CI membroadcast push ke topic ini setiap
-    // rilis baru (jadi notif update NEMBAK BENERAN, bukan cuma dicek saat
-    // app dibuka). Worker route topic sudah disiapkan.
+    // TOPIC 'app_updates' — CI membroadcast push ke topic ini setiap rilis.
     try { await _messaging.subscribeToTopic('app_updates'); } catch (_) {}
   }
 
@@ -104,59 +191,89 @@ class FCMService {
       token ??= await _messaging.getToken();
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (token != null && uid != null) {
-        await _db.doc('users/$uid').set({'fcmToken': token}, SetOptions(merge: true));
-        // Juga simpan di presence biar gampang debug
+        await _db.doc('users/$uid').set({
+          'fcmToken': token,
+          // BATCH G: klaim kemampuan render notif kaya (data-only) — pengirim
+          // membaca flag ini sebelum memutuskan payload dataOnly ke worker.
+          'notifCap': 'v2',
+          'appVer': '1.3.0',
+        }, SetOptions(merge: true));
         await _db.doc('presence/$uid').set({'fcmToken': token}, SetOptions(merge: true));
       }
-      print('FCM Token: $token');
-    } catch (e) {
-      print('FCM token error: $e');
-    }
+    } catch (_) {}
   }
 
-  void _handleForegroundMessage(RemoteMessage msg) async {
-    // FIX #1: panggilan -> notif khusus (accept/decline + fullScreenIntent + nama)
-    if (msg.data['type'] == 'call') { _handleCallMessage(msg); return; }
-    // BATCH: push update realtime dari CI (topic app_updates) -> notif kanal
-    // dykal_update lengkap dengan tombol Unduh Sekarang.
-    if (msg.data['type'] == 'update') {
-      final title = msg.notification?.title ?? 'DyKal versi terbaru';
-      final body = msg.notification?.body ?? 'Ada pembaruan baru. Sentuh untuk mengunduh.';
-      await showUpdateNotif(title, body: body);
-      return;
-    }
-    final notif = msg.notification;
-    if (notif == null) return;
+  // ------------------------------------------------------------------
+  // Helper render bersama (dipakai foreground & isolate latar)
+  // ------------------------------------------------------------------
+
+  /// Unduh avatar -> bitmap bundar kecil untuk Person/MessagingStyle.
+  static Future<ByteArrayAndroidBitmap?> _avatarBmp(String? url) async {
+    if (url == null || url.isEmpty) return null;
+    try {
+      final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+      if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) {
+        return ByteArrayAndroidBitmap(Uint8List.fromList(r.bodyBytes));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Notif CHAT/SURAT ala WhatsApp: MessagingStyle + avatar + aksi.
+  static Future<void> showRichChatNotif(
+    FlutterLocalNotificationsPlugin plugin, {
+    required String title,
+    required String body,
+    String? avatarUrl,
+    String coupleId = '',
+    String channelId = 'dykal_chat',
+    String channelName = 'DyKal Chat',
+  }) async {
+    final avatar = await _avatarBmp(avatarUrl);
+    final me = const Person(name: 'Saya', key: 'dykal_me');
+    final partner = Person(name: title, key: 'dykal_partner', icon: avatar);
+    final style = MessagingStyleInformation(
+      me,
+      conversationTitle: title,
+      messages: [Message(body, DateTime.now(), partner)],
+    );
     final androidDetails = AndroidNotificationDetails(
-      'dykal_chat',
-      'DyKal Chat',
+      channelId,
+      channelName,
       channelDescription: 'Notifikasi chat & surat',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
       color: const Color(0xFFFF6B8A),
+      styleInformation: style,
+      largeIcon: avatar,
       actions: [
-        AndroidNotificationAction('reply', 'Balas', inputs: [AndroidNotificationActionInput(label: 'Ketik balasan...')], showsUserInterface: false, cancelNotification: false),
-        AndroidNotificationAction('mark_read', 'Tanda Dibaca', showsUserInterface: false, cancelNotification: true),
-        AndroidNotificationAction('mute', 'Bisukan', showsUserInterface: false, cancelNotification: true),
+        AndroidNotificationAction('reply', 'Balas', inputs: [AndroidNotificationActionInput(label: 'Ketik balasan...')], cancelNotification: false),
+        AndroidNotificationAction('mark_read', 'Tanda Dibaca', cancelNotification: true),
+        AndroidNotificationAction('mute', 'Bisukan', cancelNotification: true),
       ],
     );
-    await _local.show(
-      notif.hashCode,
-      notif.title,
-      notif.body,
+    await plugin.show(
+      notifIdChat,
+      title,
+      body,
       NotificationDetails(android: androidDetails),
+      payload: jsonEncode({'t': 'chat', 'cid': coupleId}),
     );
   }
 
-  void _handleCallMessage(RemoteMessage msg) async {
-    final callerName = msg.data['callerName'] ?? msg.notification?.title ?? 'DyKal';
-    final callType = msg.data['callType'] ?? 'video';
-    _callType = callType;
-    _callCoupleId = msg.data['coupleId'];
-    // Channel khusus per jenis panggilan (Batch D): user bisa atur dering/
-    // getar panggilan SUARA vs VIDEO secara terpisah di pengaturan Android.
-    final channelId = callType == 'audio' ? 'dykal_call_audio' : 'dykal_call_video';
+  /// Notif PANGGILAN layar penuh (dering telepon sistem + Angkat/Tolak).
+  static Future<void> showRichCallNotif(
+    FlutterLocalNotificationsPlugin plugin,
+    Map<String, dynamic> data,
+  ) async {
+    final callerName = (data['callerName'] as String?)?.isNotEmpty == true
+        ? data['callerName'] as String
+        : ((data['senderName'] as String?)?.isNotEmpty == true ? data['senderName'] as String : 'Pasangan');
+    final callType = (data['callType'] as String?) ?? 'video';
+    final cid = (data['coupleId'] as String?) ?? '';
+    final avatar = await _avatarBmp(data['callerAvatar'] as String? ?? data['senderAvatar'] as String?);
+    final channelId = callType == 'audio' ? 'dykal_call_audio_v2' : 'dykal_call_video_v2';
     final channelName = callType == 'audio' ? 'Panggilan Suara DyKal' : 'Panggilan Video DyKal';
     final androidDetails = AndroidNotificationDetails(
       channelId, channelName,
@@ -168,43 +285,144 @@ class FCMService {
       category: AndroidNotificationCategory.call,
       visibility: NotificationVisibility.public,
       ongoing: true,
+      color: const Color(0xFFFF6B8A),
+      largeIcon: avatar,
       actions: [
-        AndroidNotificationAction('decline_call', 'Tolak', showsUserInterface: true, cancelNotification: true),
+        AndroidNotificationAction('decline_call', 'Tolak', cancelNotification: true),
         AndroidNotificationAction('accept_call', 'Angkat', showsUserInterface: true, cancelNotification: true),
       ],
     );
-    await _local.show(
-      7777,
-      '$callerName',
+    await plugin.show(
+      notifIdCall,
+      callerName,
       callType == 'video' ? 'Panggilan video masuk' : 'Panggilan suara masuk',
       NotificationDetails(android: androidDetails),
-      payload: callType,
+      payload: jsonEncode({'t': 'call', 'cid': cid, 'ct': callType}),
     );
   }
 
-  /// Handler aksi notifikasi (Quick Reply dari notif)
+  // ------------------------------------------------------------------
+  // Pesan masuk
+  // ------------------------------------------------------------------
+
+  void _handleForegroundMessage(RemoteMessage msg) async {
+    final data = msg.data;
+    final type = data['type'] ?? '';
+    // BATCH G: sinyal caller membatalkan panggilan -> matikan dering + notif.
+    if (type == 'call_cancel') {
+      try { await _local.cancel(notifIdCall); } catch (_) {}
+      try { await RingtonePlayer.stop(); } catch (_) {}
+      return;
+    }
+    if (type == 'call') {
+      _handleCallMessage(msg);
+      return;
+    }
+    // Push update realtime dari CI (topic app_updates).
+    if (type == 'update') {
+      final title = msg.notification?.title ?? 'DyKal versi terbaru';
+      final body = msg.notification?.body ?? 'Ada pembaruan baru. Sentuh untuk mengunduh.';
+      await showUpdateNotif(title, body: body);
+      return;
+    }
+    if (!_localReady) return;
+    _lastChatFcmAt = DateTime.now();
+    final notif = msg.notification;
+    final title = (data['senderName'] as String?)?.isNotEmpty == true
+        ? data['senderName'] as String
+        : (notif?.title ?? 'DyKal');
+    final body = (data['messageBody'] as String?)?.isNotEmpty == true
+        ? data['messageBody'] as String
+        : (notif?.body ?? 'Pesan baru');
+    await showRichChatNotif(
+      _local,
+      title: title,
+      body: body,
+      avatarUrl: data['senderAvatar'] as String?,
+      coupleId: (data['coupleId'] as String?) ?? '',
+    );
+  }
+
+  void _handleCallMessage(RemoteMessage msg) async {
+    final callType = msg.data['callType'] ?? 'video';
+    _callType = callType;
+    _callCoupleId = msg.data['coupleId'];
+    if (!_localReady) return;
+    await showRichCallNotif(_local, msg.data);
+  }
+
+  /// Handler aksi notifikasi saat app HIDUP (foreground route).
   Future<void> _onNotifResponse(NotificationResponse r) async {
-    if (r.actionId == 'reply' && r.input != null && r.input!.trim().isNotEmpty) {
-      await _sendReply(r.input!.trim());
-    } else if (r.actionId == 'accept_call') {
-      _acceptCall(r.payload ?? _callType ?? 'video');
-    } else if (r.actionId == 'decline_call') {
-      await _declineCall();
-    } else if (r.actionId == 'mark_read') {
-      await _markChatRead();
-    } else if (r.actionId == 'mute') {
-      await _muteChat();
-    } else if (r.actionId == 'download_update') {
-      final cb = onUpdateDownload;
-      if (cb != null) await cb();
+    switch (r.actionId) {
+      case 'reply':
+        final text = (r.input ?? '').trim();
+        if (text.isNotEmpty) await _sendReply(text, _payloadCid(r));
+        break;
+      case 'accept_call':
+        _acceptCall(_payloadCallType(r) ?? _callType ?? 'video');
+        break;
+      case 'decline_call':
+        await _declineCall(_payloadCid(r));
+        break;
+      case 'mark_read':
+        await _markChatRead(_payloadCid(r));
+        break;
+      case 'mute':
+        await _muteChat();
+        break;
+      case 'download_update':
+        final cb = onUpdateDownload;
+        if (cb != null) await cb();
+        break;
+      default:
+        // TAP BODY (tanpa aksi) -> buka layar sesuai payload.
+        _routeBodyTap(r);
     }
   }
 
-  Future<void> _markChatRead() async {
+  String _payloadCid(NotificationResponse r) {
+    try {
+      final raw = r.payload ?? '';
+      if (raw.startsWith('{')) return (jsonDecode(raw)['cid'] ?? '') as String;
+    } catch (_) {}
+    return '';
+  }
+
+  String? _payloadCallType(NotificationResponse r) {
+    try {
+      final raw = r.payload ?? '';
+      if (raw.startsWith('{')) return jsonDecode(raw)['ct'] as String?;
+      if (raw == 'audio' || raw == 'video') return raw; // payload lama polos
+    } catch (_) {}
+    return null;
+  }
+
+  void _routeBodyTap(NotificationResponse r) {
+    final raw = r.payload ?? '';
+    if (raw == 'update') {
+      final cb = onUpdateDownload;
+      if (cb != null) cb();
+      return;
+    }
+    try {
+      if (!raw.startsWith('{')) return;
+      final p = jsonDecode(raw) as Map<String, dynamic>;
+      final t = p['t'];
+      if (t == 'chat') {
+        navKey?.currentState?.pushNamed('/chat');
+      } else if (t == 'call') {
+        // Kalau layar incoming sudah tampil, jangan ditumpuk.
+        if (IncomingCallScreen.isShowing) return;
+        navKey?.currentState?.pushNamed('/incomingCall', arguments: (p['ct'] as String?) ?? 'video');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _markChatRead([String cid = '']) async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
-      final coupleId = AuthService().coupleId ?? '';
+      final coupleId = cid.isNotEmpty ? cid : (AuthService().coupleId ?? '');
       if (coupleId.isEmpty) return;
       final qs = await _db.collection('chats/$coupleId/messages').where('fromId', isNotEqualTo: uid).get();
       for (final d in qs.docs) {
@@ -222,26 +440,30 @@ class FCMService {
   }
 
   void _acceptCall(String callType) {
-    _local.cancel(7777);
+    _local.cancel(notifIdCall);
+    if (IncomingCallScreen.isShowing) return; // layar incoming menanganinya
     final route = callType == 'audio' ? '/audioCall' : '/videoCall';
     navKey?.currentState?.pushNamed(route, arguments: {'isCaller': false, 'type': callType});
   }
 
-  Future<void> _declineCall() async {
-    _local.cancel(7777);
-    final coupleId = AuthService().coupleId ?? _callCoupleId ?? '';
+  Future<void> _declineCall([String cid = '']) async {
+    _local.cancel(notifIdCall);
+    final coupleId = cid.isNotEmpty ? cid : (AuthService().coupleId ?? _callCoupleId ?? '');
     if (coupleId.isNotEmpty) {
       try { await _db.doc('calls/$coupleId').update({'status': 'ended', 'endedAt': FieldValue.serverTimestamp()}); } catch (_) {}
     }
   }
 
-  Future<void> _sendReply(String text) async {
+  Future<void> _sendReply(String text, [String cid = '']) async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
-      final meSnap = await _db.doc('users/$uid').get();
-      final coupleId = meSnap.data()?['coupleId'] as String?;
-      if (coupleId == null) return;
+      String coupleId = cid;
+      if (coupleId.isEmpty) {
+        final meSnap = await _db.doc('users/$uid').get();
+        coupleId = meSnap.data()?['coupleId'] as String? ?? '';
+      }
+      if (coupleId.isEmpty) return;
       final msgId = DateTime.now().millisecondsSinceEpoch.toString();
       await _db.collection('chats/$coupleId/messages').doc(msgId).set({
         'id': msgId,
@@ -256,19 +478,18 @@ class FCMService {
   }
 
   void _handleTap(RemoteMessage msg) {
-    // FIX #1: tap notif -> buka layar sesuai jenis (call -> incoming call, chat -> chat)
+    // Tap notif (background/terminated) -> buka layar sesuai jenis.
     final type = msg.data['type'];
     if (type == 'call') {
       final callType = msg.data['callType'] ?? 'video';
+      if (IncomingCallScreen.isShowing) return;
       navKey?.currentState?.pushNamed('/incomingCall', arguments: callType);
     } else if (type == 'chat') {
       navKey?.currentState?.pushNamed('/chat');
     }
   }
 
-  /// Fallback Realtime → Local Notification (tanpa server)
-  /// Panggil ini di MainNav initState setelah login:
-  /// FCMService().listenChatForLocalNotif(coupleId)
+  /// Fallback Realtime -> Local Notification (tanpa server).
   void listenChatForLocalNotif(String coupleId) {
     final myUid = FirebaseAuth.instance.currentUser?.uid;
     if (myUid == null) return;
@@ -281,50 +502,32 @@ class FCMService {
         final doc = snap.docs.first;
         final data = doc.data();
         final fromId = data['fromId'];
-        // Jangan notif pesan sendiri
         if (fromId == myUid) return;
-        // Hormati toggle "Notifikasi Chat Masuk" milik user (Batch D fix:
-        // dulu fallback realtime mem-bypass preferensi dan tetap bunyi).
+        // Dedupe: kalau push FCM-nya SUDAH ditangani < 3 dtk lalu, jangan
+        // dobel (dua jalur: server push + listener realtime).
+        final last = _lastChatFcmAt;
+        if (last != null && DateTime.now().difference(last).inSeconds < 3) return;
         try {
           final me = await _db.doc('users/$myUid').get();
           final prefs = me.data()?['notifPrefs'] as Map<String, dynamic>?;
           if (prefs != null && prefs['chat'] == false) return;
         } catch (_) {}
-        // Cek apakah app sedang di chat screen? bisa skip
-        // Tampilkan local notif
         final text = data['text'] ?? (data['imageUrl'] != null ? 'Foto' : 'Pesan baru');
-        _showLocalChatNotif(data['fromName'] ?? '', text);
+        if (!_localReady) return;
+        await showRichChatNotif(
+          _local,
+          title: data['fromName'] ?? '',
+          body: text,
+          coupleId: coupleId,
+          channelId: 'dykal_chat_realtime',
+          channelName: 'DyKal Realtime',
+        );
       });
   }
 
-  Future<void> _showLocalChatNotif(String title, String body) async {
-    final androidDetails = AndroidNotificationDetails(
-      'dykal_chat_realtime',
-      'DyKal Realtime',
-      channelDescription: 'Notifikasi realtime lokal',
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: true,
-      color: const Color(0xFFFF6B8A),
-      // Fallback realtime juga bisa dibalas langsung dari notif (Batch D,
-      // sebelumnya aksi cuma ada di jalur FCM foreground).
-      actions: [
-        AndroidNotificationAction('reply', 'Balas', inputs: [AndroidNotificationActionInput(label: 'Ketik balasan...')], showsUserInterface: false, cancelNotification: false),
-        AndroidNotificationAction('mark_read', 'Tanda Dibaca', showsUserInterface: false, cancelNotification: true),
-      ],
-    );
-    await _local.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      NotificationDetails(android: androidDetails),
-    );
-  }
-
-  /// Notifikasi "ada versi baru" — dipicu UpdateService begitu menemukan
-  /// rilis terbaru (lokal) & push topic app_updates dari CI (realtime).
+  /// Notifikasi "ada versi baru" (lokal & push topic app_updates).
   Future<void> showUpdateNotif(String title, {String body = 'Ada pembaruan baru. Sentuh untuk mengunduh.'}) async {
-    if (!_localReady) return; // plugin belum init -> banner home tetap tampil
+    if (!_localReady) return;
     final androidDetails = AndroidNotificationDetails(
       'dykal_update',
       'Info Update DyKal',
@@ -345,15 +548,14 @@ class FCMService {
     );
   }
 
-  /// PROGRESS UNDUHAN sebagai notifikasi Android (permintaan owner):
-  /// persen berjalan live di tray, id tetap 880002 (update, bukan numpuk).
+  /// Progress unduhan sebagai notifikasi Android (id tetap 880002).
   Future<void> showDownloadProgress(int pct) async {
     if (!_localReady) return;
     final androidDetails = AndroidNotificationDetails(
       'dykal_update',
       'Info Update DyKal',
       channelDescription: 'Versi & pembaruan aplikasi terbaru',
-      importance: Importance.low, // senyap — progress tidak perlu bunyi
+      importance: Importance.low,
       priority: Priority.low,
       showProgress: true,
       maxProgress: 100,
@@ -375,9 +577,46 @@ class FCMService {
     try { await _local.cancel(880002); } catch (_) {}
   }
 
-  // Top-level handler untuk background (harus di luar class, daftarkan di main.dart)
+  /// Pesan data-only saat APP KILLED — berjalan di isolate latar.
+  /// Di sini notif kaya dirender (sebelumnya handler ini cuma print!).
   @pragma('vm:entry-point')
   static Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-    print('Background FCM: ${message.messageId}');
+    try {
+      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+    } catch (_) {
+      return;
+    }
+    final data = message.data;
+    final type = data['type'] ?? 'chat';
+    final plugin = FlutterLocalNotificationsPlugin();
+    try {
+      await plugin.initialize(const InitializationSettings(
+          android: AndroidInitializationSettings('@drawable/ic_notification')));
+    } catch (_) {}
+
+    // Sinyal pembatalan panggilan -> hapus notif dering.
+    if (type == 'call_cancel') {
+      try { await plugin.cancel(notifIdCall); } catch (_) {}
+      return;
+    }
+    // Update tetap hybrid (worker tak mengirim dataOnly utk topic).
+    if (type == 'update') return;
+    if (type == 'call') {
+      await showRichCallNotif(plugin, data);
+      return;
+    }
+    final title = (data['senderName'] as String?)?.isNotEmpty == true
+        ? data['senderName'] as String
+        : 'DyKal';
+    final body = (data['messageBody'] as String?)?.isNotEmpty == true
+        ? data['messageBody'] as String
+        : 'Pesan baru';
+    await showRichChatNotif(
+      plugin,
+      title: title,
+      body: body,
+      avatarUrl: data['senderAvatar'] as String?,
+      coupleId: (data['coupleId'] as String?) ?? '',
+    );
   }
 }

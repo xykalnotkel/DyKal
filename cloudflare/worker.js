@@ -55,7 +55,7 @@ export default {
     // #4 VALIDASI + WHITELIST: field asing dibuang, string dipotong, token dicek polanya.
     const v = sanitizeBody(body);
     if (v.error) return json({ error: v.error }, 400);
-    const { token, topic, title, msgBody, data, type } = v.value;
+    const { token, topic, title, msgBody, data, type, dataOnly } = v.value;
 
     // Diagnostik: pastikan 3 secret sudah ter-set
     if (!env.FCM_PROJECT_ID || !env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY) {
@@ -65,23 +65,31 @@ export default {
     try {
       const accessToken = await getAccessToken(env);
       const isCall = type === 'call';
+      const isCancel = type === 'call_cancel';
       const isUpdate = type === 'update';
       // Batch D: channel notif panggilan dipisah audio vs video — user bisa
       // bedakan dering/getar keduanya di pengaturan sistem Android.
       const callChannel = data && data.callType === 'audio' ? 'dykal_call_audio' : 'dykal_call_video';
-      const targetChannel = isCall ? callChannel : (isUpdate ? 'dykal_update' : 'dykal_chat');
+      const targetChannel = (isCall || isCancel) ? callChannel : (isUpdate ? 'dykal_update' : 'dykal_chat');
       const message = {
         // Target: topic whitelist (broadcast) ATAU token device — tidak dua2nya.
         ...(topic ? { topic } : { token }),
-        notification: { title, body: msgBody || '' },
+        // SPEK v2 #4 (Batch G): data-only bila app pengirim menandai dataOnly
+        // (device tujuan sudah notifCap v2 = bisa merender MessagingStyle
+        // sendiri di semua state). App lama tetap menerima key notification
+        // (hybrid) supaya notif tidak hilang saat app di-kill.
+        // call_cancel SELALU data-only: murni sinyal kontrol penghenti dering.
+        ...(dataOnly ? {} : { notification: { title, body: msgBody || '' } }),
         data,
         android: {
           priority: 'high',
-          // collapse_key: banyak pesan beruntun -> 1 notif terbaru (anti numpuk)
-          collapse_key: isCall ? 'dykal_call' : (isUpdate ? 'dykal_update' : 'dykal_chat'),
-          // ttl: notif panggilan basi setelah 45 dtk (telepon tak diangkat),
+          // collapse_key: banyak pesan beruntun -> 1 notif terbaru (anti numpuk).
+          // call_cancel memakai key call AGAR pesan batal "menimpa" panggilan
+          // yang masih mengantre (bukan numpuk dua-duanya).
+          collapse_key: (isCall || isCancel) ? 'dykal_call' : (isUpdate ? 'dykal_update' : 'dykal_chat'),
+          // ttl: panggilan basi 45 dtk; sinyal batal hanya berguna 10 dtk;
           // chat bertahan 24 jam kalau HP pasangan offline.
-          ttl: isCall ? '45s' : '86400s',
+          ttl: isCancel ? '10s' : (isCall ? '45s' : '86400s'),
           // icon: ic_notification = siluet hati resmi (drawable), BUKAN ic_launcher
           // (launcher icon ber-latar putih jadi kotak buram kalau dipaksa jadi icon status bar)
           notification: { icon: 'ic_notification', color: '#FF6B8A', channel_id: targetChannel, sound: 'default', visibility: 'PRIVATE', notification_count: 1 },
@@ -106,7 +114,7 @@ export default {
 // #4 Whitelist ketat. Return {error} atau {value}.
 function sanitizeBody(body) {
   if (!body || typeof body !== 'object') return { error: 'bad json' };
-  const { token, title, body: msgBodyRaw, data: dataRaw, type: typeRaw, topic: topicRaw } = body;
+  const { token, title, body: msgBodyRaw, data: dataRaw, type: typeRaw, topic: topicRaw, dataOnly: dataOnlyRaw } = body;
 
   // Batch: dukung TARGET TOPIC (whitelist ketat) untuk broadcast CI, mis.
   // notif update realtime ke semua device. Kalau topic dipakai, token diabaikan.
@@ -120,7 +128,7 @@ function sanitizeBody(body) {
   if (typeof title !== 'string' || title.trim() === '') return { error: 'title required' };
 
   // type: whitelist, selain itu dipaksa 'chat' (bukan ditolak, demi kompatibilitas app lama)
-  const type = ['chat', 'call', 'letter', 'update'].includes(typeRaw) ? typeRaw : 'chat';
+  const type = ['chat', 'call', 'call_cancel', 'letter', 'update'].includes(typeRaw) ? typeRaw : 'chat';
 
   // data: hanya object polos, maks 12 key, key alfanumerik, nilai scalar -> string maks 200 char
   const data = {};
@@ -144,6 +152,8 @@ function sanitizeBody(body) {
       msgBody: typeof msgBodyRaw === 'string' ? msgBodyRaw.slice(0, 500) : '',
       data,
       type,
+      // dataOnly hanya true bila benar-benar boolean true (bukan truthy string).
+      dataOnly: dataOnlyRaw === true || type === 'call_cancel',
     },
   };
 }

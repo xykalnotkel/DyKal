@@ -35,14 +35,19 @@ class PushService {
     final partnerId = AuthService().partnerId ?? '';
     if (partnerId.isEmpty) return;
     try {
+      final me = AuthService();
       final snap = await FirebaseFirestore.instance.doc('users/$partnerId').get();
       final data = snap.data();
       final token = data?['fcmToken'] as String?;
       if (token == null || token.isEmpty) return;
       // FIX #12: hormati preferensi notifikasi pasangan (kalau dimatikan, skip push)
       final prefs = data?['notifPrefs'] as Map<String, dynamic>?;
-      final key = type == 'call' ? 'call' : (type == 'letter' ? 'letter' : 'chat');
+      final key = type.startsWith('call') ? 'call' : (type == 'letter' ? 'letter' : 'chat');
       if (prefs != null && prefs[key] == false) return;
+      // BATCH G (spek v2 #4): data-only HANYA bila device tujuan mengklaim
+      // notifCap 'v2' (mampu merender notif kaya sendiri di semua state).
+      // Device app lama tetap menerima payload hybrid dari worker.
+      final dataOnly = data?['notifCap'] == 'v2';
       await http.post(
         Uri.parse(workerUrl),
         headers: {
@@ -54,9 +59,16 @@ class PushService {
           'title': title,
           'body': body,
           'type': type,
+          if (dataOnly) 'dataOnly': true,
           'data': {
-            'coupleId': AuthService().coupleId ?? '',
+            'coupleId': me.coupleId ?? '',
             'type': type,
+            // Spek v2: renderer notif butuh identitas pengirim langsung di
+            // payload — nama & avatar untuk MessagingStyle ala WhatsApp.
+            'senderName': me.myName,
+            'senderAvatar': me.myPhotoUrl ?? '',
+            'messageBody': body,
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
             if (callerName != null) 'callerName': callerName,
             if (callType != null) 'callType': callType,
           },

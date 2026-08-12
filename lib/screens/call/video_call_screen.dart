@@ -18,7 +18,10 @@ class VideoCallScreen extends StatefulWidget {
 class _VideoCallScreenState extends State<VideoCallScreen> {
   final _local = RTCVideoRenderer();
   final _remote = RTCVideoRenderer();
-  final call = DyKalCallService();
+  // BATCH G: bukan lagi `final ... = DyKalCallService()` — saat rejoin dari
+  // bar "kembali ke panggilan" kita MENEMPEL ke sesi hidup (current).
+  late DyKalCallService call;
+  bool _rejoin = false;
   Timer? _timer;
   int _elapsed = 0;
   String _filter = 'none';
@@ -45,6 +48,23 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     final type = args?['type'] ?? 'video';
     _isCaller = isCaller == true;
 
+    // REJOIN: ada sesi hidup dengan tipe sama -> tempel, jangan telpon ulang.
+    final existing = DyKalCallService.current;
+    if (existing != null && existing.sessionActive && existing.callType == type) {
+      call = existing;
+      _rejoin = true;
+      _isCaller = existing.isCaller;
+      call.addListener(_onChanged);
+      final at = existing.answeredAt;
+      if (at != null) {
+        _elapsed = DateTime.now().difference(at).inSeconds;
+      }
+      _onChanged(); // bind stream langsung
+      _startTimer();
+      return;
+    }
+
+    call = DyKalCallService();
     call.addListener(_onChanged);
     try {
       if (isCaller == true) {
@@ -60,11 +80,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       return;
     }
 
-    if (mounted) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() => _elapsed++);
-      });
-    }
+    _startTimer();
+  }
+
+  void _startTimer() {
+    if (!mounted) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed++);
+    });
   }
 
   /// Status panggilan yang akurat: Memanggil / Berdering / Tersambung.
@@ -206,7 +229,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void dispose() {
     _timer?.cancel();
     call.removeListener(_onChanged);
-    call.dispose();
+    // BATCH G: kalau instance ini masih sesi HIDUP (user hanya mengecilkan
+    // layar), JANGAN dimatikan — panggilan lanjut, bar "kembali ke
+    // panggilan" tampil. Sesi hanya mati via tombol merah / lawan menutup.
+    if (!identical(call, DyKalCallService.current) && !_rejoin) {
+      call.dispose();
+    }
     _local.dispose();
     _remote.dispose();
     super.dispose();
@@ -287,6 +315,17 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   const SizedBox(width: 6),
                   Text(_callStatus, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                 ]),
+              ),
+            ),
+
+            // BATCH G: chevron KECILKAN — panggilan lanjut di latar,
+            // bar hijau "kembali ke panggilan" muncul di layar utama.
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 30),
               ),
             ),
 
